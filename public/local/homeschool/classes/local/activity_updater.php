@@ -60,17 +60,7 @@ class activity_updater {
 
         if ($completion == COMPLETION_TRACKING_AUTOMATIC) {
             if ($conditionstate === null) {
-                $conditionstate = [
-                    'completionview' => (int) $cminfo->completionview,
-                    'completiongradeitemnumber' => $cminfo->completiongradeitemnumber,
-                    'completionpassgrade' => (int) ($cminfo->completionpassgrade ?? 0),
-                    'custom' => [],
-                ];
-                foreach (completion_conditions::get_available($cminfo) as $condition) {
-                    if ($condition->type === 'custom') {
-                        $conditionstate['custom'][$condition->name] = !empty($condition->enabled) ? 1 : 0;
-                    }
-                }
+                $conditionstate = completion_conditions::snapshot_state($cminfo);
             }
             if (!completion_conditions::state_has_condition($conditionstate)) {
                 throw new \moodle_exception('badautocompletion', 'completion');
@@ -97,11 +87,18 @@ class activity_updater {
             }
         }
 
+        // Reminder dates only apply when completion tracking is enabled.
+        $calendartime = !empty($cminfo->completionexpected) ? $cminfo->completionexpected : null;
+        if ($completion == COMPLETION_TRACKING_NONE && !empty($cminfo->completionexpected)) {
+            $DB->set_field('course_modules', 'completionexpected', 0, ['id' => $cm->id]);
+            $calendartime = null;
+            $changed = true;
+        }
+
         if (!$changed) {
             return false;
         }
 
-        $calendartime = !empty($cminfo->completionexpected) ? $cminfo->completionexpected : null;
         \core_completion\api::update_completion_date_event(
             $cm->id,
             $cm->modname,

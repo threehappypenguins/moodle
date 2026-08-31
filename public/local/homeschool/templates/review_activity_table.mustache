@@ -17,7 +17,24 @@
                 </div>
             </div>
 
-            <form method="post" action="{{reviewurl}}" class="local-homeschool-row-date local-homeschool-activity-date">
+            <button type="button"
+                    class="btn btn-link btn-sm text-danger p-0 local-homeschool-activity-delete"
+                    data-action="local-homeschool-delete-cm"
+                    data-cmid="{{cmid}}"
+                    data-activityname="{{activityname}}"
+                    data-modname="{{modname}}"
+                    data-day="{{daynumber}}"
+                    data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
+                    data-reviewurl="{{reviewurl}}"
+                    data-sesskey="{{sesskey}}"
+                    title="{{#str}} delete {{/str}}"
+                    aria-label="{{#str}} deleteactivity, local_homeschool, {{activityname}} {{/str}}">
+                {{#pix}} t/delete, core {{/pix}}
+            </button>
+
+            <form method="post" action="{{reviewurl}}"
+                  class="local-homeschool-row-date local-homeschool-activity-date{{^dateeditable}} is-disabled{{/dateeditable}}"
+                  {{^dateeditable}}title="{{#str}} datenotavailable, local_homeschool {{/str}}"{{/dateeditable}}>
                 <input type="hidden" name="sesskey" value="{{sesskey}}">
                 <input type="hidden" name="action" value="updatedate">
                 <input type="hidden" name="cmid" value="{{cmid}}">
@@ -35,7 +52,8 @@
                            name="scheduledate"
                            id="reminder-date-{{cmid}}"
                            value="{{completionexpectediso}}"
-                           aria-label="{{#str}} changedate, local_homeschool {{/str}}">
+                           aria-label="{{#str}} changedate, local_homeschool {{/str}}"
+                           {{^dateeditable}}disabled{{/dateeditable}}>
                 </span>
                 {{#hasreminderdate}}
                     <button type="submit"
@@ -43,7 +61,8 @@
                             name="clearreminder"
                             value="1"
                             title="{{#str}} cleardate, local_homeschool {{/str}}"
-                            aria-label="{{#str}} cleardate, local_homeschool {{/str}}">
+                            aria-label="{{#str}} cleardate, local_homeschool {{/str}}"
+                            {{^dateeditable}}disabled{{/dateeditable}}>
                         {{#pix}} e/cancel, core {{/pix}}
                     </button>
                 {{/hasreminderdate}}
@@ -105,47 +124,91 @@
                                 <fieldset class="mt-2 mb-0" {{#completionlocked}}disabled{{/completionlocked}}>
                                     <legend class="sr-only">{{#str}} completion_automatic, completion {{/str}}</legend>
                                     {{#requirements}}
-                                        <div class="form-check">
-                                            <input class="form-check-input local-homeschool-autosave local-homeschool-requirement"
-                                                   type="checkbox"
-                                                   name="{{fieldname}}"
-                                                   id="{{inputid}}"
-                                                   value="1"
-                                                   data-requirement="{{name}}"
-                                                   {{#enabled}}checked{{/enabled}}
-                                                   {{#locked}}disabled{{/locked}}>
-                                            <label class="form-check-label" for="{{inputid}}">{{label}}</label>
-                                        </div>
-                                        {{#haspassgrade}}
-                                            <div class="local-homeschool-passgrade ms-3 mb-2"
-                                                 data-passgrade-for="completionusegrade"
-                                                 {{^enabled}}hidden{{/enabled}}>
-                                                <div class="form-check">
-                                                    <input class="form-check-input local-homeschool-autosave"
-                                                           type="radio"
-                                                           name="requirement_completionpassgrade"
-                                                           id="{{inputid}}-any"
-                                                           value="0"
-                                                           {{^passgrade}}checked{{/passgrade}}
-                                                           {{#locked}}disabled{{/locked}}>
-                                                    <label class="form-check-label" for="{{inputid}}-any">
-                                                        {{#str}} completionanygrade_desc, completion {{/str}}
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input local-homeschool-autosave"
-                                                           type="radio"
-                                                           name="requirement_completionpassgrade"
-                                                           id="{{inputid}}-pass"
-                                                           value="1"
-                                                           {{#passgrade}}checked{{/passgrade}}
-                                                           {{#locked}}disabled{{/locked}}>
-                                                    <label class="form-check-label" for="{{inputid}}-pass">
-                                                        {{#str}} completionpassgrade_desc, completion {{/str}}
-                                                    </label>
-                                                </div>
+                                        {{#isint}}
+                                            <div class="local-homeschool-requirement-int form-check d-flex flex-wrap align-items-center gap-2">
+                                                <input class="form-check-input local-homeschool-autosave local-homeschool-requirement"
+                                                       type="checkbox"
+                                                       name="{{fieldname}}_enabled"
+                                                       id="{{inputid}}-enabled"
+                                                       value="1"
+                                                       data-requirement="{{name}}"
+                                                       data-requirement-type="int"
+                                                       {{#enabled}}checked{{/enabled}}
+                                                       {{#locked}}disabled{{/locked}}>
+                                                <label class="form-check-label" for="{{inputid}}-enabled">{{label}}</label>
+                                                <input type="number"
+                                                       class="form-control form-control-sm local-homeschool-requirement-value local-homeschool-autosave"
+                                                       name="{{fieldname}}"
+                                                       id="{{inputid}}"
+                                                       value="{{value}}"
+                                                       min="{{min}}"
+                                                       data-requirement-value-for="{{name}}"
+                                                       aria-label="{{label}}"
+                                                       {{^enabled}}hidden{{/enabled}}
+                                                       {{#locked}}disabled{{/locked}}>
                                             </div>
-                                        {{/haspassgrade}}
+                                        {{/isint}}
+                                        {{#isbool}}
+                                            <div class="form-check">
+                                                <input class="form-check-input local-homeschool-autosave local-homeschool-requirement"
+                                                       type="checkbox"
+                                                       name="{{fieldname}}"
+                                                       id="{{inputid}}"
+                                                       value="1"
+                                                       data-requirement="{{name}}"
+                                                       {{#enabled}}checked{{/enabled}}
+                                                       {{#locked}}disabled{{/locked}}>
+                                                <label class="form-check-label" for="{{inputid}}">{{label}}</label>
+                                            </div>
+                                            {{#haspassgrade}}
+                                                <div class="local-homeschool-passgrade ms-3 mb-2"
+                                                     data-passgrade-for="completionusegrade"
+                                                     {{^enabled}}hidden{{/enabled}}>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input local-homeschool-autosave local-homeschool-passgrade-radio"
+                                                               type="radio"
+                                                               name="requirement_completionpassgrade"
+                                                               id="{{inputid}}-any"
+                                                               value="0"
+                                                               data-passgrade-value="0"
+                                                               {{^passgrade}}checked{{/passgrade}}
+                                                               {{#locked}}disabled{{/locked}}>
+                                                        <label class="form-check-label" for="{{inputid}}-any">
+                                                            {{#str}} completionanygrade_desc, completion {{/str}}
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input local-homeschool-autosave local-homeschool-passgrade-radio"
+                                                               type="radio"
+                                                               name="requirement_completionpassgrade"
+                                                               id="{{inputid}}-pass"
+                                                               value="1"
+                                                               data-passgrade-value="1"
+                                                               {{#passgrade}}checked{{/passgrade}}
+                                                               {{#locked}}disabled{{/locked}}>
+                                                        <label class="form-check-label" for="{{inputid}}-pass">
+                                                            {{#str}} completionpassgrade_desc, completion {{/str}}
+                                                        </label>
+                                                    </div>
+                                                    {{#hasexhausted}}
+                                                        <div class="form-check ms-3 local-homeschool-exhausted"
+                                                             data-exhausted-for="completionusegrade"
+                                                             {{^passgrade}}hidden{{/passgrade}}>
+                                                            <input class="form-check-input local-homeschool-autosave"
+                                                                   type="checkbox"
+                                                                   name="requirement_completionattemptsexhausted"
+                                                                   id="{{exhaustedinputid}}"
+                                                                   value="1"
+                                                                   {{#exhausted}}checked{{/exhausted}}
+                                                                   {{#locked}}disabled{{/locked}}>
+                                                            <label class="form-check-label" for="{{exhaustedinputid}}">
+                                                                {{exhaustedlabel}}
+                                                            </label>
+                                                        </div>
+                                                    {{/hasexhausted}}
+                                                </div>
+                                            {{/haspassgrade}}
+                                        {{/isbool}}
                                     {{/requirements}}
                                 </fieldset>
                                 <div class="alert alert-warning local-homeschool-requirements-error mt-2 mb-0" hidden>

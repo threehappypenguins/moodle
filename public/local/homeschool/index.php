@@ -18,6 +18,8 @@ require(__DIR__ . '/../../../config.php');
 
 require_login();
 
+\local_homeschool\local\return_context::clear();
+
 $context = context_system::instance();
 require_capability('local/homeschool:view', $context);
 

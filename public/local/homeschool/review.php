@@ -19,6 +19,9 @@ require_once($CFG->libdir . '/completionlib.php');
 
 require_login();
 
+// Visiting Homeschool clears any pending post-modedit return.
+\local_homeschool\local\return_context::clear();
+
 $context = context_system::instance();
 require_capability('local/homeschool:manage', $context);
 
@@ -111,6 +114,46 @@ if ($day > 0) {
         redirect($url);
     }
 
+    if ($action === 'delete') {
+        require_sesskey();
+
+        $cmids = optional_param_array('cmids', [], PARAM_INT);
+        if (empty($cmids)) {
+            $singlecmid = optional_param('cmid', 0, PARAM_INT);
+            if ($singlecmid) {
+                $cmids = [$singlecmid];
+            }
+        }
+        $cmids = array_values(array_filter($cmids, static function($cmid) use ($allowedcmids) {
+            return isset($allowedcmids[(int) $cmid]);
+        }));
+
+        if (empty($cmids)) {
+            \core\notification::error(get_string('noactivitiesselected', 'local_homeschool'));
+            redirect($url);
+        }
+
+        $deleted = 0;
+        $deletedname = '';
+        foreach ($cmids as $cmid) {
+            $cm = get_coursemodule_from_id('', $cmid, 0, false, MUST_EXIST);
+            $modcontext = context_module::instance($cm->id);
+            require_capability('moodle/course:manageactivities', $modcontext);
+            if ($deleted === 0) {
+                $deletedname = $cm->name;
+            }
+            \core_courseformat\formatactions::cm($cm->course)->delete($cm->id);
+            $deleted++;
+        }
+
+        if ($deleted === 1) {
+            \core\notification::success(get_string('activitydeleted', 'local_homeschool', $deletedname));
+        } else {
+            \core\notification::success(get_string('activitiesdeleted', 'local_homeschool', $deleted));
+        }
+        redirect($url);
+    }
+
     if ($action === 'updatedate') {
         require_sesskey();
 
@@ -134,6 +177,11 @@ if ($day > 0) {
         }
 
         $cm = get_coursemodule_from_id('', $cmid, 0, false, MUST_EXIST);
+        if ((int) $cm->completion === COMPLETION_TRACKING_NONE) {
+            \core\notification::error(get_string('datenotavailable', 'local_homeschool'));
+            redirect($url);
+        }
+
         $hour = 0;
         $minute = 0;
         if (!empty($cm->completionexpected)) {
@@ -226,6 +274,13 @@ if ($day > 0) {
 
 $PAGE->requires->js_init_code(<<<'JS'
 (function() {
+    var daySelect = document.getElementById('local-homeschool-day');
+    if (daySelect) {
+        daySelect.addEventListener('change', function() {
+            daySelect.form.submit();
+        });
+    }
+
     var showAll = document.getElementById('local-homeschool-showall');
     if (showAll) {
         showAll.addEventListener('change', function() {
@@ -237,6 +292,14 @@ $PAGE->requires->js_init_code(<<<'JS'
     if (!root) {
         return;
     }
+
+    var syncBulkDeleteFromSelection = function() {
+        var bulkDelete = root.querySelector('[data-action="local-homeschool-delete-selected"]');
+        if (!bulkDelete) {
+            return;
+        }
+        bulkDelete.disabled = root.querySelectorAll('.local-homeschool-select-cm:checked').length === 0;
+    };
 
     var updateRowEditing = function() {
         var selected = root.querySelectorAll('.local-homeschool-select-cm:checked').length;
@@ -250,7 +313,56 @@ $PAGE->requires->js_init_code(<<<'JS'
             var checkbox = row.querySelector('.local-homeschool-select-cm');
             row.classList.toggle('is-selected', !!(checkbox && checkbox.checked));
         });
+        syncBulkDeleteFromSelection();
     };
+
+    var syncDateEditable = function(row, editable) {
+        if (!row) {
+            return;
+        }
+        var dateForm = row.querySelector('.local-homeschool-row-date');
+        if (!dateForm) {
+            return;
+        }
+        dateForm.classList.toggle('is-disabled', !editable);
+        if (editable) {
+            dateForm.removeAttribute('title');
+        } else {
+            dateForm.setAttribute('title', dateForm.getAttribute('data-disabled-title') || '');
+        }
+        dateForm.querySelectorAll('input, button').forEach(function(el) {
+            if (el.type === 'hidden') {
+                return;
+            }
+            el.disabled = !editable;
+        });
+    };
+
+    var syncRequirementExtras = function(form) {
+        var gradeReq = form.querySelector('.local-homeschool-requirement[data-requirement="completionusegrade"]');
+        var passgrade = form.querySelector('.local-homeschool-passgrade');
+        if (gradeReq && passgrade) {
+            passgrade.hidden = !gradeReq.checked;
+        }
+        var passSelected = form.querySelector('.local-homeschool-passgrade-radio:checked');
+        var exhausted = form.querySelector('.local-homeschool-exhausted');
+        if (exhausted) {
+            exhausted.hidden = !(gradeReq && gradeReq.checked && passSelected && passSelected.value === '1');
+        }
+        form.querySelectorAll('.local-homeschool-requirement[data-requirement-type="int"]').forEach(function(cb) {
+            var valueInput = form.querySelector('[data-requirement-value-for="' + cb.getAttribute('data-requirement') + '"]');
+            if (valueInput) {
+                valueInput.hidden = !cb.checked;
+                if (cb.checked && (!valueInput.value || parseInt(valueInput.value, 10) < 1)) {
+                    valueInput.value = '1';
+                }
+            }
+        });
+    };
+
+    root.querySelectorAll('.local-homeschool-row-date.is-disabled').forEach(function(dateForm) {
+        dateForm.setAttribute('data-disabled-title', dateForm.getAttribute('title') || '');
+    });
 
     root.addEventListener('change', function(event) {
         if (event.target.classList.contains('local-homeschool-select-cm') ||
@@ -274,7 +386,8 @@ $PAGE->requires->js_init_code(<<<'JS'
         }
 
         if (event.target.classList.contains('local-homeschool-autosave') ||
-                event.target.classList.contains('local-homeschool-date-input')) {
+                event.target.classList.contains('local-homeschool-date-input') ||
+                event.target.classList.contains('local-homeschool-requirement-value')) {
             var form = event.target.closest('form');
             if (!form) {
                 return;
@@ -314,14 +427,13 @@ $PAGE->requires->js_init_code(<<<'JS'
                         requirements.open = true;
                     }
                 }
+                var activityRow = form.closest('.local-homeschool-activity');
+                syncDateEditable(activityRow, selectedCompletion && selectedCompletion.value !== '0');
             }
 
-            if (event.target.classList.contains('local-homeschool-requirement') &&
-                    event.target.getAttribute('data-requirement') === 'completionusegrade') {
-                var passgrade = form.querySelector('.local-homeschool-passgrade');
-                if (passgrade) {
-                    passgrade.hidden = !event.target.checked;
-                }
+            if (event.target.classList.contains('local-homeschool-requirement') ||
+                    event.target.classList.contains('local-homeschool-passgrade-radio')) {
+                syncRequirementExtras(form);
             }
 
             if (automaticSelected && requirements) {
@@ -334,8 +446,7 @@ $PAGE->requires->js_init_code(<<<'JS'
                         error.hidden = false;
                     }
                     if (completionRadio) {
-                        // Revert the visible selection to the previously saved value on the summary.
-                        // Keep the attempted automatic selection in the radio group so the user can pick conditions.
+                        // Keep automatic selected so the user can pick conditions.
                     }
                     return;
                 }
@@ -344,7 +455,8 @@ $PAGE->requires->js_init_code(<<<'JS'
                 }
             }
 
-            if (cmid && event.target.classList.contains('local-homeschool-autosave')) {
+            if (cmid && (event.target.classList.contains('local-homeschool-autosave') ||
+                    event.target.classList.contains('local-homeschool-requirement-value'))) {
                 if (event.target.closest('.local-homeschool-activity-details')) {
                     sessionStorage.setItem('local_homeschool_expand_activity', cmid);
                 }
@@ -434,6 +546,7 @@ $PAGE->requires->js_init_code(<<<'JS'
         }
     };
     syncActivityDetails();
+    root.querySelectorAll('.local-homeschool-row-edit').forEach(syncRequirementExtras);
     if (desktopQuery.addEventListener) {
         desktopQuery.addEventListener('change', syncActivityDetails);
     } else if (desktopQuery.addListener) {
@@ -455,6 +568,13 @@ $renderable = new \local_homeschool\output\day_review(
     $expandreq,
 );
 $renderer = $PAGE->get_renderer('local_homeschool');
+
+if ($day > 0 && !empty($courses)) {
+    $PAGE->requires->js_call_amd('local_homeschool/addactivity', 'init');
+}
+if ($day > 0 && !empty($activities)) {
+    $PAGE->requires->js_call_amd('local_homeschool/deleteactivity', 'init');
+}
 
 echo $OUTPUT->header();
 echo $renderer->render($renderable);

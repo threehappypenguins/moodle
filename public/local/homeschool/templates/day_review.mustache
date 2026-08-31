@@ -9,16 +9,13 @@
             <div class="local-homeschool-day-picker-controls">
                 <select class="form-select"
                         name="day"
-                        id="local-homeschool-day"
-                        required>
+                        id="local-homeschool-day">
                     <option value="">{{#str}} chooseday, local_homeschool {{/str}}</option>
                     {{#dayoptions}}
                         <option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>
                     {{/dayoptions}}
                 </select>
-                <button type="submit" class="btn btn-primary">{{#str}} openday, local_homeschool {{/str}}</button>
             </div>
-            <div class="form-text">{{opendayhelp}}</div>
         </div>
         {{#hasday}}
             <div class="form-check">
@@ -29,14 +26,67 @@
                        value="1"
                        {{#showall}}checked{{/showall}}>
                 <label class="form-check-label" for="local-homeschool-showall">
-                    {{#str}} showallactivities, local_homeschool {{/str}}
+                    {{#str}} showalllist, local_homeschool {{/str}}
                 </label>
             </div>
         {{/hasday}}
     </form>
 
     {{#hasday}}
-        <p class="local-homeschool-reviewhelp">{{reviewhelp}}</p>
+        {{#hasaddcourses}}
+            <div class="local-homeschool-add-activity mb-3"
+                 data-day="{{daynumber}}"
+                 data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}">
+                <div class="form-label">{{#str}} addtocourse, local_homeschool {{/str}}</div>
+                <div class="local-homeschool-add-activity-controls">
+                    <select class="form-select"
+                            id="local-homeschool-add-course"
+                            aria-label="{{#str}} addtocourse, local_homeschool {{/str}}">
+                        <option value="" selected disabled>{{#str}} choosecourse, local_homeschool {{/str}}</option>
+                        {{#addcourseflat}}
+                            {{#addcourses}}
+                                <option value="{{id}}"
+                                        {{#disabled}}disabled{{/disabled}}
+                                        data-section-id="{{sectionid}}"
+                                        data-section-num="{{sectionnum}}"
+                                        data-returnoptions="{{returnoptions}}"
+                                        data-missingsection="{{#missingsection}}1{{/missingsection}}{{^missingsection}}0{{/missingsection}}"
+                                        data-courseurl="{{courseurl}}">
+                                    {{name}}{{#missingsection}} — {{#str}} sectionmissingshort, local_homeschool {{/str}}{{/missingsection}}
+                                </option>
+                            {{/addcourses}}
+                        {{/addcourseflat}}
+                        {{^addcourseflat}}
+                            {{#addcoursegroups}}
+                                <optgroup label="{{heading}}">
+                                    {{#courses}}
+                                        <option value="{{id}}"
+                                                {{#disabled}}disabled{{/disabled}}
+                                                data-section-id="{{sectionid}}"
+                                                data-section-num="{{sectionnum}}"
+                                                data-returnoptions="{{returnoptions}}"
+                                                data-missingsection="{{#missingsection}}1{{/missingsection}}{{^missingsection}}0{{/missingsection}}"
+                                                data-courseurl="{{courseurl}}">
+                                            {{name}}{{#missingsection}} — {{#str}} sectionmissingshort, local_homeschool {{/str}}{{/missingsection}}
+                                        </option>
+                                    {{/courses}}
+                                </optgroup>
+                            {{/addcoursegroups}}
+                        {{/addcourseflat}}
+                    </select>
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-action="local-homeschool-open-chooser"
+                            disabled>
+                        {{#str}} addactivity, local_homeschool {{/str}}
+                    </button>
+                </div>
+                <div class="alert alert-warning local-homeschool-add-missing mt-2 mb-0" hidden>
+                    {{#str}} sectionmissingforadd, local_homeschool, {{daynumber}} {{/str}}
+                    <a href="#">{{#str}} opencourse, local_homeschool {{/str}}</a>
+                </div>
+            </div>
+        {{/hasaddcourses}}
 
         {{#noactivities}}
             <div class="alert alert-info">{{#str}} noactivitiesforday, local_homeschool, {{daynumber}} {{/str}}</div>
@@ -47,6 +97,19 @@
                 <a href="#" data-action="local-homeschool-selectall">{{#str}} selectall, local_homeschool {{/str}}</a>
                 <span aria-hidden="true"> | </span>
                 <a href="#" data-action="local-homeschool-deselectall">{{#str}} deselectall, local_homeschool {{/str}}</a>
+                <button type="button"
+                        class="btn btn-outline-danger btn-sm local-homeschool-delete-selected ms-2"
+                        data-action="local-homeschool-delete-selected"
+                        data-reviewurl="{{reviewurl}}"
+                        data-sesskey="{{sesskey}}"
+                        data-day="{{daynumber}}"
+                        data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
+                        disabled
+                        title="{{#str}} deleteselected, local_homeschool {{/str}}"
+                        aria-label="{{#str}} deleteselected, local_homeschool {{/str}}">
+                    {{#pix}} t/delete, core {{/pix}}
+                    <span class="visually-hidden">{{#str}} deleteselected, local_homeschool {{/str}}</span>
+                </button>
             </div>
 
             <div class="alert alert-info local-homeschool-multiselect-hint" hidden>

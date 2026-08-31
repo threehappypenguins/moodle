@@ -30,4 +30,9 @@ $callbacks = [
         'callback' => [\local_homeschool\hook\primary_navigation::class, 'extend'],
         'priority' => 0,
     ],
+    [
+        'hook' => \core\hook\output\before_http_headers::class,
+        'callback' => [\local_homeschool\hook\course_return::class, 'before_http_headers'],
+        'priority' => 0,
+    ],
 ];

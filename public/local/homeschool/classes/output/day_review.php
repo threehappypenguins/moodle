@@ -105,6 +105,14 @@ class day_review implements renderable, templatable {
             if (!$this->showall) {
                 $groups = $this->build_child_groups($rows, $coursestudents);
             }
+
+            $addcourseexport = $this->export_add_courses($coursestudents);
+        } else {
+            $addcourseexport = (object) [
+                'flat' => true,
+                'courses' => [],
+                'groups' => [],
+            ];
         }
 
         $dayoptions = [];
@@ -133,12 +141,100 @@ class day_review implements renderable, templatable {
             'reviewurl' => $this->review_url()->out(false),
             'reviewformaction' => (new \moodle_url('/local/homeschool/review.php'))->out(false),
             'sesskey' => sesskey(),
-            'reviewhelp' => get_string('reviewhelp', 'local_homeschool'),
-            'opendayhelp' => get_string('opendayhelp', 'local_homeschool'),
             'multiselecthint' => get_string('multiselecthint', 'local_homeschool'),
             'dateformhtml' => $this->dateformhtml,
             'hasdateform' => $this->dateformhtml !== '',
+            'addcourses' => $addcourseexport->courses,
+            'addcoursegroups' => $addcourseexport->groups,
+            'addcourseflat' => !empty($addcourseexport->flat),
+            'hasaddcourses' => $hasday && !empty($this->courses),
         ];
+    }
+
+    /**
+     * Courses available for adding an activity to the current day section.
+     *
+     * When showall is off, courses are grouped under the same child headings as activities.
+     *
+     * @param array $coursestudents courseid => [userid => user]
+     * @return \stdClass{flat:bool,courses:\stdClass[],groups:\stdClass[]}
+     */
+    protected function export_add_courses(array $coursestudents): \stdClass {
+        $optionsbyid = [];
+
+        foreach ($this->courses as $course) {
+            $optionsbyid[(int) $course->id] = $this->build_add_course_option($course);
+        }
+
+        if ($this->showall) {
+            return (object) [
+                'flat' => true,
+                'courses' => array_values($optionsbyid),
+                'groups' => [],
+            ];
+        }
+
+        $grouped = [];
+        foreach ($optionsbyid as $courseid => $option) {
+            $meta = $this->child_group_meta((int) $courseid, $coursestudents);
+            if (!isset($grouped[$meta->key])) {
+                $grouped[$meta->key] = (object) [
+                    'key' => $meta->key,
+                    'heading' => $meta->heading,
+                    'shared' => $meta->shared,
+                    'nostudents' => $meta->nostudents,
+                    'sortname' => $meta->sortname,
+                    'courses' => [],
+                ];
+            }
+            $grouped[$meta->key]->courses[] = $option;
+        }
+
+        $groups = array_values($grouped);
+        usort($groups, [$this, 'compare_child_groups']);
+
+        return (object) [
+            'flat' => false,
+            'courses' => array_values($optionsbyid),
+            'groups' => $groups,
+        ];
+    }
+
+    /**
+     * @param \stdClass $course
+     * @return \stdClass
+     */
+    protected function build_add_course_option(\stdClass $course): \stdClass {
+        $modinfo = get_fast_modinfo($course);
+        $section = $modinfo->get_section_info($this->daynumber, IGNORE_MISSING);
+        $missing = empty($section);
+        $courseurl = course_get_url($course);
+        if ($courseurl) {
+            $courseurl = $courseurl->out(false);
+        } else {
+            $courseurl = (new \moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
+        }
+
+        $option = (object) [
+            'id' => $course->id,
+            'name' => format_string($course->fullname, true, ['context' => \context_course::instance($course->id)]),
+            'disabled' => $missing,
+            'missingsection' => $missing,
+            'selected' => false,
+            'courseurl' => $courseurl,
+            'sectionid' => $missing ? 0 : (int) $section->id,
+            'sectionnum' => $this->daynumber,
+            'returnoptions' => '',
+        ];
+
+        if (!$missing) {
+            $option->returnoptions = json_encode([
+                'sr' => (int) $this->daynumber,
+                'pagesectionid' => (int) $section->id,
+            ]);
+        }
+
+        return $option;
     }
 
     /**
@@ -181,6 +277,7 @@ class day_review implements renderable, templatable {
             'completionexpectedformatted' => $activity->completionexpectedformatted,
             'completionexpectediso' => $activity->completionexpectediso,
             'hasreminderdate' => !empty($activity->hasreminderdate),
+            'dateeditable' => (int) $activity->completion !== COMPLETION_TRACKING_NONE,
             'completionlocked' => !empty($activity->completionlocked),
             'isassign' => $activity->isassign,
             'hassubmissions' => !empty($submissions),
@@ -193,6 +290,7 @@ class day_review implements renderable, templatable {
             'editurl' => $activity->editurl,
             'reviewurl' => $this->review_url()->out(false),
             'sesskey' => sesskey(),
+            'daynumber' => $this->daynumber,
             'showall' => $this->showall,
             'completionoptions' => [
                 (object) [
@@ -221,6 +319,7 @@ class day_review implements renderable, templatable {
     protected function export_requirements(\stdClass $activity): array {
         $requirements = [];
         foreach ($activity->requirements ?? [] as $requirement) {
+            $isint = ($requirement->valuetype ?? 'bool') === 'int';
             $item = (object) [
                 'name' => $requirement->name,
                 'label' => $requirement->label,
@@ -229,6 +328,14 @@ class day_review implements renderable, templatable {
                 'inputid' => 'requirement-' . $activity->cmid . '-' . $requirement->name,
                 'haspassgrade' => !empty($requirement->haspassgrade),
                 'passgrade' => !empty($requirement->passgrade),
+                'hasexhausted' => !empty($requirement->hasexhausted),
+                'exhausted' => !empty($requirement->exhausted),
+                'exhaustedlabel' => $requirement->exhaustedlabel ?? '',
+                'exhaustedinputid' => 'requirement-' . $activity->cmid . '-completionattemptsexhausted',
+                'isint' => $isint,
+                'isbool' => !$isint,
+                'value' => (int) ($requirement->value ?? 1),
+                'min' => (int) ($requirement->min ?? 1),
                 'locked' => !empty($activity->completionlocked),
             ];
             $requirements[] = $item;
@@ -247,48 +354,76 @@ class day_review implements renderable, templatable {
         $grouped = [];
 
         foreach ($rows as $row) {
-            $students = $coursestudents[$row->courseid] ?? [];
-            $ids = array_map('intval', array_keys($students));
-            sort($ids);
-            $key = $ids ? implode(',', $ids) : 'none';
-
-            if (!isset($grouped[$key])) {
-                $names = [];
-                foreach ($ids as $id) {
-                    $names[] = fullname($students[$id]);
-                }
-                $shared = count($ids) > 1;
-                if ($ids === []) {
-                    $heading = get_string('nochildrenforcourse', 'local_homeschool');
-                } else if ($shared) {
-                    $heading = get_string('sharedchildrenheading', 'local_homeschool', implode(', ', $names));
-                } else {
-                    $heading = $names[0];
-                }
-
-                $grouped[$key] = (object) [
-                    'key' => $key,
-                    'heading' => $heading,
-                    'shared' => $shared,
-                    'singlestudent' => count($ids) === 1,
-                    'nostudents' => $ids === [],
-                    'sortname' => $ids === [] ? 'zzz' : implode(', ', $names),
+            $meta = $this->child_group_meta((int) $row->courseid, $coursestudents);
+            if (!isset($grouped[$meta->key])) {
+                $grouped[$meta->key] = (object) [
+                    'key' => $meta->key,
+                    'heading' => $meta->heading,
+                    'shared' => $meta->shared,
+                    'singlestudent' => $meta->singlestudent,
+                    'nostudents' => $meta->nostudents,
+                    'sortname' => $meta->sortname,
                     'activities' => [],
                 ];
             }
-            $grouped[$key]->activities[] = $row;
+            $grouped[$meta->key]->activities[] = $row;
         }
 
         $groups = array_values($grouped);
-        usort($groups, static function($a, $b) {
-            $arank = $a->nostudents ? 2 : ($a->shared ? 1 : 0);
-            $brank = $b->nostudents ? 2 : ($b->shared ? 1 : 0);
-            if ($arank !== $brank) {
-                return $arank <=> $brank;
-            }
-            return strcasecmp($a->sortname, $b->sortname);
-        });
+        usort($groups, [$this, 'compare_child_groups']);
 
         return $groups;
+    }
+
+    /**
+     * Shared child/shared/empty heading metadata for a course.
+     *
+     * @param int $courseid
+     * @param array $coursestudents courseid => [userid => user]
+     * @return \stdClass
+     */
+    protected function child_group_meta(int $courseid, array $coursestudents): \stdClass {
+        $students = $coursestudents[$courseid] ?? [];
+        $ids = array_map('intval', array_keys($students));
+        sort($ids);
+        $key = $ids ? implode(',', $ids) : 'none';
+
+        $names = [];
+        foreach ($ids as $id) {
+            $names[] = fullname($students[$id]);
+        }
+        $shared = count($ids) > 1;
+        if ($ids === []) {
+            $heading = get_string('nochildrenforcourse', 'local_homeschool');
+        } else if ($shared) {
+            $heading = get_string('sharedchildrenheading', 'local_homeschool', implode(', ', $names));
+        } else {
+            $heading = $names[0];
+        }
+
+        return (object) [
+            'key' => $key,
+            'heading' => $heading,
+            'shared' => $shared,
+            'singlestudent' => count($ids) === 1,
+            'nostudents' => $ids === [],
+            'sortname' => $ids === [] ? 'zzz' : implode(', ', $names),
+        ];
+    }
+
+    /**
+     * Sort child groups: individuals, then shared, then no children.
+     *
+     * @param \stdClass $a
+     * @param \stdClass $b
+     * @return int
+     */
+    protected function compare_child_groups(\stdClass $a, \stdClass $b): int {
+        $arank = !empty($a->nostudents) ? 2 : (!empty($a->shared) ? 1 : 0);
+        $brank = !empty($b->nostudents) ? 2 : (!empty($b->shared) ? 1 : 0);
+        if ($arank !== $brank) {
+            return $arank <=> $brank;
+        }
+        return strcasecmp($a->sortname, $b->sortname);
     }
 }

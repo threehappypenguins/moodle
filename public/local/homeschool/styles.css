@@ -1,24 +1,31 @@
 .local-homeschool-review {
     max-width: 100%;
     min-width: 0;
-    overflow-x: hidden;
+    /* Keep a little inset so focus rings are not clipped by the page edge. */
+    padding-inline: 0.35rem;
+    margin-inline: -0.35rem;
 }
 
-.local-homeschool-reviewhelp {
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-}
-
+.local-homeschool-add-activity-controls,
 .local-homeschool-day-picker-controls {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
+    /* Room for Bootstrap focus outline on both sides. */
+    padding: 0.25rem;
+    margin: -0.25rem;
+}
+
+.local-homeschool-add-activity-controls .form-select {
+    flex: 0 1 12rem;
+    width: 12rem;
+    max-width: 100%;
 }
 
 .local-homeschool-day-picker-controls .form-select {
-    flex: 1 1 12rem;
-    min-width: 0;
+    flex: 0 1 12rem;
+    width: 12rem;
     max-width: 100%;
 }
 
@@ -84,6 +91,17 @@
     transform: rotate(45deg);
 }
 
+.local-homeschool-selection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+}
+
+.local-homeschool-delete-selected .icon {
+    margin: 0;
+}
+
 .local-homeschool-activity-list {
     display: flex;
     flex-direction: column;
@@ -93,11 +111,11 @@
 
 .local-homeschool-activity {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-        "select info"
-        "date date"
-        "details details";
+        "select info delete"
+        "date date date"
+        "details details details";
     gap: 0.5rem 0.75rem;
     padding: 0.75rem 0.5rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -120,6 +138,17 @@
     min-width: 0;
 }
 
+.local-homeschool-activity-delete {
+    grid-area: delete;
+    align-self: start;
+    line-height: 1;
+    margin-top: 0.15rem;
+}
+
+.local-homeschool-activity-delete .icon {
+    margin: 0;
+}
+
 .local-homeschool-activity-name {
     display: inline-block;
     max-width: 100%;
@@ -140,6 +169,20 @@
     align-items: center;
     gap: 0.35rem 0.5rem;
     min-width: 0;
+}
+
+.local-homeschool-activity-date.is-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.local-homeschool-requirement-value {
+    width: 4.5rem;
+    max-width: 100%;
+}
+
+.local-homeschool-requirement-int {
+    margin-bottom: 0.25rem;
 }
 
 .local-homeschool-date-value {
@@ -323,13 +366,15 @@
 }
 
 @media (min-width: 768px) {
-    .local-homeschool-day-picker-controls .form-select {
+    .local-homeschool-day-picker-controls .form-select,
+    .local-homeschool-add-activity-controls .form-select {
         flex: 0 1 14rem;
+        width: 14rem;
     }
 
     .local-homeschool-activity {
-        grid-template-columns: auto minmax(0, 18rem) 11rem minmax(16rem, 26rem);
-        grid-template-areas: "select info date details";
+        grid-template-columns: auto minmax(0, 18rem) 11rem minmax(16rem, 26rem) auto;
+        grid-template-areas: "select info date details delete";
         justify-content: start;
         align-items: start;
         gap: 0.75rem 1.25rem;

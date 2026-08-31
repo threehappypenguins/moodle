@@ -35,7 +35,9 @@ class day_scheduler {
      * @return \stdClass result stats
      */
     public static function apply_to_activities(array $cmids, int $timestamp): \stdClass {
-        global $DB;
+        global $CFG, $DB;
+
+        require_once($CFG->libdir . '/completionlib.php');
 
         $result = (object) [
             'updated' => 0,
@@ -59,6 +61,12 @@ class day_scheduler {
 
             $context = \context_module::instance($cm->id);
             if (!has_capability('moodle/course:manageactivities', $context)) {
+                $result->skipped++;
+                continue;
+            }
+
+            // Timeline reminders require completion tracking (same as core completionexpected).
+            if ((int) $cm->completion === COMPLETION_TRACKING_NONE && $timestamp > 0) {
                 $result->skipped++;
                 continue;
             }

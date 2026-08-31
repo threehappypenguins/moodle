@@ -47,8 +47,6 @@ $string['convertformatlink'] = 'Change format';
 $string['hidden'] = 'Hidden';
 
 // Open / schedule day.
-$string['openday'] = 'Go';
-$string['opendayhelp'] = 'Choose a day from the list, then click Go. You can change the day at any time.';
 $string['chooseday'] = 'Choose a day…';
 $string['daynumber'] = 'Day number';
 $string['daynumber_help'] = 'Section number (1 = Day 1, 2 = Day 2, etc.). Section 0 (General) is not used.';
@@ -64,13 +62,19 @@ $string['invaliddaynumber'] = 'Enter a valid day number (1 or greater).';
 $string['datesapplied'] = 'Timeline reminder set on {$a->updated} activities for Day {$a->day}.';
 $string['datescleared'] = 'Timeline reminder cleared on {$a} activities.';
 $string['backtodashboard'] = 'Back to dashboard';
+$string['addtocourse'] = 'Add to course';
+$string['choosecourse'] = 'Choose a course…';
+$string['addactivity'] = 'Add activity or resource';
+$string['sectionmissingforadd'] = 'This course does not have Day {$a} yet. Open the course to add more days first.';
+$string['sectionmissingshort'] = 'day missing';
+$string['opencourse'] = 'Open course';
 
 // Review.
 $string['reviewday'] = 'Day {$a}';
 $string['daytitle'] = 'Day {$a}';
-$string['reviewhelp'] = 'Activities are grouped by child. Shared courses appear once under all enrolled children. Select activities to set a Timeline reminder date — with two or more selected, only the date can be changed.';
 $string['multiselecthint'] = 'Multiple activities selected — completion and submission settings are locked on those rows. Use the date controls above (or each row’s date) to set or clear timeline reminders.';
-$string['showallactivities'] = 'Show all activities in one list';
+$string['showalllist'] = 'Show all courses/activities in one list';
+$string['showallactivities'] = 'Show all courses/activities in one list';
 $string['sharedchildrenheading'] = 'Shared: {$a}';
 $string['sharedcoursebadge'] = 'Shared';
 $string['nochildrenforcourse'] = 'No enrolled children';
@@ -78,6 +82,7 @@ $string['nochildrenbadge'] = 'No children';
 $string['notset'] = 'Not set';
 $string['reminderdate'] = 'Timeline reminder';
 $string['changedate'] = 'Change timeline reminder date';
+$string['datenotavailable'] = 'Set a completion condition before choosing a timeline reminder date.';
 $string['invalidreminderdate'] = 'Enter a valid reminder date.';
 $string['reminderdateupdated'] = 'Timeline reminder date saved.';
 $string['reminderdatecleared'] = 'Timeline reminder date cleared.';
@@ -92,6 +97,10 @@ $string['invalidcompletion'] = 'Invalid completion setting.';
 $string['completionlocked'] = 'Completion settings are locked because someone has already completed this activity.';
 $string['completionlockedhint'] = 'Locked — unlock from the activity settings if you need to change this.';
 $string['invalidactivity'] = 'That activity is not part of this day section.';
+$string['deleteactivity'] = 'Delete {$a}';
+$string['deleteselected'] = 'Delete selected';
+$string['activitydeleted'] = 'Deleted {$a}.';
+$string['activitiesdeleted'] = 'Deleted {$a} activities.';
 
 // Settings.
 $string['settingsintro'] = 'Configure how the homeschool dashboard identifies students and aggregates courses.';

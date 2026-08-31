@@ -28,12 +28,12 @@ defined('MOODLE_INTERNAL') || die();
 class completion_conditions {
 
     /**
-     * Available boolean conditions for a course module.
+     * Available conditions for a course module.
      *
      * Ordered like the activity settings form: view, module rules, then grade.
      *
      * @param \cm_info $cm
-     * @return \stdClass[] each: name, label, enabled, type (core|custom)
+     * @return \stdClass[]
      */
     public static function get_available(\cm_info $cm): array {
         global $USER, $DB;
@@ -46,6 +46,7 @@ class completion_conditions {
                 'label' => get_string('completionview_desc', 'completion'),
                 'enabled' => !empty($cm->completionview),
                 'type' => 'core',
+                'valuetype' => 'bool',
             ];
         }
 
@@ -68,36 +69,45 @@ class completion_conditions {
             }
 
             foreach ($classname::get_defined_custom_rules() as $rule) {
-                if (!self::is_boolean_custom_rule($cm, $rule)) {
+                $definition = self::describe_custom_rule($cm, $rule, $descriptions);
+                if ($definition === null) {
                     continue;
                 }
-                $enabled = false;
-                $customdata = (array) $cm->get_custom_data();
-                if (array_key_exists($rule, $customdata['customcompletionrules'] ?? [])) {
-                    $enabled = !empty($customdata['customcompletionrules'][$rule]);
-                } else if ($DB->get_manager()->field_exists($cm->modname, $rule)) {
-                    $enabled = (bool) $DB->get_field($cm->modname, $rule, ['id' => $cm->instance]);
-                }
-
-                $byname[$rule] = (object) [
-                    'name' => $rule,
-                    'label' => $descriptions[$rule] ?? $rule,
-                    'enabled' => $enabled,
-                    'type' => 'custom',
-                ];
+                $byname[$rule] = $definition;
             }
         }
 
         if (self::supports_grade_condition($cm)) {
             $usegrade = !is_null($cm->completiongradeitemnumber);
-            $byname['completionusegrade'] = (object) [
+            $grade = (object) [
                 'name' => 'completionusegrade',
                 'label' => get_string('completionusegrade_desc', 'completion'),
                 'enabled' => $usegrade,
                 'type' => 'core',
+                'valuetype' => 'bool',
                 'haspassgrade' => true,
                 'passgrade' => !empty($cm->completionpassgrade),
+                'hasexhausted' => false,
+                'exhausted' => false,
+                'exhaustedlabel' => '',
             ];
+
+            // Quiz nests "passing grade or all attempts" under the pass-grade choice.
+            if ($cm->modname === 'quiz' && $DB->get_manager()->field_exists('quiz', 'completionattemptsexhausted')) {
+                $exhausted = false;
+                $customdata = (array) $cm->get_custom_data();
+                $composite = $customdata['customcompletionrules']['completionpassorattemptsexhausted'] ?? null;
+                if (is_array($composite)) {
+                    $exhausted = !empty($composite['completionattemptsexhausted']);
+                } else {
+                    $exhausted = (bool) $DB->get_field('quiz', 'completionattemptsexhausted', ['id' => $cm->instance]);
+                }
+                $grade->hasexhausted = true;
+                $grade->exhausted = $exhausted;
+                $grade->exhaustedlabel = get_string('completionattemptsexhausted', 'quiz');
+            }
+
+            $byname['completionusegrade'] = $grade;
         }
 
         $conditions = [];
@@ -107,7 +117,6 @@ class completion_conditions {
                 unset($byname[$name]);
             }
         }
-        // Any remaining conditions not listed in sort order (append after known order).
         foreach ($byname as $condition) {
             $conditions[] = $condition;
         }
@@ -124,9 +133,6 @@ class completion_conditions {
     public static function has_enabled(array $conditions): bool {
         foreach ($conditions as $condition) {
             if (!empty($condition->enabled)) {
-                return true;
-            }
-            if (!empty($condition->haspassgrade) && !empty($condition->passgrade) && !empty($condition->enabled)) {
                 return true;
             }
         }
@@ -164,13 +170,25 @@ class completion_conditions {
                 $gradeitemnumber = null;
                 $passgrade = 0;
             }
+
+            if (!empty($names['completionusegrade']->hasexhausted)) {
+                $exhausted = ($usegrade && $passgrade && optional_param('requirement_completionattemptsexhausted', 0, PARAM_BOOL))
+                    ? 1 : 0;
+                $custom['completionattemptsexhausted'] = $exhausted;
+            }
         }
 
         foreach ($available as $condition) {
             if ($condition->type !== 'custom') {
                 continue;
             }
-            $custom[$condition->name] = optional_param('requirement_' . $condition->name, 0, PARAM_BOOL) ? 1 : 0;
+            if (($condition->valuetype ?? 'bool') === 'int') {
+                $enabled = optional_param('requirement_' . $condition->name . '_enabled', 0, PARAM_BOOL);
+                $value = optional_param('requirement_' . $condition->name, 1, PARAM_INT);
+                $custom[$condition->name] = $enabled ? max(1, $value) : 0;
+            } else {
+                $custom[$condition->name] = optional_param('requirement_' . $condition->name, 0, PARAM_BOOL) ? 1 : 0;
+            }
         }
 
         return [
@@ -194,8 +212,12 @@ class completion_conditions {
         if (!is_null($state['completiongradeitemnumber'])) {
             return true;
         }
-        foreach ($state['custom'] as $enabled) {
-            if (!empty($enabled)) {
+        foreach ($state['custom'] as $name => $value) {
+            // Exhausted only applies with a passing grade, which already counts above.
+            if ($name === 'completionattemptsexhausted') {
+                continue;
+            }
+            if (!empty($value)) {
                 return true;
             }
         }
@@ -229,23 +251,52 @@ class completion_conditions {
         $newgrade = $state['completiongradeitemnumber'];
         $oldgrade = $cm->completiongradeitemnumber;
         if ((string) $oldgrade !== (string) $newgrade) {
-            // Null must be written explicitly.
             $DB->set_field('course_modules', 'completiongradeitemnumber', $newgrade, ['id' => $cm->id]);
             $changed = true;
         }
 
-        foreach ($state['custom'] as $rule => $enabled) {
+        foreach ($state['custom'] as $rule => $value) {
             if (!$DB->get_manager()->field_exists($cm->modname, $rule)) {
                 continue;
             }
             $current = (int) $DB->get_field($cm->modname, $rule, ['id' => $cm->instance]);
-            if ($current !== (int) $enabled) {
-                $DB->set_field($cm->modname, $rule, (int) $enabled, ['id' => $cm->instance]);
+            if ($current !== (int) $value) {
+                $DB->set_field($cm->modname, $rule, (int) $value, ['id' => $cm->instance]);
                 $changed = true;
             }
         }
 
         return $changed;
+    }
+
+    /**
+     * Snapshot current condition values for use when switching to automatic without a POST body.
+     *
+     * @param \cm_info $cm
+     * @return array
+     */
+    public static function snapshot_state(\cm_info $cm): array {
+        $custom = [];
+        foreach (self::get_available($cm) as $condition) {
+            if ($condition->type !== 'custom') {
+                continue;
+            }
+            if (($condition->valuetype ?? 'bool') === 'int') {
+                $custom[$condition->name] = !empty($condition->enabled) ? (int) ($condition->value ?? 1) : 0;
+            } else {
+                $custom[$condition->name] = !empty($condition->enabled) ? 1 : 0;
+            }
+            if (!empty($condition->hasexhausted)) {
+                $custom['completionattemptsexhausted'] = !empty($condition->exhausted) ? 1 : 0;
+            }
+        }
+
+        return [
+            'completionview' => (int) $cm->completionview,
+            'completiongradeitemnumber' => $cm->completiongradeitemnumber,
+            'completionpassgrade' => (int) ($cm->completionpassgrade ?? 0),
+            'custom' => $custom,
+        ];
     }
 
     /**
@@ -256,13 +307,110 @@ class completion_conditions {
         if (!plugin_supports('mod', $cm->modname, FEATURE_GRADE_HAS_GRADE, false)) {
             return false;
         }
-        // Only simple single-item grade completion in the review UI.
         $component = 'mod_' . $cm->modname;
         if (!class_exists('\core_grades\component_gradeitems')) {
             return true;
         }
         $itemnames = \core_grades\component_gradeitems::get_itemname_mapping_for_component($component);
         return count($itemnames) <= 1;
+    }
+
+    /**
+     * Build a custom rule definition for the review UI, or null to skip.
+     *
+     * @param \cm_info $cm
+     * @param string $rule
+     * @param array $descriptions from custom_completion::get_custom_rule_descriptions()
+     * @return \stdClass|null
+     */
+    protected static function describe_custom_rule(\cm_info $cm, string $rule, array $descriptions): ?\stdClass {
+        global $DB;
+
+        // Composite quiz rule is edited via grade + nested exhausted checkbox.
+        if ($rule === 'completionpassorattemptsexhausted') {
+            return null;
+        }
+
+        $customdata = (array) $cm->get_custom_data();
+        $raw = $customdata['customcompletionrules'][$rule] ?? null;
+
+        if (is_array($raw)) {
+            return null;
+        }
+
+        if ($rule === 'completionminattempts' || self::is_integer_custom_rule($cm, $rule)) {
+            $value = 0;
+            if ($raw !== null && $raw !== '') {
+                $value = (int) $raw;
+            } else if ($DB->get_manager()->field_exists($cm->modname, $rule)) {
+                $value = (int) $DB->get_field($cm->modname, $rule, ['id' => $cm->instance]);
+            }
+
+            return (object) [
+                'name' => $rule,
+                'label' => self::custom_rule_label($cm, $rule, $descriptions),
+                'enabled' => $value > 0,
+                'type' => 'custom',
+                'valuetype' => 'int',
+                'value' => $value > 0 ? $value : 1,
+                'min' => 1,
+            ];
+        }
+
+        if (!self::is_boolean_custom_rule($cm, $rule)) {
+            return null;
+        }
+
+        $enabled = false;
+        if ($raw !== null) {
+            $enabled = !empty($raw);
+        } else if ($DB->get_manager()->field_exists($cm->modname, $rule)) {
+            $enabled = (bool) $DB->get_field($cm->modname, $rule, ['id' => $cm->instance]);
+        }
+
+        return (object) [
+            'name' => $rule,
+            'label' => self::custom_rule_label($cm, $rule, $descriptions),
+            'enabled' => $enabled,
+            'type' => 'custom',
+            'valuetype' => 'bool',
+        ];
+    }
+
+    /**
+     * Prefer settings-form language strings over student-facing detail strings.
+     *
+     * @param \cm_info $cm
+     * @param string $rule
+     * @param array $descriptions
+     * @return string
+     */
+    protected static function custom_rule_label(\cm_info $cm, string $rule, array $descriptions): string {
+        $manager = get_string_manager();
+        foreach ([$cm->modname, 'mod_' . $cm->modname] as $component) {
+            if ($manager->string_exists($rule, $component)) {
+                return get_string($rule, $component);
+            }
+        }
+
+        // Avoid student detail strings like "Make attempts: 0" as admin labels.
+        if (isset($descriptions[$rule]) && !str_contains($rule, 'completionminattempts')) {
+            return $descriptions[$rule];
+        }
+
+        return $rule;
+    }
+
+    /**
+     * Integer-valued custom rules (checkbox + number), e.g. quiz minimum attempts.
+     *
+     * @param \cm_info $cm
+     * @param string $rule
+     * @return bool
+     */
+    protected static function is_integer_custom_rule(\cm_info $cm, string $rule): bool {
+        // Known integer completion counts.
+        return $rule === 'completionminattempts';
     }
 
     /**
@@ -275,6 +423,10 @@ class completion_conditions {
     protected static function is_boolean_custom_rule(\cm_info $cm, string $rule): bool {
         global $DB;
 
+        if (self::is_integer_custom_rule($cm, $rule)) {
+            return false;
+        }
+
         $customdata = (array) $cm->get_custom_data();
         if (array_key_exists($rule, $customdata['customcompletionrules'] ?? [])) {
             $value = $customdata['customcompletionrules'][$rule];
@@ -284,13 +436,13 @@ class completion_conditions {
         }
 
         if (!$DB->get_manager()->field_exists($cm->modname, $rule)) {
-            // Still allow showing rules that only live in customdata as 0/1.
             $value = $customdata['customcompletionrules'][$rule] ?? 0;
             return !is_array($value);
         }
 
         $columns = $DB->get_columns($cm->modname);
         $type = $columns[$rule]->meta_type ?? '';
+        // Integer DB columns that are not known count-rules are treated as on/off.
         return in_array($type, ['I', 'N', 'B'], true);
     }
 }
