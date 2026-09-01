@@ -18,6 +18,8 @@ namespace local_homeschool;
 
 defined('MOODLE_INTERNAL') || die();
 
+use local_homeschool\local\return_context;
+use local_homeschool\local\shift_preview;
 use local_homeschool\local\shift_undo;
 
 /**
@@ -52,7 +54,9 @@ abstract class base_testcase extends \advanced_testcase {
      * @return void
      */
     protected function cleanup_homeschool_test_state(): void {
+        return_context::clear();
         shift_undo::clear();
+        shift_preview::clear();
     }
 
     /**

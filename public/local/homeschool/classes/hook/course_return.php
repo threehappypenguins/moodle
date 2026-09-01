@@ -22,8 +22,8 @@ use local_homeschool\local\return_context;
 /**
  * After modedit save/cancel, bounce course landing pages back to the Homeschool day page.
  *
- * "Save and display" lands on /mod/.../view.php instead; clear armed return there so a
- * later unrelated course visit is not redirected. Preserve armed return only during modedit.
+ * "Save and display" lands on /mod/.../view.php instead; clear only that flow there so a
+ * concurrent modedit for another day can still consume its return later.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -40,7 +40,7 @@ class course_return {
     ];
 
     /**
-     * Scripts that are part of the active modedit flow (do not clear armed return yet).
+     * Scripts that are part of the active modedit flow (do not consume return yet).
      */
     private const MODEDIT_FLOW_SCRIPTS = [
         '/course/modedit.php',
@@ -61,6 +61,10 @@ class course_return {
         $script = (string) $SCRIPT;
 
         if (self::is_modedit_flow_script($script)) {
+            $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
+            if ($token !== '') {
+                return_context::touch_flow($token);
+            }
             return;
         }
 
@@ -77,10 +81,15 @@ class course_return {
             return;
         }
 
-        // Modedit finished at a non-course destination (e.g. activity view after "Save and display").
-        if (return_context::get_url() !== null) {
-            return_context::clear();
+        if (self::is_mod_view_script($script)) {
+            $cmid = optional_param('id', 0, PARAM_INT);
+            if ($cmid > 0) {
+                return_context::clear_active_for_module($cmid);
+            }
+            return;
         }
+
+        return_context::purge_expired();
     }
 
     /**
@@ -111,6 +120,16 @@ class course_return {
             }
         }
         return false;
+    }
+
+    /**
+     * Whether the current script is an activity view page after "Save and display".
+     *
+     * @param string $script
+     * @return bool
+     */
+    protected static function is_mod_view_script(string $script): bool {
+        return (bool) preg_match('#/mod/[^/]+/view\.php$#', $script);
     }
 
     /**

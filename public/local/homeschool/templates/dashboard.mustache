@@ -157,18 +157,15 @@
                                     {{#url}}<a href="{{url}}">{{activityname}}</a>{{/url}}
                                     {{^url}}{{activityname}}{{/url}}
                                 </td>
-                                {{#canmanage}}
+                                {{#hasactioncell}}
                                     <td>
-                                        {{#sectionname}}
-                                            <a href="{{dayurl}}">{{#str}} opendaylink, local_homeschool {{/str}}</a>
-                                        {{/sectionname}}
+                                        {{#canopenday}}
+                                            {{#sectionname}}
+                                                <a href="{{dayurl}}">{{#str}} opendaylink, local_homeschool {{/str}}</a>
+                                            {{/sectionname}}
+                                        {{/canopenday}}
                                     </td>
-                                {{/canmanage}}
-                                {{^canmanage}}
-                                    {{#../canmanage}}
-                                        <td></td>
-                                    {{/canmanage}}
-                                {{/canmanage}}
+                                {{/hasactioncell}}
                             </tr>
                         {{/upcoming}}
                     </tbody>

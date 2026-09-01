@@ -115,49 +115,35 @@ if ($action === 'undo') {
 if ($action === 'apply') {
     require_sesskey();
 
-    $params = $parse_shift_params(
-        (bool) optional_param('alldays', 0, PARAM_BOOL),
-        optional_param('fromday', 0, PARAM_INT),
-        optional_param('today', 0, PARAM_INT),
-        optional_param('direction', 'forward', PARAM_ALPHA),
-        optional_param('days', 0, PARAM_INT),
-        $maxday,
-    );
-
-    if (!$params) {
-        \core\notification::error(get_string('shiftinvalidparams', 'local_homeschool'));
+    $previewdata = \local_homeschool\local\shift_preview::get_available();
+    if (!$previewdata) {
+        \core\notification::error(get_string('shiftpreviewexpired', 'local_homeschool'));
         redirect($url);
     }
 
-    $preview = \local_homeschool\local\day_scheduler::preview_shift(
-        $courses,
-        $params->fromday,
-        $params->today,
-        $params->dayoffset,
-        $params->alldays,
-    );
-
-    if ($preview->shiftcount === 0) {
-        \core\notification::error(get_string('shiftnothingtoapply', 'local_homeschool'));
-        redirect($url);
-    }
-
-    $cmids = array_map(static function($item) {
-        return (int) $item->cmid;
-    }, $preview->items);
-
-    $result = \local_homeschool\local\day_scheduler::shift_by_offset($cmids, $params->dayoffset);
+    $result = \local_homeschool\local\day_scheduler::apply_shift_snapshot($previewdata->items);
+    \local_homeschool\local\shift_preview::clear();
 
     if ($result->updated > 0) {
         $summary = get_string('shiftappliedsummary', 'local_homeschool', (object) [
             'count' => $result->updated,
-            'days' => $params->days,
-            'direction' => get_string('shiftdirection' . $params->direction, 'local_homeschool'),
+            'days' => $previewdata->days,
+            'direction' => get_string('shiftdirection' . $previewdata->direction, 'local_homeschool'),
         ]);
+        if ($result->skippedchanged > 0) {
+            $summary .= ' ' . get_string('shiftappliedskippedchanged', 'local_homeschool', $result->skippedchanged);
+        }
+        if ($result->skipped > 0) {
+            $summary .= ' ' . get_string('shiftappliedskippedother', 'local_homeschool', $result->skipped);
+        }
         \local_homeschool\local\shift_undo::save($USER->id, $result->snapshots, $summary);
         \core\notification::success($summary);
     } else {
-        \core\notification::error(get_string('shiftapplyfailed', 'local_homeschool'));
+        if ($result->skippedchanged > 0) {
+            \core\notification::error(get_string('shiftapplyallchanged', 'local_homeschool', $result->skippedchanged));
+        } else {
+            \core\notification::error(get_string('shiftapplyfailed', 'local_homeschool'));
+        }
     }
 
     redirect($url);
@@ -195,6 +181,7 @@ if ($form->is_cancelled()) {
             $params->dayoffset,
             $params->alldays,
         );
+        \local_homeschool\local\shift_preview::save($USER->id, $preview, $params);
     }
 }
 

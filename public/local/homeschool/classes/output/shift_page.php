@@ -133,11 +133,6 @@ class shift_page implements renderable, templatable {
         $data->hasskipped = !empty($skippedparts);
         $data->skippedsummary = implode(' ', $skippedparts);
         $data->canapply = $preview->shiftcount > 0;
-        $data->applyalldays = !empty($preview->alldays) ? 1 : 0;
-        $data->applyfromday = (int) $preview->fromday;
-        $data->applytoday = (int) $preview->today;
-        $data->applydirection = $preview->dayoffset < 0 ? 'backward' : 'forward';
-        $data->applydays = $absdays;
 
         return $data;
     }

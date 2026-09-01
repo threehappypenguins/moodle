@@ -379,6 +379,89 @@ class day_scheduler {
     }
 
     /**
+     * Apply a stored preview snapshot, shifting only rows whose reminder still matches preview.
+     *
+     * Each item must include cmid, oldtimestamp, and newtimestamp from preview_shift().
+     * Rows whose current completionexpected differs from oldtimestamp are skipped as changed.
+     *
+     * @param \stdClass[] $items Preview snapshot rows
+     * @return \stdClass updated, skipped, skippedchanged, snapshots (for undo)
+     */
+    public static function apply_shift_snapshot(array $items): \stdClass {
+        $result = (object) [
+            'updated' => 0,
+            'skipped' => 0,
+            'skippedchanged' => 0,
+            'snapshots' => [],
+        ];
+
+        if (empty($items)) {
+            return $result;
+        }
+
+        $timestampsbycmid = [];
+        $oldtimestamps = [];
+
+        foreach ($items as $item) {
+            $cmid = (int) ($item->cmid ?? 0);
+            $oldexpected = (int) ($item->oldtimestamp ?? 0);
+            $newexpected = (int) ($item->newtimestamp ?? 0);
+
+            if ($cmid < 1 || $oldexpected < 1 || $newexpected < 1) {
+                $result->skipped++;
+                continue;
+            }
+
+            $cm = get_coursemodule_from_id('', $cmid, 0, false, IGNORE_MISSING);
+            if (!$cm || !empty($cm->deletioninprogress)) {
+                $result->skipped++;
+                continue;
+            }
+
+            $context = \context_module::instance($cm->id);
+            if (!has_capability('moodle/course:manageactivities', $context)) {
+                $result->skipped++;
+                continue;
+            }
+
+            $modinfo = get_fast_modinfo($cm->course);
+            $cminfo = $modinfo->get_cm($cm->id);
+
+            if (!$cminfo->uservisible) {
+                $result->skipped++;
+                continue;
+            }
+
+            if (!self::completion_expected_allowed($cminfo)) {
+                $result->skipped++;
+                continue;
+            }
+
+            if ((int) $cm->completionexpected !== $oldexpected) {
+                $result->skippedchanged++;
+                continue;
+            }
+
+            $oldtimestamps[$cmid] = $oldexpected;
+            $timestampsbycmid[$cmid] = $newexpected;
+        }
+
+        $apply = self::apply_timestamps($timestampsbycmid, false);
+        $result->skipped += $apply->skipped;
+        $result->updated = $apply->updated;
+
+        foreach ($apply->updatedcmids as $cmid) {
+            $result->snapshots[] = (object) [
+                'cmid' => $cmid,
+                'timestamp' => $oldtimestamps[$cmid],
+                'shifted' => $timestampsbycmid[$cmid],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Shift a unix timestamp by a signed number of calendar days in the user's timezone.
      *
      * Preserves local wall-clock time across DST transitions (unlike DAYSECS arithmetic).

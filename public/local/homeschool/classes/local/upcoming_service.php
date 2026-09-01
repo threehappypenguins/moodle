@@ -69,7 +69,7 @@ class upcoming_service {
                     'sectionnum' => $sectionnum,
                     'sectionname' => $sectionname,
                     'timestamp' => $cm->completionexpected,
-                    'dateformatted' => userdate($cm->completionexpected, '%d/%m/%Y'),
+                    'dateformatted' => activity_repository::format_expected_date($cm->completionexpected),
                     'overdue' => $cm->completionexpected < time(),
                     'url' => $cm->url ? $cm->url->out(false) : '',
                     'dayurl' => (new \moodle_url('/local/homeschool/day.php', ['day' => $sectionnum]))->out(false),

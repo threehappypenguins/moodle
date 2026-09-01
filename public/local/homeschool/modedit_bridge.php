@@ -71,5 +71,8 @@ if ($courseid < 1) {
     throw new moodle_exception('invalidurl');
 }
 
-\local_homeschool\local\return_context::arm($day, $courseid, $showall, $showhidden);
+$token = \local_homeschool\local\return_context::arm($day, $courseid, $showall, $showhidden);
+if ($token !== '') {
+    $gotourl->param(\local_homeschool\local\return_context::FLOW_PARAM, $token);
+}
 redirect($gotourl);

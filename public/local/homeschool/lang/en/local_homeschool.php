@@ -140,6 +140,10 @@ $string['shiftundofailed'] = 'Nothing to undo.';
 $string['shiftinvalidparams'] = 'Invalid shift settings.';
 $string['shiftappliedsummary'] = 'Shifted {$a->count} timeline reminders {$a->direction} by {$a->days} days.';
 $string['shiftapplyfailed'] = 'No timeline reminders were shifted.';
+$string['shiftpreviewexpired'] = 'Preview expired. Run preview again before applying.';
+$string['shiftappliedskippedchanged'] = '{$a} skipped (date changed since preview).';
+$string['shiftappliedskippedother'] = '{$a} skipped (no longer available).';
+$string['shiftapplyallchanged'] = 'No reminders were shifted — {$a} changed since preview.';
 
 // Settings.
 $string['settingsintro'] = 'Configure how the homeschool dashboard identifies students and aggregates courses.';

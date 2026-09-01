@@ -140,6 +140,7 @@ class dashboard implements renderable, templatable {
         );
 
         $managedcourseids = array_fill_keys(array_keys($manageddaysectionscourses), true);
+        $pagecanmanage = requirements::user_can_manage();
         $upcomingrows = [];
         foreach ($upcoming as $item) {
             $itemdayurl = new \moodle_url('/local/homeschool/day.php', ['day' => $item->sectionnum]);
@@ -154,7 +155,8 @@ class dashboard implements renderable, templatable {
                 'overdue' => $item->overdue,
                 'url' => $item->url,
                 'dayurl' => $itemdayurl->out(false),
-                'canmanage' => isset($managedcourseids[$item->courseid]),
+                'hasactioncell' => $pagecanmanage,
+                'canopenday' => isset($managedcourseids[$item->courseid]),
             ];
         }
 
@@ -166,7 +168,7 @@ class dashboard implements renderable, templatable {
         }
 
         return (object) [
-            'canmanage' => requirements::user_can_manage(),
+            'canmanage' => $pagecanmanage,
             'showhidden' => $this->showhidden,
             'hashiddencourses' => $hiddencount > 0,
             'hiddencount' => $hiddencount,

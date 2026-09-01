@@ -279,6 +279,7 @@ class completion_conditions {
         global $DB;
 
         $changed = false;
+        $instancechanged = false;
 
         $fields = [
             'completionview' => (int) $state['completionview'],
@@ -307,6 +308,15 @@ class completion_conditions {
             if ($current !== (int) $value) {
                 $DB->set_field($cm->modname, $rule, (int) $value, ['id' => $cm->instance]);
                 $changed = true;
+                $instancechanged = true;
+            }
+        }
+
+        if ($changed) {
+            $now = \core\di::get(\core\clock::class)->time();
+            $DB->set_field('course_modules', 'timemodified', $now, ['id' => $cm->id]);
+            if ($instancechanged) {
+                $DB->set_field($cm->modname, 'timemodified', $now, ['id' => $cm->instance]);
             }
         }
 

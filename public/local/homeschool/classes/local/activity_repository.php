@@ -131,8 +131,7 @@ class activity_repository {
         if (empty($timestamp)) {
             return get_string('notset', 'local_homeschool');
         }
-        // Full year (YYYY), not two-digit (%y).
-        return userdate($timestamp, '%d/%m/%Y');
+        return userdate($timestamp, get_string('strftimedate', 'langconfig'));
     }
 
     /**
