@@ -225,6 +225,30 @@ class completion_conditions {
     }
 
     /**
+     * Validate posted/custom completion state before persisting.
+     *
+     * @param \cm_info $cm
+     * @param array $state from read_posted_state() or snapshot_state()
+     * @return string|null error message, or null if valid
+     */
+    public static function validate_posted_state(\cm_info $cm, array $state): ?string {
+        foreach ($state['custom'] as $rule => $value) {
+            if (empty($value)) {
+                continue;
+            }
+            if (!self::is_integer_custom_rule($cm, $rule)) {
+                continue;
+            }
+            $error = self::validate_integer_custom_rule($cm, $rule, (int) $value);
+            if ($error !== null) {
+                return $error;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Persist condition fields for a course module.
      *
      * @param \cm_info $cm
@@ -346,6 +370,8 @@ class completion_conditions {
                 $value = (int) $DB->get_field($cm->modname, $rule, ['id' => $cm->instance]);
             }
 
+            $limits = self::get_integer_custom_rule_limits($cm, $rule);
+
             return (object) [
                 'name' => $rule,
                 'label' => self::custom_rule_label($cm, $rule, $descriptions),
@@ -353,7 +379,8 @@ class completion_conditions {
                 'type' => 'custom',
                 'valuetype' => 'int',
                 'value' => $value > 0 ? $value : 1,
-                'min' => 1,
+                'min' => $limits['min'],
+                'max' => $limits['max'],
             ];
         }
 
@@ -399,6 +426,57 @@ class completion_conditions {
         }
 
         return $rule;
+    }
+
+    /**
+     * Min/max bounds for integer custom rules, aligned with core mod_form validation.
+     *
+     * @param \cm_info $cm
+     * @param string $rule
+     * @return array{min:int,max:?int}
+     */
+    protected static function get_integer_custom_rule_limits(\cm_info $cm, string $rule): array {
+        $limits = [
+            'min' => 1,
+            'max' => null,
+        ];
+
+        if ($cm->modname === 'quiz' && $rule === 'completionminattempts') {
+            global $DB;
+            $attempts = (int) $DB->get_field('quiz', 'attempts', ['id' => $cm->instance]);
+            if ($attempts > 0) {
+                $limits['max'] = $attempts;
+            }
+        }
+
+        return $limits;
+    }
+
+    /**
+     * Validate one integer custom rule value.
+     *
+     * @param \cm_info $cm
+     * @param string $rule
+     * @param int $value enabled value (0 when disabled)
+     * @return string|null error message, or null if valid
+     */
+    protected static function validate_integer_custom_rule(\cm_info $cm, string $rule, int $value): ?string {
+        if ($value <= 0) {
+            return null;
+        }
+
+        $limits = self::get_integer_custom_rule_limits($cm, $rule);
+        if ($value < $limits['min']) {
+            return get_string('invalidcompletioncondition', 'local_homeschool', $limits['min']);
+        }
+        if ($limits['max'] !== null && $value > $limits['max']) {
+            if ($cm->modname === 'quiz' && $rule === 'completionminattempts') {
+                return get_string('completionminattemptserror', 'quiz');
+            }
+            return get_string('invalidcompletionconditionmax', 'local_homeschool', $limits['max']);
+        }
+
+        return null;
     }
 
     /**

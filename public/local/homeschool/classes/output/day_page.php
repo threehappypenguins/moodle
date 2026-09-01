@@ -359,6 +359,8 @@ class day_page implements renderable, templatable {
                 'isbool' => !$isint,
                 'value' => (int) ($requirement->value ?? 1),
                 'min' => (int) ($requirement->min ?? 1),
+                'hasmax' => isset($requirement->max),
+                'max' => (int) ($requirement->max ?? 0),
                 'locked' => !empty($activity->completionlocked),
             ];
             $requirements[] = $item;

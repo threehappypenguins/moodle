@@ -29,11 +29,15 @@ require_once($GLOBALS['CFG']->libdir . '/formslib.php');
  */
 class schedule_date_form extends \moodleform {
 
+    /** @var string HTML id for bulk date form (used by activity selection checkboxes). */
+    public const FORM_ID = 'local-homeschool-bulk-date-form';
+
     /**
      * @return void
      */
     protected function definition() {
         $mform = $this->_form;
+        $mform->updateAttributes(['id' => self::FORM_ID]);
         $daynumber = (int) ($this->_customdata['daynumber'] ?? 0);
 
         $mform->addElement('hidden', 'day', $daynumber);

@@ -18,6 +18,8 @@ namespace local_homeschool\local;
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($GLOBALS['CFG']->libdir . '/grouplib.php');
+
 /**
  * Per-child activity progress (completion, submissions, attempts).
  *
@@ -74,6 +76,18 @@ class activity_progress {
         $rows = [];
         foreach ($students as $student) {
             $userid = (int) $student->id;
+            if (!self::can_view_any_progress_for_activity(
+                $cm,
+                $course,
+                $completioninfo,
+                $userid,
+                (int) $activity->completion,
+                $assign,
+                $hassubmissiontypes,
+            )) {
+                continue;
+            }
+
             $lines = [];
 
             $primary = self::resolve_primary_status(
@@ -89,7 +103,7 @@ class activity_progress {
                 $lines[] = $primary;
             }
 
-            if ($hassubmissiontypes && $assign !== null) {
+            if ($hassubmissiontypes && $assign !== null && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
                 $lines[] = self::assign_submission_line($assign, $userid);
             }
 
@@ -117,6 +131,111 @@ class activity_progress {
     }
 
     /**
+     * Whether the current user may display any progress source for this student/activity.
+     *
+     * @param \cm_info $cm
+     * @param \stdClass $course
+     * @param \completion_info $completioninfo
+     * @param int $userid
+     * @param int $tracking COMPLETION_TRACKING_*
+     * @param \assign|null $assign
+     * @param bool $hassubmissiontypes
+     * @return bool
+     */
+    protected static function can_view_any_progress_for_activity(
+        \cm_info $cm,
+        \stdClass $course,
+        \completion_info $completioninfo,
+        int $userid,
+        int $tracking,
+        $assign,
+        bool $hassubmissiontypes,
+    ): bool {
+        if ($tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
+                && self::can_view_completion_for_user($course, $cm, $userid)) {
+            return true;
+        }
+
+        if ($cm->modname === 'quiz' && self::can_view_quiz_attempts_for_user($course, $cm, $userid)) {
+            return true;
+        }
+
+        if ($cm->modname === 'assign' && $assign !== null
+                && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param \stdClass $course
+     * @param \cm_info $cm
+     * @param int $userid
+     * @return bool
+     */
+    protected static function can_view_completion_for_user(\stdClass $course, \cm_info $cm, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+
+        $coursecontext = \context_course::instance($course->id);
+        if (!has_capability('report/progress:view', $coursecontext)) {
+            return false;
+        }
+
+        return groups_user_groups_visible($course, $userid, $cm);
+    }
+
+    /**
+     * @param \assign $assign
+     * @param \stdClass $course
+     * @param \cm_info $cm
+     * @param int $userid
+     * @return bool
+     */
+    protected static function can_view_assign_submission_for_user(
+        \assign $assign,
+        \stdClass $course,
+        \cm_info $cm,
+        int $userid,
+    ): bool {
+        global $USER;
+
+        if (!$assign->can_view_submission($userid)) {
+            return false;
+        }
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+
+        return groups_user_groups_visible($course, $userid, $cm);
+    }
+
+    /**
+     * @param \stdClass $course
+     * @param \cm_info $cm
+     * @param int $userid
+     * @return bool
+     */
+    protected static function can_view_quiz_attempts_for_user(\stdClass $course, \cm_info $cm, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+
+        if (!has_capability('mod/quiz:viewreports', $cm->context)) {
+            return false;
+        }
+
+        return groups_user_groups_visible($course, $userid, $cm);
+    }
+
+    /**
      * Primary status line (completion / attempts). Assign submission is a separate line.
      *
      * @param \cm_info $cm
@@ -137,7 +256,8 @@ class activity_progress {
         $assign,
         bool $hassubmissiontypes,
     ): ?\stdClass {
-        if ($tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)) {
+        if ($tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
+                && self::can_view_completion_for_user($course, $cm, $userid)) {
             $data = $completioninfo->get_data($cm, false, $userid);
             $state = (int) ($data->completionstate ?? COMPLETION_INCOMPLETE);
             if (in_array($state, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)) {
@@ -153,12 +273,13 @@ class activity_progress {
             // Otherwise fall through for quiz attempts / assign without file|onlinetext.
         }
 
-        if ($cm->modname === 'quiz') {
+        if ($cm->modname === 'quiz' && self::can_view_quiz_attempts_for_user($course, $cm, $userid)) {
             return self::quiz_status($cm, $userid);
         }
 
         // Assign without file/onlinetext: keep submission-ish status on the primary line.
-        if ($cm->modname === 'assign' && !$hassubmissiontypes && $assign !== null) {
+        if ($cm->modname === 'assign' && !$hassubmissiontypes && $assign !== null
+                && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
             return self::assign_legacy_status($assign, $userid);
         }
 

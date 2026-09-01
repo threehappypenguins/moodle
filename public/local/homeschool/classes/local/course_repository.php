@@ -31,7 +31,7 @@ class course_repository {
      * Daysections courses the user may view on the dashboard.
      *
      * @param int $userid
-     * @param bool $includehidden Include courses that are hidden from students
+     * @param bool $includehidden Include courses hidden from students when the user also has moodle/course:viewhiddencourses
      * @return \stdClass[] keyed by course id (includes ->visible)
      */
     public static function get_viewable_daysections_courses(int $userid, bool $includehidden = false): array {
@@ -53,7 +53,7 @@ class course_repository {
      * Daysections courses the user may manage through Homeschool scheduling pages.
      *
      * @param int $userid
-     * @param bool $includehidden Include courses that are hidden from students
+     * @param bool $includehidden Include courses hidden from students when the user also has moodle/course:viewhiddencourses
      * @return \stdClass[] keyed by course id (includes ->visible)
      */
     public static function get_managed_daysections_courses(int $userid, bool $includehidden = false): array {
@@ -174,13 +174,30 @@ class course_repository {
             if ($daysectionsonly !== $isdaysections) {
                 continue;
             }
-            if (!$includehidden && !(int) $course->visible) {
-                continue;
+            if (!(int) $course->visible) {
+                if (!$includehidden || !self::user_can_view_hidden_course($userid, $courseid)) {
+                    continue;
+                }
             }
             $courses[$courseid] = $course;
         }
 
         return $courses;
+    }
+
+    /**
+     * Whether the user may see a course hidden from students in Homeschool.
+     *
+     * @param int $userid
+     * @param int $courseid
+     * @return bool
+     */
+    protected static function user_can_view_hidden_course(int $userid, int $courseid): bool {
+        return has_capability(
+            'moodle/course:viewhiddencourses',
+            \context_course::instance($courseid),
+            $userid,
+        );
     }
 
     /**

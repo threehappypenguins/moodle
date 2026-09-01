@@ -52,7 +52,16 @@ class activity_repository {
 
             foreach ($sections[$daynumber] as $cmid) {
                 $cm = $modinfo->get_cm($cmid);
-                if (!$cm->uservisible || $cm->deletioninprogress) {
+                if ($cm->deletioninprogress) {
+                    continue;
+                }
+
+                $modcontext = \context_module::instance($cm->id);
+                if (!has_capability('moodle/course:manageactivities', $modcontext)) {
+                    continue;
+                }
+
+                if (!$cm->uservisible) {
                     continue;
                 }
 
@@ -198,6 +207,12 @@ class activity_repository {
                 if ($cm->deletioninprogress) {
                     continue;
                 }
+
+                $modcontext = \context_module::instance($cm->id);
+                if (!has_capability('moodle/course:manageactivities', $modcontext)) {
+                    continue;
+                }
+
                 $hascms = true;
                 $preview->activitycount++;
                 if ($cm->completion == COMPLETION_TRACKING_NONE) {

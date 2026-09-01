@@ -21,7 +21,7 @@ namespace local_homeschool\local;
  *
  * Core modedit only redirects via course_get_url(); there is no arbitrary return URL.
  * We arm this context when the activity chooser launches modedit from the day page, then
- * intercept the subsequent course/section page load and redirect once.
+ * intercept the subsequent course/section page load for that same course and redirect once.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -39,19 +39,21 @@ class return_context {
      * Remember which Homeschool day page to return to after modedit.
      *
      * @param int $daynumber
+     * @param int $courseid Course the modedit flow was launched for
      * @param bool $showall
      * @param bool $showhidden
      * @return void
      */
-    public static function arm(int $daynumber, bool $showall = false, bool $showhidden = false): void {
+    public static function arm(int $daynumber, int $courseid, bool $showall = false, bool $showhidden = false): void {
         global $SESSION;
 
-        if ($daynumber < 1) {
+        if ($daynumber < 1 || $courseid < 1) {
             return;
         }
 
         $SESSION->{self::SESSION_KEY} = [
             'day' => $daynumber,
+            'courseid' => $courseid,
             'showall' => $showall ? 1 : 0,
             'showhidden' => $showhidden ? 1 : 0,
             'time' => time(),
@@ -103,15 +105,31 @@ class return_context {
     }
 
     /**
-     * Consume an armed return URL (clear session and return the URL).
+     * Consume an armed return URL when the landing page matches the armed course.
      *
+     * Leaves the session value intact when the course does not match so the correct
+     * modedit save can still consume it later.
+     *
+     * @param int $courseid Course id for the current landing request
      * @return \moodle_url|null
      */
-    public static function consume(): ?\moodle_url {
-        $url = self::get_url();
-        if ($url) {
-            self::clear();
+    public static function consume_for_course(int $courseid): ?\moodle_url {
+        if ($courseid < 1) {
+            return null;
         }
+
+        $url = self::get_url();
+        if (!$url) {
+            return null;
+        }
+
+        global $SESSION;
+        $data = $SESSION->{self::SESSION_KEY};
+        if ((int) ($data['courseid'] ?? 0) !== $courseid) {
+            return null;
+        }
+
+        self::clear();
         return $url;
     }
 }

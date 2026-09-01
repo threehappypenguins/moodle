@@ -287,6 +287,12 @@ if ($day > 0) {
                     $failurl->param('expandreq', $cmid);
                     redirect($failurl);
                 }
+                if ($e->errorcode === 'invalidcompletioncondition') {
+                    \core\notification::error($e->getMessage());
+                    $failurl = new moodle_url($url);
+                    $failurl->param('expandreq', $cmid);
+                    redirect($failurl);
+                }
                 throw $e;
             }
         } else if (optional_param('completion', (int) $cminfo->completion, PARAM_INT) !== (int) $cminfo->completion) {
@@ -541,13 +547,19 @@ $PAGE->requires->js_init_code(<<<'JS'
         }
     });
 
-    var dateForm = root.querySelector('.local-homeschool-date-form form.mform');
+    var dateForm = document.getElementById('local-homeschool-bulk-date-form');
     if (dateForm) {
         dateForm.addEventListener('submit', function() {
             dateForm.querySelectorAll('input[name="cmids[]"]').forEach(function(el) {
+                if (el.classList.contains('local-homeschool-select-cm')) {
+                    return;
+                }
                 el.remove();
             });
             root.querySelectorAll('.local-homeschool-select-cm:checked').forEach(function(cb) {
+                if (cb.form === dateForm) {
+                    return;
+                }
                 var input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'cmids[]';

@@ -4,6 +4,8 @@
             <div class="local-homeschool-activity-select">
                 <input type="checkbox"
                        class="form-check-input local-homeschool-select-cm"
+                       name="cmids[]"
+                       form="local-homeschool-bulk-date-form"
                        value="{{cmid}}"
                        aria-label="{{activityname}}">
             </div>
@@ -167,6 +169,7 @@
                                                        id="{{inputid}}"
                                                        value="{{value}}"
                                                        min="{{min}}"
+                                                       {{#hasmax}}max="{{max}}"{{/hasmax}}
                                                        data-requirement-value-for="{{name}}"
                                                        aria-label="{{label}}"
                                                        {{^enabled}}hidden{{/enabled}}

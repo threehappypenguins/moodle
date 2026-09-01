@@ -47,6 +47,9 @@ class upcoming_service {
                 if ($cm->deletioninprogress || empty($cm->completionexpected)) {
                     continue;
                 }
+                if (!$cm->uservisible) {
+                    continue;
+                }
                 if ($cm->completion == COMPLETION_TRACKING_NONE) {
                     continue;
                 }

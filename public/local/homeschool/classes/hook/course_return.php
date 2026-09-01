@@ -59,9 +59,38 @@ class course_return {
             return;
         }
 
-        $url = return_context::consume();
+        $courseid = self::get_landing_course_id();
+        if ($courseid < 1) {
+            return;
+        }
+
+        $url = return_context::consume_for_course($courseid);
         if ($url) {
             redirect($url);
         }
+    }
+
+    /**
+     * Resolve the course id for the current course landing script.
+     *
+     * @return int
+     */
+    protected static function get_landing_course_id(): int {
+        global $DB, $SCRIPT;
+
+        $script = (string) $SCRIPT;
+        if ($script === '/course/view.php' || str_ends_with($script, '/course/view.php')) {
+            return optional_param('id', 0, PARAM_INT);
+        }
+
+        if ($script === '/course/section.php' || str_ends_with($script, '/course/section.php')) {
+            $sectionid = optional_param('id', 0, PARAM_INT);
+            if ($sectionid < 1) {
+                return 0;
+            }
+            return (int) $DB->get_field('course_sections', 'course', ['id' => $sectionid], IGNORE_MISSING);
+        }
+
+        return 0;
     }
 }

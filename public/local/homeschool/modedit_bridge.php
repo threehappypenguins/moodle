@@ -55,5 +55,19 @@ if (!in_array($gotourl->get_path(), $allowedpaths, true)) {
     throw new moodle_exception('invalidurl');
 }
 
-\local_homeschool\local\return_context::arm($day, $showall, $showhidden);
+$courseid = (int) $gotourl->param('course');
+if ($courseid < 1) {
+    $update = (int) $gotourl->param('update');
+    if ($update > 0) {
+        $cm = get_coursemodule_from_id('', $update, 0, false, IGNORE_MISSING);
+        if ($cm) {
+            $courseid = (int) $cm->course;
+        }
+    }
+}
+if ($courseid < 1) {
+    throw new moodle_exception('invalidurl');
+}
+
+\local_homeschool\local\return_context::arm($day, $courseid, $showall, $showhidden);
 redirect($gotourl);

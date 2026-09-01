@@ -405,6 +405,12 @@
     height: 1.75rem;
     cursor: pointer;
     flex: 0 0 auto;
+    border-radius: 0.25rem;
+}
+
+.local-homeschool-calendar-wrap:focus-within {
+    outline: 2px solid var(--primary, #0f6cbf);
+    outline-offset: 2px;
 }
 
 .local-homeschool-calendar-btn {
