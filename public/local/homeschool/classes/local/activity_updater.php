@@ -90,6 +90,7 @@ class activity_updater {
         // Reminder dates only apply when completion tracking is enabled.
         $calendartime = !empty($cminfo->completionexpected) ? $cminfo->completionexpected : null;
         if ($completion == COMPLETION_TRACKING_NONE && !empty($cminfo->completionexpected)) {
+            shift_undo::invalidate_for_cmids([(int) $cm->id]);
             $DB->set_field('course_modules', 'completionexpected', 0, ['id' => $cm->id]);
             $calendartime = null;
             $changed = true;

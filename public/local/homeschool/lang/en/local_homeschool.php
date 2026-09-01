@@ -99,6 +99,46 @@ $string['deleteselected'] = 'Delete selected';
 $string['activitydeleted'] = 'Deleted {$a}.';
 $string['activitiesdeleted'] = 'Deleted {$a} activities.';
 
+// Schedule shift.
+$string['shifttitle'] = 'Shift timeline reminders';
+$string['shiftschedulelink'] = 'Shift timeline reminders';
+$string['shiftintro'] = 'Move timeline reminder dates forward or backward across one or more day sections. This changes completion expected dates only — not assignment due dates, quiz close times, or which day section an activity belongs to. Undo is available until you manually change a shifted reminder date.';
+$string['shiftrange'] = 'Day range';
+$string['shiftalldays'] = 'All days';
+$string['shiftalldays_help'] = 'When checked, every day section is included. Otherwise choose a from/to day range.';
+$string['shiftfromday'] = 'From day';
+$string['shifttoday'] = 'To day';
+$string['shiftoffset'] = 'Shift amount';
+$string['shiftdirection'] = 'Direction';
+$string['shiftforward'] = 'Forward';
+$string['shiftbackward'] = 'Backward';
+$string['shiftdirectionforward'] = 'forward';
+$string['shiftdirectionbackward'] = 'backward';
+$string['shiftdaycount'] = 'Number of days';
+$string['shiftdaycount_help'] = 'How many calendar days to add or subtract from each timeline reminder in the selected range.';
+$string['shiftdaycountinvalid'] = 'Enter at least 1 day.';
+$string['shiftdaycountmax'] = 'Enter at most 365 days.';
+$string['shiftrangeinvalid'] = '“To day” must be the same as or after “From day”.';
+$string['shiftpreview'] = 'Preview shift';
+$string['shiftpreviewheading'] = 'Preview';
+$string['shiftpreviewsummary'] = '{$a->count} timeline reminders will shift {$a->direction} by {$a->days} days.';
+$string['shiftcurrentdate'] = 'Current date';
+$string['shiftnewdate'] = 'New date';
+$string['shiftpreviewtruncated'] = '…and {$a} more not shown.';
+$string['shiftskippednodate'] = '{$a} skipped (no reminder date).';
+$string['shiftskippednocompletion'] = '{$a} skipped (completion not enabled).';
+$string['shiftskippedpermission'] = '{$a} skipped (no permission).';
+$string['shiftskippeddeleted'] = '{$a} skipped (being deleted).';
+$string['shiftapply'] = 'Apply shift';
+$string['shiftnothingtoapply'] = 'No timeline reminders in that range can be shifted.';
+$string['shiftundo'] = 'Undo last shift';
+$string['shiftundoavailable'] = 'Last shift: {$a}';
+$string['shiftundone'] = 'Restored {$a} timeline reminder dates.';
+$string['shiftundofailed'] = 'Nothing to undo.';
+$string['shiftinvalidparams'] = 'Invalid shift settings.';
+$string['shiftappliedsummary'] = 'Shifted {$a->count} timeline reminders {$a->direction} by {$a->days} days.';
+$string['shiftapplyfailed'] = 'No timeline reminders were shifted.';
+
 // Settings.
 $string['settingsintro'] = 'Configure how the homeschool dashboard identifies students and aggregates courses.';
 $string['studentrole'] = 'Student role shortname';

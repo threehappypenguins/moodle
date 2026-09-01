@@ -371,6 +371,11 @@
     border: 0;
 }
 
+.local-homeschool-shift-preview-table th,
+.local-homeschool-shift-preview-table td {
+    vertical-align: top;
+}
+
 @media (min-width: 768px) {
     .local-homeschool-day-picker-controls .form-select,
     .local-homeschool-add-activity-controls .form-select {

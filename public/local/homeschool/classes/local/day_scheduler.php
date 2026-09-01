@@ -32,9 +32,10 @@ class day_scheduler {
      *
      * @param int[] $cmids
      * @param int $timestamp Unix timestamp (0 clears the date)
+     * @param bool $invalidateundo Clear shift undo when a snapshotted activity is changed
      * @return \stdClass result stats
      */
-    public static function apply_to_activities(array $cmids, int $timestamp): \stdClass {
+    public static function apply_to_activities(array $cmids, int $timestamp, bool $invalidateundo = true): \stdClass {
         global $CFG, $DB;
 
         require_once($CFG->libdir . '/completionlib.php');
@@ -48,6 +49,10 @@ class day_scheduler {
         $cmids = array_values(array_unique(array_map('intval', $cmids)));
         if (empty($cmids)) {
             return $result;
+        }
+
+        if ($invalidateundo) {
+            shift_undo::invalidate_for_cmids($cmids);
         }
 
         $touchedcourses = [];
@@ -130,5 +135,169 @@ class day_scheduler {
         }
 
         return self::apply_to_activities($cmids, $timestamp);
+    }
+
+    /** @var int Maximum preview rows shown on the shift page. */
+    public const SHIFT_PREVIEW_LIMIT = 100;
+
+    /**
+     * Build a preview of shifting timeline reminders in a day range.
+     *
+     * @param \stdClass[] $courses Managed daysections courses
+     * @param int $fromday First section number (ignored when $alldays is true)
+     * @param int $today Last section number (ignored when $alldays is true)
+     * @param int $dayoffset Signed day count (negative = backward)
+     * @param bool $alldays Include every day section
+     * @return \stdClass Preview with items and skip counts
+     */
+    public static function preview_shift(
+        array $courses,
+        int $fromday,
+        int $today,
+        int $dayoffset,
+        bool $alldays,
+    ): \stdClass {
+        $preview = (object) [
+            'items' => [],
+            'shiftcount' => 0,
+            'skippednodate' => 0,
+            'skippednocompletion' => 0,
+            'skippedpermission' => 0,
+            'skippeddeleted' => 0,
+            'dayoffset' => $dayoffset,
+            'alldays' => $alldays,
+            'fromday' => $fromday,
+            'today' => $today,
+        ];
+
+        if ($dayoffset === 0) {
+            return $preview;
+        }
+
+        $offsetsecs = $dayoffset * DAYSECS;
+
+        foreach ($courses as $course) {
+            $modinfo = get_fast_modinfo($course->id);
+            foreach ($modinfo->get_sections() as $sectionnum => $sectioncmids) {
+                if ($sectionnum === 0) {
+                    continue;
+                }
+                if (!$alldays && ($sectionnum < $fromday || $sectionnum > $today)) {
+                    continue;
+                }
+
+                $sectioninfo = $modinfo->get_section_info($sectionnum);
+                $sectionname = get_section_name($course, $sectioninfo);
+
+                foreach ($sectioncmids as $cmid) {
+                    $cm = $modinfo->get_cm($cmid);
+                    if ($cm->deletioninprogress) {
+                        $preview->skippeddeleted++;
+                        continue;
+                    }
+
+                    $context = \context_module::instance($cm->id);
+                    if (!has_capability('moodle/course:manageactivities', $context)) {
+                        $preview->skippedpermission++;
+                        continue;
+                    }
+
+                    if ((int) $cm->completion === COMPLETION_TRACKING_NONE) {
+                        $preview->skippednocompletion++;
+                        continue;
+                    }
+
+                    if (empty($cm->completionexpected)) {
+                        $preview->skippednodate++;
+                        continue;
+                    }
+
+                    $oldtimestamp = (int) $cm->completionexpected;
+                    $newtimestamp = $oldtimestamp + $offsetsecs;
+
+                    $preview->items[] = (object) [
+                        'cmid' => (int) $cm->id,
+                        'coursename' => $course->fullname,
+                        'activityname' => $cm->name,
+                        'sectionnum' => (int) $sectionnum,
+                        'sectionname' => $sectionname,
+                        'oldtimestamp' => $oldtimestamp,
+                        'newtimestamp' => $newtimestamp,
+                        'olddateformatted' => activity_repository::format_expected_date($oldtimestamp),
+                        'newdateformatted' => activity_repository::format_expected_date($newtimestamp),
+                    ];
+                    $preview->shiftcount++;
+                }
+            }
+        }
+
+        usort($preview->items, static function($a, $b) {
+            return [$a->sectionnum, $a->coursename, $a->activityname]
+                <=> [$b->sectionnum, $b->coursename, $b->activityname];
+        });
+
+        return $preview;
+    }
+
+    /**
+     * Shift timeline reminder dates by a signed day offset.
+     *
+     * @param int[] $cmids
+     * @param int $dayoffset Signed day count (negative = backward)
+     * @return \stdClass updated, skipped, snapshots (cmid + original timestamp)
+     */
+    public static function shift_by_offset(array $cmids, int $dayoffset): \stdClass {
+        $result = (object) [
+            'updated' => 0,
+            'skipped' => 0,
+            'snapshots' => [],
+        ];
+
+        if ($dayoffset === 0 || empty($cmids)) {
+            return $result;
+        }
+
+        $offsetsecs = $dayoffset * DAYSECS;
+        $cmids = array_values(array_unique(array_map('intval', $cmids)));
+
+        foreach ($cmids as $cmid) {
+            $cm = get_coursemodule_from_id('', $cmid, 0, false, IGNORE_MISSING);
+            if (!$cm || !empty($cm->deletioninprogress)) {
+                $result->skipped++;
+                continue;
+            }
+
+            $context = \context_module::instance($cm->id);
+            if (!has_capability('moodle/course:manageactivities', $context)) {
+                $result->skipped++;
+                continue;
+            }
+
+            if ((int) $cm->completion === COMPLETION_TRACKING_NONE) {
+                $result->skipped++;
+                continue;
+            }
+
+            if (empty($cm->completionexpected)) {
+                $result->skipped++;
+                continue;
+            }
+
+            $oldtimestamp = (int) $cm->completionexpected;
+            $newtimestamp = $oldtimestamp + $offsetsecs;
+
+            $apply = self::apply_to_activities([$cmid], $newtimestamp, false);
+            if ($apply->updated > 0) {
+                $result->snapshots[] = (object) [
+                    'cmid' => $cmid,
+                    'timestamp' => $oldtimestamp,
+                ];
+                $result->updated++;
+            } else {
+                $result->skipped++;
+            }
+        }
+
+        return $result;
     }
 }

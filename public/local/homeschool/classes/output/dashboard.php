@@ -168,6 +168,8 @@ class dashboard implements renderable, templatable {
             'hasupcoming' => !empty($upcomingrows),
             'dayurl' => (new \moodle_url('/local/homeschool/day.php'))->out(false),
             'hasdaypicker' => requirements::user_can_manage() && !empty($daysectionscourses),
+            'shifturl' => (new \moodle_url('/local/homeschool/shift.php'))->out(false),
+            'hasshiftlink' => requirements::user_can_manage() && !empty($daysectionscourses),
             'dayoptions' => $dayoptions,
             'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
             'nodatahelp' => get_string('nodatahelp', 'local_homeschool'),
