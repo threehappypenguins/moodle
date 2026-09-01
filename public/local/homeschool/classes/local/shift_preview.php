@@ -42,6 +42,9 @@ class shift_preview {
     /** @var int Preview availability window in seconds. */
     public const TTL = HOURSECS;
 
+    /** @var int Maximum retained preview snapshots per user in a session. */
+    public const MAX_PER_USER = 10;
+
     /**
      * Store preview rows for a later apply request.
      *
@@ -52,6 +55,9 @@ class shift_preview {
      */
     public static function save(int $userid, \stdClass $preview, \stdClass $params): string {
         global $SESSION;
+
+        self::purge_expired();
+        self::enforce_user_cap($userid);
 
         $items = [];
         foreach ($preview->items as $item) {
@@ -121,14 +127,44 @@ class shift_preview {
      * @return void
      */
     public static function purge_expired(): void {
-        global $USER;
-
         $store = &self::get_store();
         foreach (array_keys($store['previews']) as $token) {
-            if (!self::is_valid($store['previews'][$token], (int) $USER->id)) {
+            if (self::is_expired($store['previews'][$token])) {
                 unset($store['previews'][$token]);
             }
         }
+    }
+
+    /**
+     * Drop the oldest previews for a user when the session cap is reached.
+     *
+     * @param int $userid
+     * @return void
+     */
+    protected static function enforce_user_cap(int $userid): void {
+        $store = &self::get_store();
+        $usertokens = [];
+
+        foreach ($store['previews'] as $token => $data) {
+            if ((int) $data->userid !== $userid || self::is_expired($data) || empty($data->items)) {
+                continue;
+            }
+            $usertokens[$token] = (int) $data->time;
+        }
+
+        asort($usertokens);
+        while (count($usertokens) >= self::MAX_PER_USER) {
+            $oldesttoken = array_key_first($usertokens);
+            unset($store['previews'][$oldesttoken], $usertokens[$oldesttoken]);
+        }
+    }
+
+    /**
+     * @param \stdClass $data
+     * @return bool
+     */
+    protected static function is_expired(\stdClass $data): bool {
+        return empty($data->time) || (time() - (int) $data->time) > self::TTL;
     }
 
     /**
@@ -141,7 +177,7 @@ class shift_preview {
             return false;
         }
 
-        if (empty($data->time) || (time() - (int) $data->time) > self::TTL) {
+        if (self::is_expired($data)) {
             return false;
         }
 

@@ -176,4 +176,59 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
         $this->assertNull(shift_preview::consume($tokenone));
         $this->assertNull(shift_preview::consume($tokentwo));
     }
+
+    /**
+     * save() purges expired previews before storing a new snapshot.
+     */
+    public function test_save_purges_expired_previews(): void {
+        global $SESSION;
+
+        $original = strtotime('2026-06-01 09:00:00');
+        [$teacher, $course, ] = $this->create_teacher_assign_with_reminder($original);
+        $this->setUser($teacher);
+
+        $preview = day_scheduler::preview_shift([$course], 1, 1, 7, false);
+        $params = (object) ['days' => 7, 'direction' => 'forward'];
+
+        $expiredtoken = shift_preview::save($teacher->id, $preview, $params);
+        $SESSION->{shift_preview::SESSION_KEY}['previews'][$expiredtoken]->time = time() - shift_preview::TTL - 1;
+
+        $activetoken = shift_preview::save($teacher->id, $preview, $params);
+
+        $this->assertArrayNotHasKey($expiredtoken, $SESSION->{shift_preview::SESSION_KEY}['previews']);
+        $this->assertArrayHasKey($activetoken, $SESSION->{shift_preview::SESSION_KEY}['previews']);
+        $this->assertNotNull(shift_preview::consume($activetoken));
+    }
+
+    /**
+     * save() caps retained previews per user to the newest snapshots.
+     */
+    public function test_save_caps_previews_per_user(): void {
+        global $SESSION;
+
+        $original = strtotime('2026-06-01 09:00:00');
+        [$teacher, $course, ] = $this->create_teacher_assign_with_reminder($original);
+        $this->setUser($teacher);
+
+        $preview = day_scheduler::preview_shift([$course], 1, 1, 7, false);
+        $params = (object) ['days' => 7, 'direction' => 'forward'];
+        $tokens = [];
+
+        for ($i = 0; $i < shift_preview::MAX_PER_USER + 2; $i++) {
+            $tokens[] = shift_preview::save($teacher->id, $preview, $params);
+            $SESSION->{shift_preview::SESSION_KEY}['previews'][$tokens[$i]]->time = time() + $i;
+        }
+
+        $remaining = array_filter(
+            $SESSION->{shift_preview::SESSION_KEY}['previews'],
+            static fn($data) => (int) $data->userid === (int) $teacher->id,
+        );
+
+        $this->assertCount(shift_preview::MAX_PER_USER, $remaining);
+
+        $oldestkept = $tokens[count($tokens) - shift_preview::MAX_PER_USER];
+        $this->assertArrayHasKey($oldestkept, $SESSION->{shift_preview::SESSION_KEY}['previews']);
+        $this->assertArrayNotHasKey($tokens[0], $SESSION->{shift_preview::SESSION_KEY}['previews']);
+        $this->assertArrayNotHasKey($tokens[1], $SESSION->{shift_preview::SESSION_KEY}['previews']);
+    }
 }

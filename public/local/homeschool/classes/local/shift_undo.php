@@ -36,6 +36,9 @@ class shift_undo {
     /** @var int Undo availability window in seconds. */
     public const TTL = 30 * MINSECS;
 
+    /** @var int Maximum course-module ids per IN() lookup (Oracle limit is 1,000). */
+    private const MAX_CMIDS_PER_QUERY = 500;
+
     /**
      * Store undo snapshots, replacing any previous undo for this user.
      *
@@ -167,8 +170,6 @@ class shift_undo {
      * @return bool
      */
     protected static function snapshots_match_current_values(array $snapshots): bool {
-        global $DB;
-
         if (empty($snapshots)) {
             return false;
         }
@@ -181,13 +182,8 @@ class shift_undo {
             $expectedbycmid[(int) $snapshot->cmid] = (int) $snapshot->shifted;
         }
 
-        $records = $DB->get_records_list(
-            'course_modules',
-            'id',
-            array_keys($expectedbycmid),
-            '',
-            'id,completionexpected',
-        );
+        $cmids = array_keys($expectedbycmid);
+        $records = self::get_completionexpected_by_cmid($cmids);
 
         foreach ($expectedbycmid as $cmid => $shifted) {
             if (!isset($records[$cmid])) {
@@ -199,5 +195,32 @@ class shift_undo {
         }
 
         return true;
+    }
+
+    /**
+     * Fetch completionexpected for many course modules using bounded IN() clauses.
+     *
+     * @param int[] $cmids
+     * @return \stdClass[] keyed by course-module id
+     */
+    protected static function get_completionexpected_by_cmid(array $cmids): array {
+        global $DB;
+
+        if (empty($cmids)) {
+            return [];
+        }
+
+        $records = [];
+        foreach (array_chunk($cmids, self::MAX_CMIDS_PER_QUERY) as $chunk) {
+            $records += $DB->get_records_list(
+                'course_modules',
+                'id',
+                $chunk,
+                '',
+                'id,completionexpected',
+            );
+        }
+
+        return $records;
     }
 }

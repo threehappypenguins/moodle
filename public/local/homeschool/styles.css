@@ -461,10 +461,6 @@
         flex-wrap: nowrap;
     }
 
-    .local-homeschool-activity-details > summary {
-        display: none;
-    }
-
     .local-homeschool-activity-details .local-homeschool-row-edit {
         margin-top: 0 !important;
     }

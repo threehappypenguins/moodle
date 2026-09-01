@@ -66,13 +66,14 @@ class course_return {
         $script = (string) $SCRIPT;
 
         if (self::is_course_landing_script($script)) {
-            $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
-            if ($token === '') {
+            $courseid = self::get_landing_course_id();
+            if ($courseid < 1) {
                 return;
             }
 
-            $courseid = self::get_landing_course_id();
-            if ($courseid < 1) {
+            $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
+            if ($token === '') {
+                return_context::maybe_redirect_create_landing($courseid);
                 return;
             }
 

@@ -40,6 +40,15 @@ class return_context {
     /** Maximum age of an armed return before it is ignored (seconds). */
     public const TTL = 7200;
 
+    /** Maximum age of a pending new-activity course landing redirect (seconds). */
+    private const CREATE_LANDING_TTL = 60;
+
+    /** @var array<int,\moodle_url> Pending redirects keyed by course-module id for updates. */
+    private static array $pendingupdateredirects = [];
+
+    /** @var array<int,array{url:\moodle_url,time:int}> Pending redirects keyed by course id for new activities. */
+    private static array $pendingcreateredirects = [];
+
     /**
      * Remember which Homeschool day page to return to after modedit.
      *
@@ -80,6 +89,8 @@ class return_context {
         global $SESSION;
 
         unset($SESSION->{self::SESSION_KEY}, $SESSION->{self::LEGACY_SESSION_KEY});
+        self::$pendingupdateredirects = [];
+        self::$pendingcreateredirects = [];
     }
 
     /**
@@ -142,37 +153,110 @@ class return_context {
     }
 
     /**
-     * After a successful modedit save, redirect through core course URL with the flow token attached.
+     * Carry the Homeschool flow token on the core course return URL after modedit save.
+     *
+     * Does not redirect from coursemodule_edit_post_actions; navigation is deferred until
+     * core has committed the module save and finished its post-save work.
      *
      * @param \stdClass $data Submitted module form data
      * @param \stdClass $course Target course
+     * @return \stdClass
+     */
+    public static function prepare_modedit_course_return(\stdClass $data, \stdClass $course): \stdClass {
+        $url = self::build_modedit_course_return_url($data, $course);
+        if (!$url) {
+            return $data;
+        }
+
+        if (!empty($data->add)) {
+            self::$pendingcreateredirects[(int) $course->id] = [
+                'url' => $url,
+                'time' => time(),
+            ];
+        } else if (!empty($data->coursemodule)) {
+            self::$pendingupdateredirects[(int) $data->coursemodule] = $url;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Issue a deferred update redirect after update_moduleinfo has fully completed.
+     *
+     * @param int $cmid
+     * @return void
+     */
+    public static function issue_pending_update_redirect(int $cmid): void {
+        if ($cmid < 1 || !isset(self::$pendingupdateredirects[$cmid])) {
+            return;
+        }
+
+        $url = self::$pendingupdateredirects[$cmid];
+        unset(self::$pendingupdateredirects[$cmid]);
+        redirect($url);
+    }
+
+    /**
+     * Attach a pending new-activity flow token when core lands on the course page without one.
+     *
+     * @param int $courseid
      * @return bool True when a redirect was issued
      */
-    public static function maybe_redirect_after_save(\stdClass $data, \stdClass $course): bool {
-        $token = $data->{self::FLOW_PARAM} ?? '';
-        if ($token === '') {
+    public static function maybe_redirect_create_landing(int $courseid): bool {
+        if ($courseid < 1 || !isset(self::$pendingcreateredirects[$courseid])) {
             return false;
         }
 
-        if (!self::get_valid_flow($token)) {
+        $pending = self::$pendingcreateredirects[$courseid];
+        unset(self::$pendingcreateredirects[$courseid]);
+
+        if ((time() - (int) $pending['time']) > self::CREATE_LANDING_TTL) {
             return false;
+        }
+
+        redirect($pending['url']);
+    }
+
+    /**
+     * Whether an update redirect is queued for a course module.
+     *
+     * @param int $cmid
+     * @return bool
+     */
+    public static function has_pending_update_redirect(int $cmid): bool {
+        return isset(self::$pendingupdateredirects[$cmid]);
+    }
+
+    /**
+     * @param \stdClass $data Submitted module form data
+     * @param \stdClass $course Target course
+     * @return \moodle_url|null
+     */
+    protected static function build_modedit_course_return_url(\stdClass $data, \stdClass $course): ?\moodle_url {
+        $token = $data->{self::FLOW_PARAM} ?? '';
+        if ($token === '') {
+            return null;
+        }
+
+        if (!self::get_valid_flow($token)) {
+            return null;
         }
 
         if (!empty($data->submitbutton)) {
             self::discard_flow($token);
-            return false;
+            return null;
         }
 
         if (empty($data->frontend)) {
-            return false;
+            return null;
         }
 
         if (!empty($data->modulename) && plugin_supports('mod', $data->modulename, FEATURE_PUBLISHES_QUESTIONS)) {
-            return false;
+            return null;
         }
 
         if (!isset($data->section)) {
-            return false;
+            return null;
         }
 
         $url = course_get_url($course, $data->section, self::extract_return_options($data));
@@ -180,7 +264,8 @@ class return_context {
             $url->set_anchor('module-' . $data->coursemodule);
         }
         $url->param(self::FLOW_PARAM, $token);
-        redirect($url);
+
+        return $url;
     }
 
     /**

@@ -115,4 +115,52 @@ final class return_context_test extends \local_homeschool\base_testcase {
         $this->assertSame('1', (string) $url->get_param('showall'));
         $this->assertSame('1', (string) $url->get_param('showhidden'));
     }
+
+    /**
+     * prepare_modedit_course_return defers update redirects instead of exiting early.
+     */
+    public function test_prepare_modedit_course_return_defers_update_redirect(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+        $label = $generator->create_module('label', ['course' => $course->id]);
+
+        $token = return_context::arm(2, $course->id);
+        $data = (object) [
+            return_context::FLOW_PARAM => $token,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $label->cmid,
+            'modulename' => 'label',
+        ];
+
+        $result = return_context::prepare_modedit_course_return($data, $course);
+
+        $this->assertSame($data, $result);
+        $this->assertTrue(return_context::has_pending_update_redirect($label->cmid));
+        $this->assertFalse(return_context::has_pending_update_redirect($label->cmid + 1));
+    }
+
+    /**
+     * Save and display does not queue a deferred redirect.
+     */
+    public function test_prepare_modedit_course_return_discards_save_and_display(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+        $label = $generator->create_module('label', ['course' => $course->id]);
+
+        $token = return_context::arm(1, $course->id);
+        $data = (object) [
+            return_context::FLOW_PARAM => $token,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $label->cmid,
+            'modulename' => 'label',
+            'submitbutton' => 'Save and display',
+        ];
+
+        return_context::prepare_modedit_course_return($data, $course);
+
+        $this->assertFalse(return_context::has_pending_update_redirect($label->cmid));
+        $this->assertFalse(return_context::has_pending());
+    }
 }
