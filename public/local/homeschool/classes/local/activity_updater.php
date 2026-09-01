@@ -90,6 +90,13 @@ class activity_updater {
             $conditionstate = null;
         }
 
+        if ($conditionstate !== null) {
+            $validationerror = completion_conditions::validate_posted_state($cminfo, $conditionstate);
+            if ($validationerror !== null) {
+                throw new \moodle_exception('invalidcompletioncondition', 'local_homeschool', '', $validationerror);
+            }
+        }
+
         $changed = false;
 
         if ($completionchanged) {
@@ -98,10 +105,6 @@ class activity_updater {
         }
 
         if ($conditionstate !== null) {
-            $validationerror = completion_conditions::validate_posted_state($cminfo, $conditionstate);
-            if ($validationerror !== null) {
-                throw new \moodle_exception('invalidcompletioncondition', 'local_homeschool', '', $validationerror);
-            }
             if (completion_conditions::apply($cminfo, $conditionstate)) {
                 $changed = true;
             }

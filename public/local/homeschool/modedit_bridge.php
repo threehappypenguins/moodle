@@ -46,16 +46,18 @@ if ($rawgoto === '' || $rawgoto[0] !== '/') {
 }
 
 $gotourl = new moodle_url($rawgoto);
-// Activity chooser links use course/mod.php; older flows may use course/modedit.php.
-$allowedpaths = [
-    (new moodle_url('/course/mod.php'))->get_path(),
-    (new moodle_url('/course/modedit.php'))->get_path(),
-];
-if (!in_array($gotourl->get_path(), $allowedpaths, true)) {
+$modpath = (new moodle_url('/course/mod.php'))->get_path();
+$modeditpath = (new moodle_url('/course/modedit.php'))->get_path();
+$gotopath = $gotourl->get_path();
+if (!in_array($gotopath, [$modpath, $modeditpath], true)) {
     throw new moodle_exception('invalidurl');
 }
 
 $courseid = (int) $gotourl->param('course');
+// Activity chooser new-module links use /course/mod.php?id=<course>&add=...
+if ($courseid < 1 && $gotopath === $modpath) {
+    $courseid = (int) $gotourl->param('id');
+}
 if ($courseid < 1) {
     $update = (int) $gotourl->param('update');
     if ($update > 0) {

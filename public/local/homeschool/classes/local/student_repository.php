@@ -18,6 +18,8 @@ namespace local_homeschool\local;
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($GLOBALS['CFG']->libdir . '/grouplib.php');
+
 /**
  * Students enrolled in homeschool courses.
  *
@@ -73,6 +75,9 @@ class student_repository {
      * Only users who are enrolled AND have the configured student role in the
      * course context are returned. Teachers and other enrolled roles are excluded.
      *
+     * In separate-groups mode, students outside the viewer's visible groups are
+     * omitted unless the viewer has moodle/site:accessallgroups.
+     *
      * @param \stdClass[] $courses
      * @return \stdClass[] user records with courseids array attached
      */
@@ -92,7 +97,8 @@ class student_repository {
         $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
 
         $students = [];
-        foreach ($courses as $course) {
+        foreach ($courses as $courserecord) {
+            $course = get_course($courserecord->id, false);
             $context = \context_course::instance($course->id);
             [$esql, $params] = get_enrolled_sql($context, '', 0, true);
             $params['roleid'] = $role->id;
@@ -109,6 +115,9 @@ class student_repository {
 
             $enrolled = $DB->get_records_sql($sql, $params);
             foreach ($enrolled as $user) {
+                if (!groups_user_groups_visible($course, $user->id)) {
+                    continue;
+                }
                 if (!isset($students[$user->id])) {
                     $user->courseids = [];
                     $students[$user->id] = $user;
