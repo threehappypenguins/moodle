@@ -25,7 +25,7 @@
 require(__DIR__ . '/../../../config.php');
 
 require_login();
-require_capability('local/homeschool:manage', context_system::instance());
+\local_homeschool\local\requirements::require_manage();
 require_sesskey();
 
 $day = required_param('day', PARAM_INT);

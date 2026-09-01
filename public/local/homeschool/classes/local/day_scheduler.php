@@ -36,6 +36,26 @@ class day_scheduler {
      * @return \stdClass result stats
      */
     public static function apply_to_activities(array $cmids, int $timestamp, bool $invalidateundo = true): \stdClass {
+        $timestampsbycmid = [];
+        foreach (array_unique(array_map('intval', $cmids)) as $cmid) {
+            if ($cmid > 0) {
+                $timestampsbycmid[$cmid] = $timestamp;
+            }
+        }
+
+        return self::apply_timestamps($timestampsbycmid, $invalidateundo);
+    }
+
+    /**
+     * Set completion expected dates for modules with per-cm timestamps.
+     *
+     * Updates fields and calendar events first, then rebuilds each touched course once.
+     *
+     * @param array $timestampsbycmid Map of cmid => unix timestamp (0 clears the date)
+     * @param bool $invalidateundo Clear shift undo when a snapshotted activity is changed
+     * @return \stdClass result stats (updated, skipped, courses, updatedcmids)
+     */
+    public static function apply_timestamps(array $timestampsbycmid, bool $invalidateundo = true): \stdClass {
         global $CFG, $DB;
 
         require_once($CFG->libdir . '/completionlib.php');
@@ -44,20 +64,25 @@ class day_scheduler {
             'updated' => 0,
             'skipped' => 0,
             'courses' => 0,
+            'updatedcmids' => [],
         ];
 
-        $cmids = array_values(array_unique(array_map('intval', $cmids)));
-        if (empty($cmids)) {
+        if (empty($timestampsbycmid)) {
             return $result;
         }
 
+        $cmids = array_map('intval', array_keys($timestampsbycmid));
         if ($invalidateundo) {
             shift_undo::invalidate_for_cmids($cmids);
         }
 
         $touchedcourses = [];
+        $updatedcms = [];
 
-        foreach ($cmids as $cmid) {
+        foreach ($timestampsbycmid as $cmid => $timestamp) {
+            $cmid = (int) $cmid;
+            $timestamp = (int) $timestamp;
+
             $cm = get_coursemodule_from_id('', $cmid, 0, false, IGNORE_MISSING);
             if (!$cm || !empty($cm->deletioninprogress)) {
                 $result->skipped++;
@@ -77,7 +102,11 @@ class day_scheduler {
             }
 
             $expected = $timestamp ?: 0;
-            $DB->set_field('course_modules', 'completionexpected', $expected, ['id' => $cm->id]);
+            $DB->update_record('course_modules', (object) [
+                'id' => $cm->id,
+                'completionexpected' => $expected,
+                'timemodified' => time(),
+            ]);
 
             $calendartime = $expected ?: null;
             \core_completion\api::update_completion_date_event(
@@ -88,12 +117,24 @@ class day_scheduler {
             );
 
             $result->updated++;
+            $result->updatedcmids[] = $cmid;
             $touchedcourses[(int) $cm->course] = true;
+            $updatedcms[] = (object) [
+                'cm' => $cm,
+                'context' => $context,
+            ];
         }
 
         foreach (array_keys($touchedcourses) as $courseid) {
             rebuild_course_cache($courseid, true);
             $result->courses++;
+        }
+
+        // Match core completion updates: emit course_module_updated after modinfo refresh.
+        foreach ($updatedcms as $item) {
+            $modinfo = get_fast_modinfo($item->cm->course);
+            $cminfo = $modinfo->get_cm($item->cm->id);
+            \core\event\course_module_updated::create_from_cm($cminfo, $item->context)->trigger();
         }
 
         return $result;
@@ -174,8 +215,6 @@ class day_scheduler {
             return $preview;
         }
 
-        $offsetsecs = $dayoffset * DAYSECS;
-
         foreach ($courses as $course) {
             $modinfo = get_fast_modinfo($course->id);
             foreach ($modinfo->get_sections() as $sectionnum => $sectioncmids) {
@@ -213,7 +252,7 @@ class day_scheduler {
                     }
 
                     $oldtimestamp = (int) $cm->completionexpected;
-                    $newtimestamp = $oldtimestamp + $offsetsecs;
+                    $newtimestamp = self::shift_timestamp_by_days($oldtimestamp, $dayoffset);
 
                     $preview->items[] = (object) [
                         'cmid' => (int) $cm->id,
@@ -244,7 +283,7 @@ class day_scheduler {
      *
      * @param int[] $cmids
      * @param int $dayoffset Signed day count (negative = backward)
-     * @return \stdClass updated, skipped, snapshots (cmid + original timestamp)
+     * @return \stdClass updated, skipped, snapshots (cmid, timestamp, shifted)
      */
     public static function shift_by_offset(array $cmids, int $dayoffset): \stdClass {
         $result = (object) [
@@ -257,8 +296,9 @@ class day_scheduler {
             return $result;
         }
 
-        $offsetsecs = $dayoffset * DAYSECS;
         $cmids = array_values(array_unique(array_map('intval', $cmids)));
+        $timestampsbycmid = [];
+        $oldtimestamps = [];
 
         foreach ($cmids as $cmid) {
             $cm = get_coursemodule_from_id('', $cmid, 0, false, IGNORE_MISSING);
@@ -284,20 +324,43 @@ class day_scheduler {
             }
 
             $oldtimestamp = (int) $cm->completionexpected;
-            $newtimestamp = $oldtimestamp + $offsetsecs;
+            $oldtimestamps[$cmid] = $oldtimestamp;
+            $timestampsbycmid[$cmid] = self::shift_timestamp_by_days($oldtimestamp, $dayoffset);
+        }
 
-            $apply = self::apply_to_activities([$cmid], $newtimestamp, false);
-            if ($apply->updated > 0) {
-                $result->snapshots[] = (object) [
-                    'cmid' => $cmid,
-                    'timestamp' => $oldtimestamp,
-                ];
-                $result->updated++;
-            } else {
-                $result->skipped++;
-            }
+        $apply = self::apply_timestamps($timestampsbycmid, false);
+        $result->skipped += $apply->skipped;
+        $result->updated = $apply->updated;
+
+        foreach ($apply->updatedcmids as $cmid) {
+            $result->snapshots[] = (object) [
+                'cmid' => $cmid,
+                'timestamp' => $oldtimestamps[$cmid],
+                'shifted' => $timestampsbycmid[$cmid],
+            ];
         }
 
         return $result;
+    }
+
+    /**
+     * Shift a unix timestamp by a signed number of calendar days in the user's timezone.
+     *
+     * Preserves local wall-clock time across DST transitions (unlike DAYSECS arithmetic).
+     *
+     * @param int $timestamp
+     * @param int $dayoffset Signed calendar day count
+     * @return int
+     */
+    protected static function shift_timestamp_by_days(int $timestamp, int $dayoffset): int {
+        if ($dayoffset === 0) {
+            return $timestamp;
+        }
+
+        $date = new \DateTime('@' . $timestamp);
+        $date->setTimezone(\core_date::get_user_timezone_object());
+        $date->modify(sprintf('%+d day', $dayoffset));
+
+        return $date->getTimestamp();
     }
 }

@@ -18,6 +18,7 @@ namespace local_homeschool\local;
 
 use core_component;
 use core_plugin_manager;
+use required_capability_exception;
 
 /**
  * Plugin dependency and access checks.
@@ -55,20 +56,71 @@ class requirements {
     /**
      * Whether the current user may open the homeschool dashboard.
      *
+     * Grants at system context (site-wide roles) or in any course context.
+     *
      * @return bool
      */
     public static function user_can_view(): bool {
-        $context = \context_system::instance();
-        return has_capability('local/homeschool:view', $context);
+        return self::user_has_capability_somewhere('local/homeschool:view');
     }
 
     /**
      * Whether the current user may manage homeschool scheduling.
      *
+     * Grants at system context (site-wide roles) or in any course context.
+     *
      * @return bool
      */
     public static function user_can_manage(): bool {
-        $context = \context_system::instance();
-        return has_capability('local/homeschool:manage', $context);
+        return self::user_has_capability_somewhere('local/homeschool:manage');
+    }
+
+    /**
+     * Require dashboard view access or throw.
+     *
+     * @return void
+     * @throws required_capability_exception
+     */
+    public static function require_view(): void {
+        if (!self::user_can_view()) {
+            throw new required_capability_exception(
+                \context_system::instance(),
+                'local/homeschool:view',
+                'nopermissions',
+                '',
+            );
+        }
+    }
+
+    /**
+     * Require manage access or throw.
+     *
+     * @return void
+     * @throws required_capability_exception
+     */
+    public static function require_manage(): void {
+        if (!self::user_can_manage()) {
+            throw new required_capability_exception(
+                \context_system::instance(),
+                'local/homeschool:manage',
+                'nopermissions',
+                '',
+            );
+        }
+    }
+
+    /**
+     * True if the user has the capability at system context or in at least one course.
+     *
+     * @param string $capability
+     * @return bool
+     */
+    protected static function user_has_capability_somewhere(string $capability): bool {
+        if (has_capability($capability, \context_system::instance())) {
+            return true;
+        }
+
+        $courses = get_user_capability_course($capability, null, true, '', '', 1);
+        return !empty($courses);
     }
 }

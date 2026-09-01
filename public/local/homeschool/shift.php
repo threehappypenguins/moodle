@@ -28,8 +28,9 @@ require_login();
 
 \local_homeschool\local\return_context::clear();
 
+\local_homeschool\local\requirements::require_manage();
+
 $context = context_system::instance();
-require_capability('local/homeschool:manage', $context);
 
 if (!\local_homeschool\local\requirements::daysections_available()) {
     throw new moodle_exception('missingdaysections', 'local_homeschool');

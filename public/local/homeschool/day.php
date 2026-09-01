@@ -30,8 +30,9 @@ require_login();
 // Visiting Homeschool clears any pending post-modedit return.
 \local_homeschool\local\return_context::clear();
 
+\local_homeschool\local\requirements::require_manage();
+
 $context = context_system::instance();
-require_capability('local/homeschool:manage', $context);
 
 $day = optional_param('day', 0, PARAM_INT);
 $action = optional_param('action', '', PARAM_ALPHA);
@@ -184,6 +185,14 @@ if ($day > 0) {
             redirect($url);
         }
 
+        $year = (int) $matches[1];
+        $month = (int) $matches[2];
+        $dayofmonth = (int) $matches[3];
+        if (!checkdate($month, $dayofmonth, $year)) {
+            \core\notification::error(get_string('invalidreminderdate', 'local_homeschool'));
+            redirect($url);
+        }
+
         $cm = get_coursemodule_from_id('', $cmid, 0, false, MUST_EXIST);
         if ((int) $cm->completion === COMPLETION_TRACKING_NONE) {
             \core\notification::error(get_string('datenotavailable', 'local_homeschool'));
@@ -197,9 +206,9 @@ if ($day > 0) {
         }
 
         $timestamp = make_timestamp(
-            (int) $matches[1],
-            (int) $matches[2],
-            (int) $matches[3],
+            $year,
+            $month,
+            $dayofmonth,
             $hour,
             $minute,
         );
@@ -233,12 +242,17 @@ if ($day > 0) {
 
         $conditionstate = null;
         if ($completion == COMPLETION_TRACKING_AUTOMATIC) {
-            $conditionstate = \local_homeschool\local\completion_conditions::read_posted_state($cminfo);
-            if (!\local_homeschool\local\completion_conditions::state_has_condition($conditionstate)) {
-                \core\notification::error(get_string('badautocompletion', 'completion'));
-                $failurl = new moodle_url($url);
-                $failurl->param('expandreq', $cmid);
-                redirect($failurl);
+            $completioninfo = new completion_info($modinfo->get_course());
+            // Disabled requirement fields are not posted when completion is locked.
+            // Pass null so update_completion() keeps the existing conditions.
+            if ($completioninfo->count_user_data($cminfo) === 0) {
+                $conditionstate = \local_homeschool\local\completion_conditions::read_posted_state($cminfo);
+                if (!\local_homeschool\local\completion_conditions::state_has_condition($conditionstate)) {
+                    \core\notification::error(get_string('badautocompletion', 'completion'));
+                    $failurl = new moodle_url($url);
+                    $failurl->param('expandreq', $cmid);
+                    redirect($failurl);
+                }
             }
         }
 

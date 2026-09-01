@@ -29,13 +29,13 @@
  * @return bool
  */
 function xmldb_local_homeschool_upgrade($oldversion) {
-    if ($oldversion < 2026083206) {
+    if ($oldversion < 2026090100) {
         // Earlier builds used forced 23:59 select defaults; clear so admins must choose.
         unset_config('reminderhour', 'local_homeschool');
         unset_config('reminderminute', 'local_homeschool');
         unset_config('enablereminderdefault', 'local_homeschool');
 
-        upgrade_plugin_savepoint(true, 2026083206, 'local', 'homeschool');
+        upgrade_plugin_savepoint(true, 2026090100, 'local', 'homeschool');
     }
 
     return true;

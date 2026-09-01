@@ -116,40 +116,55 @@ class course_repository {
      * @return \stdClass[]
      */
     protected static function get_managed_courses(int $userid, bool $includehidden, bool $daysectionsonly): array {
-        global $DB;
-
-        if ($daysectionsonly) {
-            $select = "format = :format";
-            $params = ['format' => 'daysections'];
-        } else {
-            $select = "format <> :format";
-            $params = ['format' => 'daysections'];
+        $managed = [];
+        foreach (self::get_manageable_courses($userid) as $courseid => $course) {
+            $isdaysections = ($course->format === 'daysections');
+            if ($daysectionsonly !== $isdaysections) {
+                continue;
+            }
+            if (!$includehidden && !(int) $course->visible) {
+                continue;
+            }
+            $managed[$courseid] = $course;
         }
 
-        if (!$includehidden) {
-            $select .= " AND visible = :visible";
-            $params['visible'] = 1;
+        return $managed;
+    }
+
+    /**
+     * Courses where the user can manage activities (capability-filtered, then site course removed).
+     *
+     * Cached per request so dashboard counts/lists do not repeat the capability scan.
+     *
+     * @param int $userid
+     * @return \stdClass[] keyed by course id
+     */
+    protected static function get_manageable_courses(int $userid): array {
+        static $cache = [];
+
+        if (array_key_exists($userid, $cache)) {
+            return $cache[$userid];
         }
 
-        $courses = $DB->get_records_select(
-            'course',
-            $select,
-            $params,
+        $courses = get_user_capability_course(
+            'moodle/course:manageactivities',
+            $userid,
+            true,
+            'fullname, shortname, format, visible',
             'fullname ASC',
-            'id, fullname, shortname, format, visible',
         );
 
         $managed = [];
-        foreach ($courses as $course) {
-            if ((int) $course->id === (int) SITEID) {
-                continue;
-            }
-            $context = \context_course::instance($course->id);
-            if (has_capability('moodle/course:manageactivities', $context, $userid)) {
-                $managed[$course->id] = $course;
+        if (!empty($courses)) {
+            foreach ($courses as $course) {
+                if ((int) $course->id === (int) SITEID) {
+                    continue;
+                }
+                $managed[(int) $course->id] = $course;
             }
         }
 
+        $cache[$userid] = $managed;
         return $managed;
     }
 }

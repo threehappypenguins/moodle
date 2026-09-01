@@ -409,12 +409,21 @@ class completion_conditions {
      * @return bool
      */
     protected static function is_integer_custom_rule(\cm_info $cm, string $rule): bool {
-        // Known integer completion counts.
-        return $rule === 'completionminattempts';
+        // Count / minimum-threshold rules edited as checkbox + integer in core mod forms.
+        return in_array($rule, [
+            'completionminattempts',
+            'completionentries',
+            'completionposts',
+            'completiondiscussions',
+            'completionreplies',
+        ], true);
     }
 
     /**
      * Only expose custom rules that are simple on/off flags.
+     *
+     * Duration, score, and status-threshold rules are excluded so they are neither
+     * shown as checkboxes nor rewritten to 0/1 on save.
      *
      * @param \cm_info $cm
      * @param string $rule
@@ -424,6 +433,15 @@ class completion_conditions {
         global $DB;
 
         if (self::is_integer_custom_rule($cm, $rule)) {
+            return false;
+        }
+
+        // Non-boolean integers / special controls (duration, score, status bitmask).
+        if (in_array($rule, [
+            'completiontimespent',
+            'completionscorerequired',
+            'completionstatusrequired',
+        ], true)) {
             return false;
         }
 
@@ -442,7 +460,7 @@ class completion_conditions {
 
         $columns = $DB->get_columns($cm->modname);
         $type = $columns[$rule]->meta_type ?? '';
-        // Integer DB columns that are not known count-rules are treated as on/off.
+        // Integer DB columns that are not known count/duration/score rules are on/off flags.
         return in_array($type, ['I', 'N', 'B'], true);
     }
 }

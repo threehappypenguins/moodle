@@ -20,8 +20,9 @@ require_login();
 
 \local_homeschool\local\return_context::clear();
 
+\local_homeschool\local\requirements::require_view();
+
 $context = context_system::instance();
-require_capability('local/homeschool:view', $context);
 
 $showhidden = (bool) optional_param('showhidden', 0, PARAM_BOOL);
 $showotherformats = (bool) optional_param('showotherformats', 0, PARAM_BOOL);

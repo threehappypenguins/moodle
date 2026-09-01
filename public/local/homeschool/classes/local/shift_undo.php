@@ -21,8 +21,8 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Session-backed undo for the most recent schedule shift.
  *
- * Undo lasts 30 minutes, or until a snapshotted activity's reminder date is
- * changed outside of shift apply / undo restore.
+ * Undo lasts 30 minutes, or until a snapshotted activity's reminder date no
+ * longer matches the shifted value (including edits made outside Homeschool).
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -40,7 +40,7 @@ class shift_undo {
      * Store undo snapshots, replacing any previous undo for this user.
      *
      * @param int $userid
-     * @param \stdClass[] $snapshots Each entry: cmid, timestamp
+     * @param \stdClass[] $snapshots Each entry: cmid, timestamp (pre-shift), shifted (post-shift)
      * @param string $summary Human-readable description for the undo banner
      * @return void
      */
@@ -61,7 +61,7 @@ class shift_undo {
     }
 
     /**
-     * Undo payload for the current user, if any and not expired.
+     * Undo payload for the current user, if any and not expired or invalidated.
      *
      * @return \stdClass|null
      */
@@ -79,6 +79,11 @@ class shift_undo {
         }
 
         if (empty($data->time) || (time() - (int) $data->time) > self::TTL) {
+            self::clear();
+            return null;
+        }
+
+        if (!self::snapshots_match_current_values($data->snapshots ?? [])) {
             self::clear();
             return null;
         }
@@ -130,18 +135,14 @@ class shift_undo {
         // Capture and clear first so restore writes do not re-invalidate.
         self::clear();
 
+        $timestampsbycmid = [];
         foreach ($data->snapshots as $snapshot) {
-            $apply = day_scheduler::apply_to_activities(
-                [(int) $snapshot->cmid],
-                (int) $snapshot->timestamp,
-                false,
-            );
-            if ($apply->updated > 0) {
-                $result->updated++;
-            } else {
-                $result->skipped++;
-            }
+            $timestampsbycmid[(int) $snapshot->cmid] = (int) $snapshot->timestamp;
         }
+
+        $apply = day_scheduler::apply_timestamps($timestampsbycmid, false);
+        $result->updated = $apply->updated;
+        $result->skipped = $apply->skipped;
 
         return $result;
     }
@@ -154,5 +155,49 @@ class shift_undo {
     public static function clear(): void {
         global $SESSION;
         unset($SESSION->{self::SESSION_KEY});
+    }
+
+    /**
+     * True when every snapshot still has its post-shift completionexpected value.
+     *
+     * Detects reminder edits made outside Homeschool (e.g. core activity settings)
+     * that never call invalidate_for_cmids().
+     *
+     * @param \stdClass[] $snapshots
+     * @return bool
+     */
+    protected static function snapshots_match_current_values(array $snapshots): bool {
+        global $DB;
+
+        if (empty($snapshots)) {
+            return false;
+        }
+
+        $expectedbycmid = [];
+        foreach ($snapshots as $snapshot) {
+            if (!isset($snapshot->cmid) || !isset($snapshot->shifted)) {
+                return false;
+            }
+            $expectedbycmid[(int) $snapshot->cmid] = (int) $snapshot->shifted;
+        }
+
+        $records = $DB->get_records_list(
+            'course_modules',
+            'id',
+            array_keys($expectedbycmid),
+            '',
+            'id,completionexpected',
+        );
+
+        foreach ($expectedbycmid as $cmid => $shifted) {
+            if (!isset($records[$cmid])) {
+                return false;
+            }
+            if ((int) $records[$cmid]->completionexpected !== $shifted) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

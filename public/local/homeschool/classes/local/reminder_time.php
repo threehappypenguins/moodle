@@ -115,13 +115,18 @@ class reminder_time {
     /**
      * Hour and minute for a newly chosen calendar day (no existing reminder).
      *
-     * When the custom default is disabled, returns midnight (previous behaviour).
+     * When the custom default is disabled, uses the current user time so behaviour
+     * matches Moodle's date_time_selector (defaulttime 0 → time()).
      *
      * @return array{0: int, 1: int} [hour, minute]
      */
     public static function get_new_reminder_hour_minute(): array {
         if (!self::is_enabled()) {
-            return [0, 0];
+            $now = time();
+            return [
+                (int) userdate($now, '%H'),
+                (int) userdate($now, '%M'),
+            ];
         }
 
         return [self::get_default_hour(), self::get_default_minute()];
