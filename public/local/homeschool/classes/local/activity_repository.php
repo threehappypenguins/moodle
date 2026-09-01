@@ -73,10 +73,9 @@ class activity_repository {
                     'completionlocked' => $completioninfo->count_user_data($cm) > 0,
                     'requirements' => $conditions,
                     'hasrequirements' => !empty($conditions),
-                    'editurl' => (new \moodle_url('/course/modedit.php', [
-                        'update' => $cm->id,
-                        'return' => true,
-                    ]))->out(false),
+                    'activityurl' => ($cm->url ? $cm->url->out(false) : (new \moodle_url('/mod/' . $cm->modname . '/view.php', [
+                        'id' => $cm->id,
+                    ]))->out(false)),
                     'isassign' => ($cm->modname === 'assign'),
                     'submissions' => $cm->modname === 'assign' ? self::get_assign_submission_types($cm) : [],
                 ];

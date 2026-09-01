@@ -9,12 +9,30 @@
             </div>
 
             <div class="local-homeschool-activity-info">
-                <a class="local-homeschool-activity-name" href="{{editurl}}">{{activityname}}</a>
+                <a class="local-homeschool-activity-name" href="{{activityurl}}">{{activityname}}</a>
                 <div class="text-muted small local-homeschool-activity-meta">
                     <span class="local-homeschool-activity-course">{{coursename}}</span>
                     <span aria-hidden="true"> · </span>
                     <span>{{modname}}</span>
                 </div>
+                {{#hasprogress}}
+                    <ul class="local-homeschool-activity-progress list-unstyled mb-0">
+                        {{#progress}}
+                            <li class="local-homeschool-progress-item {{stateclass}}">
+                                {{#showname}}
+                                    <span class="local-homeschool-progress-name">{{studentname}}</span>
+                                    <span class="local-homeschool-progress-sep" aria-hidden="true">·</span>
+                                {{/showname}}
+                                {{#hasurl}}
+                                    <a class="local-homeschool-progress-label" href="{{url}}">{{label}}</a>
+                                {{/hasurl}}
+                                {{^hasurl}}
+                                    <span class="local-homeschool-progress-label">{{label}}</span>
+                                {{/hasurl}}
+                            </li>
+                        {{/progress}}
+                    </ul>
+                {{/hasprogress}}
             </div>
 
             <button type="button"

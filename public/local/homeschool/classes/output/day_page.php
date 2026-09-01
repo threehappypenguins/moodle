@@ -16,6 +16,7 @@
 
 namespace local_homeschool\output;
 
+use local_homeschool\local\activity_progress;
 use local_homeschool\local\activity_repository;
 use local_homeschool\local\student_repository;
 use renderable;
@@ -104,6 +105,8 @@ class day_page implements renderable, templatable {
 
             if (!$this->showall) {
                 $groups = $this->build_child_groups($rows, $coursestudents);
+            } else {
+                $this->attach_progress_to_rows($rows, $coursestudents);
             }
 
             $addcourseexport = $this->export_add_courses($coursestudents);
@@ -287,7 +290,9 @@ class day_page implements renderable, templatable {
                 || ((int) $this->expandreqcmid === (int) $activity->cmid),
             'requirementsopen' => ((int) $this->expandreqcmid === (int) $activity->cmid),
             'requirements' => self::export_requirements($activity),
-            'editurl' => $activity->editurl,
+            'activityurl' => $activity->activityurl,
+            'progress' => [],
+            'hasprogress' => false,
             'dayurl' => $this->day_url()->out(false),
             'sesskey' => sesskey(),
             'daynumber' => $this->daynumber,
@@ -363,16 +368,54 @@ class day_page implements renderable, templatable {
                     'singlestudent' => $meta->singlestudent,
                     'nostudents' => $meta->nostudents,
                     'sortname' => $meta->sortname,
+                    'students' => $meta->students,
                     'activities' => [],
                 ];
             }
-            $grouped[$meta->key]->activities[] = $row;
+            // Clone so shared-course enrichment does not leak across groups.
+            $activity = clone $row;
+            $grouped[$meta->key]->activities[] = $activity;
+        }
+
+        foreach ($grouped as $group) {
+            $this->attach_progress_to_group($group);
         }
 
         $groups = array_values($grouped);
         usort($groups, [$this, 'compare_child_groups']);
 
         return $groups;
+    }
+
+    /**
+     * Attach per-child progress onto a child group's activity rows.
+     *
+     * @param \stdClass $group
+     * @return void
+     */
+    protected function attach_progress_to_group(\stdClass $group): void {
+        $students = $group->students ?? [];
+        $includenames = !empty($group->shared);
+        foreach ($group->activities as $activity) {
+            $activity->progress = activity_progress::export_for_activity($activity, $students, $includenames);
+            $activity->hasprogress = !empty($activity->progress);
+        }
+    }
+
+    /**
+     * Attach progress for every enrolled child when showing the flat list.
+     *
+     * @param \stdClass[] $rows
+     * @param array $coursestudents courseid => [userid => user]
+     * @return void
+     */
+    protected function attach_progress_to_rows(array $rows, array $coursestudents): void {
+        foreach ($rows as $row) {
+            $students = $coursestudents[(int) $row->courseid] ?? [];
+            $includenames = count($students) > 1;
+            $row->progress = activity_progress::export_for_activity($row, $students, $includenames);
+            $row->hasprogress = !empty($row->progress);
+        }
     }
 
     /**
@@ -388,8 +431,10 @@ class day_page implements renderable, templatable {
         sort($ids);
         $key = $ids ? implode(',', $ids) : 'none';
 
+        $ordered = [];
         $names = [];
         foreach ($ids as $id) {
+            $ordered[$id] = $students[$id];
             $names[] = student_repository::format_child_name($students[$id]);
         }
         $shared = count($ids) > 1;
@@ -408,6 +453,7 @@ class day_page implements renderable, templatable {
             'singlestudent' => count($ids) === 1,
             'nostudents' => $ids === [],
             'sortname' => $ids === [] ? 'zzz' : implode(', ', $names),
+            'students' => $ordered,
         ];
     }
 

@@ -168,6 +168,62 @@
     word-wrap: break-word;
 }
 
+.local-homeschool-activity-progress {
+    margin-top: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.local-homeschool-progress-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.4rem;
+    font-size: 0.875rem;
+    line-height: 1.3;
+}
+
+.local-homeschool-progress-name {
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.local-homeschool-progress-label {
+    font-weight: 500;
+}
+
+.local-homeschool-activity-progress a.local-homeschool-progress-label,
+.local-homeschool-activity-progress a.local-homeschool-progress-label:link,
+.local-homeschool-activity-progress a.local-homeschool-progress-label:visited,
+.local-homeschool-activity-progress a.local-homeschool-progress-label:hover,
+.local-homeschool-activity-progress a.local-homeschool-progress-label:focus,
+.local-homeschool-activity-progress a.local-homeschool-progress-label:active {
+    text-decoration: none !important;
+}
+
+.local-homeschool-progress-item.is-complete .local-homeschool-progress-label {
+    color: var(--bs-success, #198754);
+}
+
+.local-homeschool-progress-item.is-failed .local-homeschool-progress-label {
+    color: var(--bs-danger, #dc3545);
+}
+
+.local-homeschool-progress-item.is-submitted .local-homeschool-progress-label,
+.local-homeschool-progress-item.is-attempted .local-homeschool-progress-label {
+    color: var(--bs-primary, #0d6efd);
+}
+
+.local-homeschool-progress-item.is-draft .local-homeschool-progress-label {
+    color: var(--bs-warning-text-emphasis, #997404);
+}
+
+.local-homeschool-progress-item.is-notstarted .local-homeschool-progress-label,
+.local-homeschool-progress-item.is-notsubmitted .local-homeschool-progress-label {
+    color: var(--bs-secondary-color, #6c757d);
+    font-weight: 400;
+}
+
 .local-homeschool-activity-date {
     grid-area: date;
     display: flex;

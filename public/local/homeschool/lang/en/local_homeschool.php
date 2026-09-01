@@ -154,3 +154,13 @@ $string['reminderhour'] = 'Default hour';
 $string['reminderhour_desc'] = 'Hour of day (0–23) for new timeline reminders.';
 $string['reminderminute'] = 'Default minute';
 $string['reminderminute_desc'] = 'Minute (0–59) for new timeline reminders.';
+
+// Child progress on day page.
+$string['progresscomplete'] = 'Complete';
+$string['progressfailed'] = 'Failed';
+$string['progresssubmitted'] = 'Submitted';
+$string['progressnotsubmitted'] = 'Not submitted';
+$string['progressdraft'] = 'Draft in progress';
+$string['progressattempted'] = '{$a} attempt(s)';
+$string['progressnotstarted'] = 'Not started';
+$string['progressincomplete'] = 'Incomplete';

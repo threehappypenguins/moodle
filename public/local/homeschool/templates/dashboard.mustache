@@ -1,57 +1,59 @@
 <div class="local-homeschool-dashboard">
-    <div class="mb-3 d-flex flex-wrap align-items-end gap-3">
-        {{#hasdaypicker}}
-            <div class="local-homeschool-dashboard-day-picker">
-                <label for="local-homeschool-dashboard-day" class="form-label mb-1">{{#str}} daynumber, local_homeschool {{/str}}</label>
-                <select class="form-select"
-                        id="local-homeschool-dashboard-day"
-                        data-dayurl="{{dayurl}}">
-                    <option value="">{{#str}} chooseday, local_homeschool {{/str}}</option>
-                    {{#dayoptions}}
-                        <option value="{{value}}">{{label}}</option>
-                    {{/dayoptions}}
-                </select>
-            </div>
-        {{/hasdaypicker}}
+    <div class="mb-3 local-homeschool-dashboard-toolbar">
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            {{#hasdaypicker}}
+                <div class="local-homeschool-dashboard-day-picker">
+                    <label for="local-homeschool-dashboard-day" class="form-label mb-1">{{#str}} daynumber, local_homeschool {{/str}}</label>
+                    <select class="form-select"
+                            id="local-homeschool-dashboard-day"
+                            data-dayurl="{{dayurl}}">
+                        <option value="">{{#str}} chooseday, local_homeschool {{/str}}</option>
+                        {{#dayoptions}}
+                            <option value="{{value}}">{{label}}</option>
+                        {{/dayoptions}}
+                    </select>
+                </div>
+            {{/hasdaypicker}}
+
+            {{#showfilters}}
+                <form method="get" action="{{dashboardurl}}" class="mb-0 d-flex flex-wrap align-items-center gap-3">
+                    {{#hashiddencourses}}
+                        <div class="form-check mb-0">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="local-homeschool-showhidden"
+                                   name="showhidden"
+                                   value="1"
+                                   {{#showhidden}}checked{{/showhidden}}
+                                   onchange="this.form.submit()">
+                            <label class="form-check-label" for="local-homeschool-showhidden">
+                                {{#str}} showhiddencourses, local_homeschool, {{hiddencount}} {{/str}}
+                            </label>
+                        </div>
+                    {{/hashiddencourses}}
+                    {{#hasotherformats}}
+                        <div class="form-check mb-0">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="local-homeschool-showotherformats"
+                                   name="showotherformats"
+                                   value="1"
+                                   {{#showotherformats}}checked{{/showotherformats}}
+                                   onchange="this.form.submit()">
+                            <label class="form-check-label" for="local-homeschool-showotherformats">
+                                {{#str}} showotherformats, local_homeschool, {{otherformatscount}} {{/str}}
+                            </label>
+                        </div>
+                    {{/hasotherformats}}
+                </form>
+            {{/showfilters}}
+        </div>
 
         {{#hasshiftlink}}
-            <div class="local-homeschool-dashboard-shift-link">
+            <div class="local-homeschool-dashboard-shift-link mt-2">
                 <a class="btn btn-secondary" href="{{shifturl}}">{{#str}} shiftschedulelink, local_homeschool {{/str}}</a>
             </div>
         {{/hasshiftlink}}
-
-        {{#showfilters}}
-            <form method="get" action="{{dashboardurl}}" class="mb-0 d-flex flex-wrap align-items-center gap-3">
-                {{#hashiddencourses}}
-                    <div class="form-check mb-0">
-                        <input type="checkbox"
-                               class="form-check-input"
-                               id="local-homeschool-showhidden"
-                               name="showhidden"
-                               value="1"
-                               {{#showhidden}}checked{{/showhidden}}
-                               onchange="this.form.submit()">
-                        <label class="form-check-label" for="local-homeschool-showhidden">
-                            {{#str}} showhiddencourses, local_homeschool, {{hiddencount}} {{/str}}
-                        </label>
-                    </div>
-                {{/hashiddencourses}}
-                {{#hasotherformats}}
-                    <div class="form-check mb-0">
-                        <input type="checkbox"
-                               class="form-check-input"
-                               id="local-homeschool-showotherformats"
-                               name="showotherformats"
-                               value="1"
-                               {{#showotherformats}}checked{{/showotherformats}}
-                               onchange="this.form.submit()">
-                        <label class="form-check-label" for="local-homeschool-showotherformats">
-                            {{#str}} showotherformats, local_homeschool, {{otherformatscount}} {{/str}}
-                        </label>
-                    </div>
-                {{/hasotherformats}}
-            </form>
-        {{/showfilters}}
     </div>
 
     {{^hascourses}}
