@@ -149,7 +149,7 @@ class activity_updater {
      * @return bool
      */
     public static function update_assign_submissions(int $cmid, array $enabledtypes): bool {
-        global $CFG;
+        global $CFG, $DB;
 
         require_once($CFG->dirroot . '/mod/assign/locallib.php');
 
@@ -172,8 +172,19 @@ class activity_updater {
             if ((bool) $plugin->is_enabled() === $wantenabled) {
                 continue;
             }
-            $plugin->set_config('enabled', $wantenabled ? 1 : 0);
+            if ($wantenabled) {
+                $plugin->enable();
+            } else {
+                $plugin->disable();
+            }
             $changed = true;
+        }
+
+        if ($changed) {
+            $update = new \stdClass();
+            $update->id = $assign->get_instance()->id;
+            $update->nosubmissions = $assign->is_any_submission_plugin_enabled() ? 0 : 1;
+            $DB->update_record('assign', $update);
         }
 
         return $changed;

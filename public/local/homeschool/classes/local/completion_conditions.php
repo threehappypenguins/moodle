@@ -79,6 +79,8 @@ class completion_conditions {
 
         if (self::supports_grade_condition($cm)) {
             $usegrade = !is_null($cm->completiongradeitemnumber);
+            $gradeitem = self::get_completion_grade_item($cm);
+            $canrequirepassgrade = self::grade_item_has_pass($gradeitem);
             $grade = (object) [
                 'name' => 'completionusegrade',
                 'label' => get_string('completionusegrade_desc', 'completion'),
@@ -86,7 +88,8 @@ class completion_conditions {
                 'type' => 'core',
                 'valuetype' => 'bool',
                 'haspassgrade' => true,
-                'passgrade' => !empty($cm->completionpassgrade),
+                'canrequirepassgrade' => $canrequirepassgrade,
+                'passgrade' => $canrequirepassgrade && !empty($cm->completionpassgrade),
                 'hasexhausted' => false,
                 'exhausted' => false,
                 'exhaustedlabel' => '',
@@ -232,6 +235,23 @@ class completion_conditions {
      * @return string|null error message, or null if valid
      */
     public static function validate_posted_state(\cm_info $cm, array $state): ?string {
+        if (!is_null($state['completiongradeitemnumber'])) {
+            if (!self::supports_grade_condition($cm)) {
+                return get_string(
+                    'nogradeitem',
+                    'completion',
+                    format_string($cm->name, true, ['context' => \context_module::instance($cm->id)]),
+                );
+            }
+        }
+
+        if (!empty($state['completionpassgrade'])) {
+            $gradeitem = self::get_completion_grade_item($cm);
+            if (!self::grade_item_has_pass($gradeitem)) {
+                return get_string('activitygradetopassnotset', 'completion');
+            }
+        }
+
         foreach ($state['custom'] as $rule => $value) {
             if (empty($value)) {
                 continue;
@@ -333,10 +353,65 @@ class completion_conditions {
         }
         $component = 'mod_' . $cm->modname;
         if (!class_exists('\core_grades\component_gradeitems')) {
-            return true;
+            return self::completion_grade_item_is_active(self::get_completion_grade_item($cm));
         }
         $itemnames = \core_grades\component_gradeitems::get_itemname_mapping_for_component($component);
-        return count($itemnames) <= 1;
+        if (count($itemnames) > 1) {
+            return false;
+        }
+        return self::completion_grade_item_is_active(self::get_completion_grade_item($cm));
+    }
+
+    /**
+     * Fetch the grade item used for completion grade rules (single-item modules).
+     *
+     * @param \cm_info $cm
+     * @param int $itemnumber
+     * @return \grade_item|null
+     */
+    protected static function get_completion_grade_item(\cm_info $cm, int $itemnumber = 0): ?\grade_item {
+        global $CFG;
+
+        require_once($CFG->libdir . '/gradelib.php');
+
+        $item = \grade_item::fetch([
+            'courseid' => $cm->course,
+            'itemtype' => 'mod',
+            'itemmodule' => $cm->modname,
+            'iteminstance' => $cm->instance,
+            'itemnumber' => $itemnumber,
+        ]);
+
+        return $item ?: null;
+    }
+
+    /**
+     * Whether a grade item can satisfy "receive a grade" completion.
+     *
+     * @param \grade_item|null $item
+     * @return bool
+     */
+    protected static function completion_grade_item_is_active(?\grade_item $item): bool {
+        if (!$item) {
+            return false;
+        }
+
+        return in_array((int) $item->gradetype, [GRADE_TYPE_VALUE, GRADE_TYPE_SCALE], true);
+    }
+
+    /**
+     * Whether the grade item has a non-zero grade to pass.
+     *
+     * @param \grade_item|null $item
+     * @return bool
+     */
+    protected static function grade_item_has_pass(?\grade_item $item): bool {
+        if (!$item) {
+            return false;
+        }
+
+        $gradepass = unformat_float($item->gradepass);
+        return $gradepass !== false && $gradepass != 0;
     }
 
     /**

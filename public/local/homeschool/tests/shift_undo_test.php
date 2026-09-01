@@ -136,7 +136,8 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
             $this->make_snapshot($assign->cmid, $original, $shifted),
         ]);
 
-        $this->age_undo(shift_undo::TTL);
+        // One second inside TTL so a later time() in get_available() cannot cross the boundary.
+        $this->age_undo(shift_undo::TTL - 1);
         $this->assertNotNull(shift_undo::get_available());
 
         $this->age_undo(shift_undo::TTL + 1);

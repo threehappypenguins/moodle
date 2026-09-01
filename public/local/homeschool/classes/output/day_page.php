@@ -350,6 +350,7 @@ class day_page implements renderable, templatable {
                 'fieldname' => 'requirement_' . $requirement->name,
                 'inputid' => 'requirement-' . $activity->cmid . '-' . $requirement->name,
                 'haspassgrade' => !empty($requirement->haspassgrade),
+                'canrequirepassgrade' => !empty($requirement->canrequirepassgrade),
                 'passgrade' => !empty($requirement->passgrade),
                 'hasexhausted' => !empty($requirement->hasexhausted),
                 'exhausted' => !empty($requirement->exhausted),

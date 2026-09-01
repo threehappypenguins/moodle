@@ -112,6 +112,11 @@ class day_scheduler {
             $modinfo = get_fast_modinfo($cm->course);
             $cminfo = $modinfo->get_cm($cm->id);
 
+            if (!$cminfo->uservisible) {
+                $result->skipped++;
+                continue;
+            }
+
             // Timeline reminders require completion enabled for the activity (same as core).
             if ($timestamp > 0 && !self::completion_expected_allowed($cminfo)) {
                 $result->skipped++;
@@ -258,6 +263,11 @@ class day_scheduler {
                         continue;
                     }
 
+                    if (!$cm->uservisible) {
+                        $preview->skippedpermission++;
+                        continue;
+                    }
+
                     if (!self::completion_expected_allowed($cm)) {
                         $preview->skippednocompletion++;
                         continue;
@@ -332,6 +342,11 @@ class day_scheduler {
 
             $modinfo = get_fast_modinfo($cm->course);
             $cminfo = $modinfo->get_cm($cm->id);
+
+            if (!$cminfo->uservisible) {
+                $result->skipped++;
+                continue;
+            }
 
             if (!self::completion_expected_allowed($cminfo)) {
                 $result->skipped++;
