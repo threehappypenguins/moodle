@@ -1,10 +1,18 @@
 <div class="local-homeschool-dashboard">
-    <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
-        {{#canmanage}}
-            <a class="btn btn-primary" href="{{scheduleurl}}">
-                {{#str}} schedule, local_homeschool {{/str}}
-            </a>
-        {{/canmanage}}
+    <div class="mb-3 d-flex flex-wrap align-items-end gap-3">
+        {{#hasdaypicker}}
+            <div class="local-homeschool-dashboard-day-picker">
+                <label for="local-homeschool-dashboard-day" class="form-label mb-1">{{#str}} daynumber, local_homeschool {{/str}}</label>
+                <select class="form-select"
+                        id="local-homeschool-dashboard-day"
+                        data-reviewurl="{{reviewurl}}">
+                    <option value="">{{#str}} chooseday, local_homeschool {{/str}}</option>
+                    {{#dayoptions}}
+                        <option value="{{value}}">{{label}}</option>
+                    {{/dayoptions}}
+                </select>
+            </div>
+        {{/hasdaypicker}}
 
         {{#showfilters}}
             <form method="get" action="{{dashboardurl}}" class="mb-0 d-flex flex-wrap align-items-center gap-3">

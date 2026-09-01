@@ -121,6 +121,16 @@ class dashboard implements renderable, templatable {
         $daysectionscourses = array_filter($courses, static function($course) {
             return $course->format === 'daysections';
         });
+        $maxday = course_repository::get_max_day_number($daysectionscourses);
+        $dayoptions = [];
+        $optionmax = max($maxday, 1);
+        for ($i = 1; $i <= $optionmax; $i++) {
+            $dayoptions[] = (object) [
+                'value' => $i,
+                'label' => get_string('daytitle', 'local_homeschool', $i),
+            ];
+        }
+
         $now = time();
         $upcoming = upcoming_service::get_upcoming(
             $daysectionscourses,
@@ -156,7 +166,9 @@ class dashboard implements renderable, templatable {
             'courses' => array_values($courserows),
             'upcoming' => $upcomingrows,
             'hasupcoming' => !empty($upcomingrows),
-            'scheduleurl' => (new \moodle_url('/local/homeschool/review.php'))->out(false),
+            'reviewurl' => (new \moodle_url('/local/homeschool/review.php'))->out(false),
+            'hasdaypicker' => requirements::user_can_manage() && !empty($daysectionscourses),
+            'dayoptions' => $dayoptions,
             'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
             'nodatahelp' => get_string('nodatahelp', 'local_homeschool'),
             'otherformatshelp' => get_string('otherformatshelp', 'local_homeschool'),

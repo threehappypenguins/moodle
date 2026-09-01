@@ -1,3 +1,9 @@
+.local-homeschool-dashboard-day-picker .form-select {
+    width: auto;
+    min-width: 12rem;
+    max-width: 100%;
+}
+
 .local-homeschool-review {
     max-width: 100%;
     min-width: 0;
