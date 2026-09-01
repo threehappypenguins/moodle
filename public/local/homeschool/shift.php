@@ -37,8 +37,12 @@ if (!\local_homeschool\local\requirements::daysections_available()) {
 }
 
 $action = optional_param('action', '', PARAM_ALPHA);
+$showhidden = (bool) optional_param('showhidden', 0, PARAM_BOOL);
 
 $url = new moodle_url('/local/homeschool/shift.php');
+if ($showhidden) {
+    $url->param('showhidden', 1);
+}
 $PAGE->set_url($url);
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('base');
@@ -46,7 +50,7 @@ $PAGE->set_primary_active_tab('local_homeschool');
 $PAGE->set_title(get_string('shifttitle', 'local_homeschool'));
 $PAGE->set_heading(get_string('shifttitle', 'local_homeschool'));
 
-$courses = \local_homeschool\local\course_repository::get_managed_daysections_courses($USER->id);
+$courses = \local_homeschool\local\course_repository::get_managed_daysections_courses($USER->id, $showhidden);
 $maxday = max(1, \local_homeschool\local\course_repository::get_max_day_number($courses));
 
 /**
@@ -167,6 +171,7 @@ for ($i = 1; $i <= $maxday; $i++) {
 $form = new \local_homeschool\form\shift_schedule_form($url, [
     'maxday' => $maxday,
     'dayoptions' => $dayoptions,
+    'showhidden' => $showhidden,
 ]);
 
 $preview = null;
@@ -196,7 +201,7 @@ if ($form->is_cancelled()) {
 $formhtml = $form->render();
 $undo = \local_homeschool\local\shift_undo::get_available();
 
-$renderable = new \local_homeschool\output\shift_page($formhtml, $preview, $undo);
+$renderable = new \local_homeschool\output\shift_page($formhtml, $preview, $undo, $showhidden);
 $renderer = $PAGE->get_renderer('local_homeschool');
 
 echo $OUTPUT->header();

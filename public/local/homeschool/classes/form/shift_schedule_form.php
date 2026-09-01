@@ -72,6 +72,11 @@ class shift_schedule_form extends \moodleform {
         $mform->addRule('days', null, 'numeric', null, 'client');
         $mform->addHelpButton('days', 'shiftdaycount', 'local_homeschool');
 
+        if (!empty($this->_customdata['showhidden'])) {
+            $mform->addElement('hidden', 'showhidden', 1);
+            $mform->setType('showhidden', PARAM_BOOL);
+        }
+
         $this->add_action_buttons(true, get_string('shiftpreview', 'local_homeschool'));
     }
 

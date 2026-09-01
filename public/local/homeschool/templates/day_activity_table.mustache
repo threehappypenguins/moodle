@@ -43,6 +43,7 @@
                     data-modname="{{modname}}"
                     data-day="{{daynumber}}"
                     data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
+                    data-showhidden="{{#showhidden}}1{{/showhidden}}{{^showhidden}}0{{/showhidden}}"
                     data-dayurl="{{dayurl}}"
                     data-sesskey="{{sesskey}}"
                     title="{{#str}} delete {{/str}}"
@@ -59,6 +60,9 @@
                 {{#showall}}
                     <input type="hidden" name="showall" value="1">
                 {{/showall}}
+                {{#showhidden}}
+                    <input type="hidden" name="showhidden" value="1">
+                {{/showhidden}}
                 <span class="local-homeschool-date-value">{{completionexpectedformatted}}</span>
                 <span class="local-homeschool-calendar-wrap" title="{{#str}} changedate, local_homeschool {{/str}}">
                     <span class="local-homeschool-calendar-btn" aria-hidden="true">
@@ -96,8 +100,12 @@
                     {{#showall}}
                         <input type="hidden" name="showall" value="1">
                     {{/showall}}
+                    {{#showhidden}}
+                        <input type="hidden" name="showhidden" value="1">
+                    {{/showhidden}}
 
                     <div class="mb-2 local-homeschool-completion-field">
+                        {{#completionenabled}}
                         <div class="form-label mb-1" id="completion-label-{{cmid}}">{{#str}} completion, local_homeschool {{/str}}</div>
                         {{#completionlocked}}
                             <input type="hidden" name="completion" value="{{completion}}">
@@ -233,6 +241,10 @@
                                 </div>
                             </details>
                         {{/hasrequirements}}
+                        {{/completionenabled}}
+                        {{^completionenabled}}
+                            <div class="form-text text-muted">{{#str}} completionnotenabledforcourse, completion {{/str}}</div>
+                        {{/completionenabled}}
                     </div>
 
                     {{#hassubmissions}}

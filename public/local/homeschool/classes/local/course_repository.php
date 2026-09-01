@@ -19,7 +19,7 @@ namespace local_homeschool\local;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Day-sections courses the current user can manage.
+ * Homeschool courses the current user may view or manage.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -28,14 +28,36 @@ defined('MOODLE_INTERNAL') || die();
 class course_repository {
 
     /**
-     * Courses using daysections that the user can manage activities in.
+     * Daysections courses the user may view on the dashboard.
+     *
+     * @param int $userid
+     * @param bool $includehidden Include courses that are hidden from students
+     * @return \stdClass[] keyed by course id (includes ->visible)
+     */
+    public static function get_viewable_daysections_courses(int $userid, bool $includehidden = false): array {
+        return self::get_homeschool_courses($userid, 'local/homeschool:view', false, $includehidden, true);
+    }
+
+    /**
+     * Non-daysections courses the user may view on the dashboard.
+     *
+     * @param int $userid
+     * @param bool $includehidden
+     * @return \stdClass[] keyed by course id
+     */
+    public static function get_viewable_other_format_courses(int $userid, bool $includehidden = false): array {
+        return self::get_homeschool_courses($userid, 'local/homeschool:view', false, $includehidden, false);
+    }
+
+    /**
+     * Daysections courses the user may manage through Homeschool scheduling pages.
      *
      * @param int $userid
      * @param bool $includehidden Include courses that are hidden from students
      * @return \stdClass[] keyed by course id (includes ->visible)
      */
     public static function get_managed_daysections_courses(int $userid, bool $includehidden = false): array {
-        return self::get_managed_courses($userid, $includehidden, true);
+        return self::get_homeschool_courses($userid, 'local/homeschool:manage', true, $includehidden, true);
     }
 
     /**
@@ -46,7 +68,29 @@ class course_repository {
      * @return \stdClass[] keyed by course id
      */
     public static function get_managed_other_format_courses(int $userid, bool $includehidden = false): array {
-        return self::get_managed_courses($userid, $includehidden, false);
+        return self::get_homeschool_courses($userid, 'local/homeschool:manage', true, $includehidden, false);
+    }
+
+    /**
+     * Count of hidden daysections courses the user may view.
+     *
+     * @param int $userid
+     * @return int
+     */
+    public static function count_hidden_viewable_daysections_courses(int $userid): int {
+        return count(self::get_viewable_daysections_courses($userid, true))
+            - count(self::get_viewable_daysections_courses($userid, false));
+    }
+
+    /**
+     * Count of viewable courses not using daysections.
+     *
+     * @param int $userid
+     * @param bool $includehidden
+     * @return int
+     */
+    public static function count_viewable_other_format_courses(int $userid, bool $includehidden = false): int {
+        return count(self::get_viewable_other_format_courses($userid, $includehidden));
     }
 
     /**
@@ -111,13 +155,21 @@ class course_repository {
 
     /**
      * @param int $userid
+     * @param string $homeschoolcap local/homeschool:view or local/homeschool:manage
+     * @param bool $requiremanageactivities Also require moodle/course:manageactivities in the course
      * @param bool $includehidden
      * @param bool $daysectionsonly true = only daysections, false = every other format
      * @return \stdClass[]
      */
-    protected static function get_managed_courses(int $userid, bool $includehidden, bool $daysectionsonly): array {
-        $managed = [];
-        foreach (self::get_manageable_courses($userid) as $courseid => $course) {
+    protected static function get_homeschool_courses(
+        int $userid,
+        string $homeschoolcap,
+        bool $requiremanageactivities,
+        bool $includehidden,
+        bool $daysectionsonly,
+    ): array {
+        $courses = [];
+        foreach (self::get_courses_with_homeschool_capability($userid, $homeschoolcap, $requiremanageactivities) as $courseid => $course) {
             $isdaysections = ($course->format === 'daysections');
             if ($daysectionsonly !== $isdaysections) {
                 continue;
@@ -125,54 +177,65 @@ class course_repository {
             if (!$includehidden && !(int) $course->visible) {
                 continue;
             }
-            $managed[$courseid] = $course;
+            $courses[$courseid] = $course;
         }
 
-        return $managed;
+        return $courses;
     }
 
     /**
-     * Courses where the user can manage activities (capability-filtered, then site course removed).
+     * Courses where the user holds a Homeschool capability with active enrolment.
      *
      * Cached per request so dashboard counts/lists do not repeat the capability scan.
      *
      * @param int $userid
+     * @param string $homeschoolcap
+     * @param bool $requiremanageactivities
      * @return \stdClass[] keyed by course id
      */
-    protected static function get_manageable_courses(int $userid): array {
+    protected static function get_courses_with_homeschool_capability(
+        int $userid,
+        string $homeschoolcap,
+        bool $requiremanageactivities,
+    ): array {
         static $cache = [];
 
-        if (array_key_exists($userid, $cache)) {
-            return $cache[$userid];
+        $cachekey = $userid . ':' . $homeschoolcap . ':' . (int) $requiremanageactivities;
+        if (array_key_exists($cachekey, $cache)) {
+            return $cache[$cachekey];
         }
 
         $courses = get_user_capability_course(
-            'moodle/course:manageactivities',
+            $homeschoolcap,
             $userid,
             true,
             'fullname, shortname, format, visible',
             'fullname ASC',
         );
 
-        $managed = [];
+        $filtered = [];
         if (!empty($courses)) {
             foreach ($courses as $course) {
                 $courseid = (int) $course->id;
                 if ($courseid === (int) SITEID) {
                     continue;
                 }
-                if (!requirements::user_has_active_enrolment_in_course(
-                    $userid,
-                    $courseid,
-                    'moodle/course:manageactivities',
-                )) {
+                if (!requirements::user_has_active_enrolment_in_course($userid, $courseid, $homeschoolcap)) {
                     continue;
                 }
-                $managed[$courseid] = $course;
+                if ($requiremanageactivities &&
+                        !requirements::user_has_active_enrolment_in_course(
+                            $userid,
+                            $courseid,
+                            'moodle/course:manageactivities',
+                        )) {
+                    continue;
+                }
+                $filtered[$courseid] = $course;
             }
         }
 
-        $cache[$userid] = $managed;
-        return $managed;
+        $cache[$cachekey] = $filtered;
+        return $filtered;
     }
 }

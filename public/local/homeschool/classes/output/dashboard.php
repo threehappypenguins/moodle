@@ -58,13 +58,13 @@ class dashboard implements renderable, templatable {
      * @return \stdClass
      */
     public function export_for_template(renderer_base $output): \stdClass {
-        $hiddencount = course_repository::count_hidden_managed_daysections_courses($this->userid);
+        $hiddencount = course_repository::count_hidden_viewable_daysections_courses($this->userid);
         // Include hidden in the count so the cleanup toggle remains discoverable.
-        $otherformatscount = course_repository::count_managed_other_format_courses($this->userid, true);
+        $otherformatscount = course_repository::count_viewable_other_format_courses($this->userid, true);
 
-        $courses = course_repository::get_managed_daysections_courses($this->userid, $this->showhidden);
+        $courses = course_repository::get_viewable_daysections_courses($this->userid, $this->showhidden);
         if ($this->showotherformats) {
-            $courses += course_repository::get_managed_other_format_courses($this->userid, $this->showhidden);
+            $courses += course_repository::get_viewable_other_format_courses($this->userid, $this->showhidden);
             uasort($courses, static function($a, $b) {
                 return strcmp($a->fullname, $b->fullname);
             });
@@ -121,6 +121,7 @@ class dashboard implements renderable, templatable {
         $daysectionscourses = array_filter($courses, static function($course) {
             return $course->format === 'daysections';
         });
+        $manageddaysectionscourses = course_repository::get_managed_daysections_courses($this->userid, $this->showhidden);
         $maxday = course_repository::get_max_day_number($daysectionscourses);
         $dayoptions = [];
         $optionmax = max($maxday, 1);
@@ -140,6 +141,10 @@ class dashboard implements renderable, templatable {
 
         $upcomingrows = [];
         foreach ($upcoming as $item) {
+            $itemdayurl = new \moodle_url('/local/homeschool/day.php', ['day' => $item->sectionnum]);
+            if ($this->showhidden) {
+                $itemdayurl->param('showhidden', 1);
+            }
             $upcomingrows[] = (object) [
                 'coursename' => $item->coursename,
                 'activityname' => $item->activityname,
@@ -147,8 +152,15 @@ class dashboard implements renderable, templatable {
                 'dateformatted' => $item->dateformatted,
                 'overdue' => $item->overdue,
                 'url' => $item->url,
-                'dayurl' => $item->dayurl,
+                'dayurl' => $itemdayurl->out(false),
             ];
+        }
+
+        $shifturl = new \moodle_url('/local/homeschool/shift.php');
+        $dayurl = new \moodle_url('/local/homeschool/day.php');
+        if ($this->showhidden) {
+            $shifturl->param('showhidden', 1);
+            $dayurl->param('showhidden', 1);
         }
 
         return (object) [
@@ -166,10 +178,10 @@ class dashboard implements renderable, templatable {
             'courses' => array_values($courserows),
             'upcoming' => $upcomingrows,
             'hasupcoming' => !empty($upcomingrows),
-            'dayurl' => (new \moodle_url('/local/homeschool/day.php'))->out(false),
-            'hasdaypicker' => requirements::user_can_manage() && !empty($daysectionscourses),
-            'shifturl' => (new \moodle_url('/local/homeschool/shift.php'))->out(false),
-            'hasshiftlink' => requirements::user_can_manage() && !empty($daysectionscourses),
+            'dayurl' => $dayurl->out(false),
+            'hasdaypicker' => requirements::user_can_manage() && !empty($manageddaysectionscourses),
+            'shifturl' => $shifturl->out(false),
+            'hasshiftlink' => requirements::user_can_manage() && !empty($manageddaysectionscourses),
             'dayoptions' => $dayoptions,
             'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
             'nodatahelp' => get_string('nodatahelp', 'local_homeschool'),

@@ -28,6 +28,20 @@ defined('MOODLE_INTERNAL') || die();
 class day_scheduler {
 
     /**
+     * Whether a timeline reminder date may be set for this activity.
+     *
+     * Matches core behaviour: completion must be enabled at site/course level and
+     * the activity must use manual or automatic tracking.
+     *
+     * @param \cm_info $cm
+     * @return bool
+     */
+    public static function completion_expected_allowed(\cm_info $cm): bool {
+        $completioninfo = new \completion_info($cm->get_course());
+        return (bool) $completioninfo->is_enabled($cm);
+    }
+
+    /**
      * Set completion expected date for specific course modules.
      *
      * @param int[] $cmids
@@ -95,8 +109,11 @@ class day_scheduler {
                 continue;
             }
 
-            // Timeline reminders require completion tracking (same as core completionexpected).
-            if ((int) $cm->completion === COMPLETION_TRACKING_NONE && $timestamp > 0) {
+            $modinfo = get_fast_modinfo($cm->course);
+            $cminfo = $modinfo->get_cm($cm->id);
+
+            // Timeline reminders require completion enabled for the activity (same as core).
+            if ($timestamp > 0 && !self::completion_expected_allowed($cminfo)) {
                 $result->skipped++;
                 continue;
             }
@@ -168,7 +185,7 @@ class day_scheduler {
                 if ($cm->deletioninprogress) {
                     continue;
                 }
-                if (!$includewithoutcompletion && $cm->completion == COMPLETION_TRACKING_NONE) {
+                if (!$includewithoutcompletion && !self::completion_expected_allowed($cm)) {
                     continue;
                 }
                 $cmids[] = $cm->id;
@@ -241,7 +258,7 @@ class day_scheduler {
                         continue;
                     }
 
-                    if ((int) $cm->completion === COMPLETION_TRACKING_NONE) {
+                    if (!self::completion_expected_allowed($cm)) {
                         $preview->skippednocompletion++;
                         continue;
                     }
@@ -313,7 +330,10 @@ class day_scheduler {
                 continue;
             }
 
-            if ((int) $cm->completion === COMPLETION_TRACKING_NONE) {
+            $modinfo = get_fast_modinfo($cm->course);
+            $cminfo = $modinfo->get_cm($cm->id);
+
+            if (!self::completion_expected_allowed($cminfo)) {
                 $result->skipped++;
                 continue;
             }

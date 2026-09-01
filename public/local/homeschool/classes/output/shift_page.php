@@ -39,15 +39,20 @@ class shift_page implements renderable, templatable {
     /** @var \stdClass|null */
     protected $undo;
 
+    /** @var bool */
+    protected $showhidden;
+
     /**
      * @param string $formhtml Rendered shift form HTML
      * @param \stdClass|null $preview Preview result from day_scheduler::preview_shift()
      * @param \stdClass|null $undo Available undo payload
+     * @param bool $showhidden Include courses hidden from students
      */
-    public function __construct(string $formhtml, ?\stdClass $preview, ?\stdClass $undo) {
+    public function __construct(string $formhtml, ?\stdClass $preview, ?\stdClass $undo, bool $showhidden = false) {
         $this->formhtml = $formhtml;
         $this->preview = $preview;
         $this->undo = $undo;
+        $this->showhidden = $showhidden;
     }
 
     /**
@@ -55,9 +60,17 @@ class shift_page implements renderable, templatable {
      * @return \stdClass
      */
     public function export_for_template(renderer_base $output): \stdClass {
+        $dashboardurl = new \moodle_url('/local/homeschool/index.php');
+        $shifturl = new \moodle_url('/local/homeschool/shift.php');
+        if ($this->showhidden) {
+            $dashboardurl->param('showhidden', 1);
+            $shifturl->param('showhidden', 1);
+        }
+
         $data = (object) [
-            'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
-            'shifturl' => (new \moodle_url('/local/homeschool/shift.php'))->out(false),
+            'dashboardurl' => $dashboardurl->out(false),
+            'shifturl' => $shifturl->out(false),
+            'showhidden' => $this->showhidden,
             'formhtml' => $this->formhtml,
             'sesskey' => sesskey(),
             'haspreview' => false,

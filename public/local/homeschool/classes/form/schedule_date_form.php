@@ -44,6 +44,10 @@ class schedule_date_form extends \moodleform {
             $mform->addElement('hidden', 'showall', 1);
             $mform->setType('showall', PARAM_BOOL);
         }
+        if (!empty($this->_customdata['showhidden'])) {
+            $mform->addElement('hidden', 'showhidden', 1);
+            $mform->setType('showhidden', PARAM_BOOL);
+        }
 
         $mform->addElement(
             'date_time_selector',

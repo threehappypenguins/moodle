@@ -57,9 +57,10 @@ const syncBulkDeleteButton = (root) => {
  * @param {string} params.sesskey
  * @param {string} params.day
  * @param {string} params.showall
+ * @param {string} params.showhidden
  * @param {number[]} params.cmids
  */
-const submitDelete = ({dayurl, sesskey, day, showall, cmids}) => {
+const submitDelete = ({dayurl, sesskey, day, showall, showhidden, cmids}) => {
     const form = document.createElement('form');
     form.method = 'post';
     form.action = dayurl;
@@ -72,6 +73,9 @@ const submitDelete = ({dayurl, sesskey, day, showall, cmids}) => {
     };
     if (showall === '1') {
         fields.showall = '1';
+    }
+    if (showhidden === '1') {
+        fields.showhidden = '1';
     }
 
     Object.entries(fields).forEach(([name, value]) => {
@@ -127,6 +131,7 @@ const confirmAndDeleteSingle = async(button) => {
             sesskey: button.dataset.sesskey,
             day: button.dataset.day,
             showall: button.dataset.showall,
+            showhidden: button.dataset.showhidden,
             cmids: [parseInt(button.dataset.cmid, 10)],
         });
     });
@@ -162,6 +167,7 @@ const confirmAndDeleteSelected = async(button, root) => {
             sesskey: button.dataset.sesskey,
             day: button.dataset.day,
             showall: button.dataset.showall,
+            showhidden: button.dataset.showhidden,
             cmids,
         });
     });

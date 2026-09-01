@@ -33,9 +33,10 @@ import * as Repository from 'core_courseformat/local/activitychooser/repository'
  * @param {Array} modules
  * @param {Number} day
  * @param {Boolean} showall
+ * @param {Boolean} showhidden
  * @return {Array}
  */
-const wrapModuleLinksForReturn = (modules, day, showall) => {
+const wrapModuleLinksForReturn = (modules, day, showall, showhidden) => {
     if (!Array.isArray(modules) || day < 1) {
         return modules;
     }
@@ -48,6 +49,9 @@ const wrapModuleLinksForReturn = (modules, day, showall) => {
         });
         if (showall) {
             params.set('showall', '1');
+        }
+        if (showhidden) {
+            params.set('showhidden', '1');
         }
         return {
             ...module,
@@ -74,6 +78,7 @@ export const init = () => {
 
     const day = parseInt(root.dataset.day || '0', 10);
     const showall = root.dataset.showall === '1';
+    const showhidden = root.dataset.showhidden === '1';
 
     const syncControls = () => {
         const option = select.options[select.selectedIndex];
@@ -119,7 +124,7 @@ export const init = () => {
                 sectionId,
                 returnOptions,
                 null,
-            ).then((modules) => wrapModuleLinksForReturn(modules, day, showall));
+            ).then((modules) => wrapModuleLinksForReturn(modules, day, showall, showhidden));
             await ChooserDialogue.displayActivityChooserModal(footerDataPromise, modulesDataPromise);
         } catch (error) {
             Notification.exception(error);

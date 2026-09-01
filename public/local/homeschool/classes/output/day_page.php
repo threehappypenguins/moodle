@@ -44,6 +44,9 @@ class day_page implements renderable, templatable {
     /** @var bool */
     protected $showall;
 
+    /** @var bool */
+    protected $showhidden;
+
     /** @var int */
     protected $maxday;
 
@@ -57,6 +60,7 @@ class day_page implements renderable, templatable {
      * @param bool $showall Flat list of all activities (default is per-child groups)
      * @param int $maxday Highest day/section number across managed courses
      * @param int $expandreqcmid Open requirements for this cm after a failed autosave
+     * @param bool $showhidden Include courses hidden from students
      */
     public function __construct(
         int $daynumber,
@@ -65,11 +69,13 @@ class day_page implements renderable, templatable {
         bool $showall = false,
         int $maxday = 0,
         int $expandreqcmid = 0,
+        bool $showhidden = false,
     ) {
         $this->daynumber = $daynumber;
         $this->courses = $courses;
         $this->dateformhtml = $dateformhtml;
         $this->showall = $showall;
+        $this->showhidden = $showhidden;
         $this->maxday = max(0, $maxday);
         $this->expandreqcmid = $expandreqcmid;
     }
@@ -128,6 +134,11 @@ class day_page implements renderable, templatable {
             ];
         }
 
+        $dashboardurl = new \moodle_url('/local/homeschool/index.php');
+        if ($this->showhidden) {
+            $dashboardurl->param('showhidden', 1);
+        }
+
         return (object) [
             'daynumber' => $this->daynumber,
             'hasday' => $hasday,
@@ -135,12 +146,13 @@ class day_page implements renderable, templatable {
             'dayoptions' => $dayoptions,
             'maxday' => $this->maxday,
             'showall' => $this->showall,
+            'showhidden' => $this->showhidden,
             'activities' => $rows,
             'groups' => $groups,
             'hasgroups' => !empty($groups),
             'hasactivities' => !empty($rows),
             'noactivities' => $hasday && empty($rows),
-            'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
+            'dashboardurl' => $dashboardurl->out(false),
             'dayurl' => $this->day_url()->out(false),
             'dayformaction' => (new \moodle_url('/local/homeschool/day.php'))->out(false),
             'sesskey' => sesskey(),
@@ -251,6 +263,9 @@ class day_page implements renderable, templatable {
         if ($this->showall) {
             $url->param('showall', 1);
         }
+        if ($this->showhidden) {
+            $url->param('showhidden', 1);
+        }
         return $url;
     }
 
@@ -280,7 +295,9 @@ class day_page implements renderable, templatable {
             'completionexpectedformatted' => $activity->completionexpectedformatted,
             'completionexpectediso' => $activity->completionexpectediso,
             'hasreminderdate' => !empty($activity->hasreminderdate),
-            'dateeditable' => (int) $activity->completion !== COMPLETION_TRACKING_NONE,
+            'completionenabled' => !empty($activity->completionenabled),
+            'dateeditable' => !empty($activity->completionenabled)
+                && (int) $activity->completion !== COMPLETION_TRACKING_NONE,
             'completionlocked' => !empty($activity->completionlocked),
             'isassign' => $activity->isassign,
             'hassubmissions' => !empty($submissions),
@@ -297,6 +314,7 @@ class day_page implements renderable, templatable {
             'sesskey' => sesskey(),
             'daynumber' => $this->daynumber,
             'showall' => $this->showall,
+            'showhidden' => $this->showhidden,
             'completionoptions' => [
                 (object) [
                     'value' => COMPLETION_TRACKING_NONE,

@@ -17,6 +17,9 @@
                 </select>
             </div>
         </div>
+        {{#showhidden}}
+            <input type="hidden" name="showhidden" value="1">
+        {{/showhidden}}
         {{#hasday}}
             <div class="form-check">
                 <input type="checkbox"
@@ -36,7 +39,8 @@
         {{#hasaddcourses}}
             <div class="local-homeschool-add-activity mb-3"
                  data-day="{{daynumber}}"
-                 data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}">
+                 data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
+                 data-showhidden="{{#showhidden}}1{{/showhidden}}{{^showhidden}}0{{/showhidden}}">
                 <div class="form-label">{{#str}} addtocourse, local_homeschool {{/str}}</div>
                 <div class="local-homeschool-add-activity-controls">
                     <select class="form-select"
@@ -104,6 +108,7 @@
                         data-sesskey="{{sesskey}}"
                         data-day="{{daynumber}}"
                         data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
+                        data-showhidden="{{#showhidden}}1{{/showhidden}}{{^showhidden}}0{{/showhidden}}"
                         disabled
                         title="{{#str}} deleteselected, local_homeschool {{/str}}"
                         aria-label="{{#str}} deleteselected, local_homeschool {{/str}}">

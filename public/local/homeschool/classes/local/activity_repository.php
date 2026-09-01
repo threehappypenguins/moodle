@@ -47,6 +47,8 @@ class activity_repository {
 
             $sectioninfo = $modinfo->get_section_info($daynumber);
             $sectionname = get_section_name($course, $sectioninfo);
+            $completioninfo = new \completion_info($course);
+            $completionenabled = (bool) $completioninfo->is_enabled();
 
             foreach ($sections[$daynumber] as $cmid) {
                 $cm = $modinfo->get_cm($cmid);
@@ -54,7 +56,9 @@ class activity_repository {
                     continue;
                 }
 
-                $conditions = \local_homeschool\local\completion_conditions::get_available($cm);
+                $conditions = $completionenabled
+                    ? \local_homeschool\local\completion_conditions::get_available($cm)
+                    : [];
 
                 $row = (object) [
                     'cmid' => $cm->id,
@@ -70,7 +74,8 @@ class activity_repository {
                     'completionexpectedformatted' => self::format_expected_date($cm->completionexpected),
                     'completionexpectediso' => self::format_expected_date_iso($cm->completionexpected),
                     'hasreminderdate' => !empty($cm->completionexpected),
-                    'completionlocked' => $completioninfo->count_user_data($cm) > 0,
+                    'completionenabled' => $completionenabled,
+                    'completionlocked' => $completionenabled && $completioninfo->count_user_data($cm) > 0,
                     'requirements' => $conditions,
                     'hasrequirements' => !empty($conditions),
                     'activityurl' => ($cm->url ? $cm->url->out(false) : (new \moodle_url('/mod/' . $cm->modname . '/view.php', [

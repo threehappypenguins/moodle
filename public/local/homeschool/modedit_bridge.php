@@ -30,6 +30,7 @@ require_sesskey();
 
 $day = required_param('day', PARAM_INT);
 $showall = (bool) optional_param('showall', 0, PARAM_BOOL);
+$showhidden = (bool) optional_param('showhidden', 0, PARAM_BOOL);
 $rawgoto = required_param('goto', PARAM_RAW_TRIMMED);
 
 if ($day < 1) {
@@ -54,5 +55,5 @@ if (!in_array($gotourl->get_path(), $allowedpaths, true)) {
     throw new moodle_exception('invalidurl');
 }
 
-\local_homeschool\local\return_context::arm($day, $showall);
+\local_homeschool\local\return_context::arm($day, $showall, $showhidden);
 redirect($gotourl);

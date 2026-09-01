@@ -37,13 +37,14 @@ $context = context_system::instance();
 $day = optional_param('day', 0, PARAM_INT);
 $action = optional_param('action', '', PARAM_ALPHA);
 $showall = (bool) optional_param('showall', 0, PARAM_BOOL);
+$showhidden = (bool) optional_param('showhidden', 0, PARAM_BOOL);
 $expandreq = optional_param('expandreq', 0, PARAM_INT);
 
 if (!\local_homeschool\local\requirements::daysections_available()) {
     throw new moodle_exception('missingdaysections', 'local_homeschool');
 }
 
-$courses = \local_homeschool\local\course_repository::get_managed_daysections_courses($USER->id);
+$courses = \local_homeschool\local\course_repository::get_managed_daysections_courses($USER->id, $showhidden);
 $maxday = \local_homeschool\local\course_repository::get_max_day_number($courses);
 
 $url = new moodle_url('/local/homeschool/day.php');
@@ -52,6 +53,9 @@ if ($day > 0) {
 }
 if ($showall) {
     $url->param('showall', 1);
+}
+if ($showhidden) {
+    $url->param('showhidden', 1);
 }
 
 $PAGE->set_url($url);
@@ -85,6 +89,7 @@ if ($day > 0) {
     $dateform = new \local_homeschool\form\schedule_date_form($url, [
         'daynumber' => $day,
         'showall' => $showall,
+        'showhidden' => $showhidden,
     ]);
 
     if ($dateform && optional_param('cleardates', null, PARAM_RAW) !== null) {
@@ -194,6 +199,12 @@ if ($day > 0) {
         }
 
         $cm = get_coursemodule_from_id('', $cmid, 0, false, MUST_EXIST);
+        $course = get_course($cm->course);
+        $completioninfo = new completion_info($course);
+        if (!$completioninfo->is_enabled()) {
+            throw new moodle_exception('completionnotenabledforcourse', 'completion');
+        }
+
         if ((int) $cm->completion === COMPLETION_TRACKING_NONE) {
             \core\notification::error(get_string('datenotavailable', 'local_homeschool'));
             redirect($url);
@@ -222,15 +233,6 @@ if ($day > 0) {
         require_sesskey();
 
         $cmid = required_param('cmid', PARAM_INT);
-        $completion = required_param('completion', PARAM_INT);
-
-        if (!in_array($completion, [
-            COMPLETION_TRACKING_NONE,
-            COMPLETION_TRACKING_MANUAL,
-            COMPLETION_TRACKING_AUTOMATIC,
-        ], true)) {
-            throw new moodle_exception('invalidcompletion', 'local_homeschool');
-        }
 
         if (!isset($allowedcmids[(int) $cmid])) {
             throw new moodle_exception('invalidactivity', 'local_homeschool');
@@ -239,37 +241,56 @@ if ($day > 0) {
         $cm = get_coursemodule_from_id('', $cmid, 0, false, MUST_EXIST);
         $modinfo = get_fast_modinfo($cm->course);
         $cminfo = $modinfo->get_cm($cmid);
+        $completioninfo = new completion_info($modinfo->get_course());
+        $completionenabled = (bool) $completioninfo->is_enabled();
 
-        $conditionstate = null;
-        if ($completion == COMPLETION_TRACKING_AUTOMATIC) {
-            $completioninfo = new completion_info($modinfo->get_course());
-            // Disabled requirement fields are not posted when completion is locked.
-            // Pass null so update_completion() keeps the existing conditions.
-            if ($completioninfo->count_user_data($cminfo) === 0) {
-                $conditionstate = \local_homeschool\local\completion_conditions::read_posted_state($cminfo);
-                if (!\local_homeschool\local\completion_conditions::state_has_condition($conditionstate)) {
+        $changed = false;
+
+        if ($completionenabled) {
+            $completion = required_param('completion', PARAM_INT);
+
+            if (!in_array($completion, [
+                COMPLETION_TRACKING_NONE,
+                COMPLETION_TRACKING_MANUAL,
+                COMPLETION_TRACKING_AUTOMATIC,
+            ], true)) {
+                throw new moodle_exception('invalidcompletion', 'local_homeschool');
+            }
+
+            $conditionstate = null;
+            if ($completion == COMPLETION_TRACKING_AUTOMATIC) {
+                // Disabled requirement fields are not posted when completion is locked.
+                // Pass null so update_completion() keeps the existing conditions.
+                if ($completioninfo->count_user_data($cminfo) === 0) {
+                    $conditionstate = \local_homeschool\local\completion_conditions::read_posted_state($cminfo);
+                    if (!\local_homeschool\local\completion_conditions::state_has_condition($conditionstate)) {
+                        \core\notification::error(get_string('badautocompletion', 'completion'));
+                        $failurl = new moodle_url($url);
+                        $failurl->param('expandreq', $cmid);
+                        redirect($failurl);
+                    }
+                }
+            }
+
+            try {
+                if (\local_homeschool\local\activity_updater::update_completion(
+                    $cmid,
+                    $completion,
+                    $conditionstate,
+                )) {
+                    $changed = true;
+                }
+            } catch (moodle_exception $e) {
+                if ($e->errorcode === 'badautocompletion') {
                     \core\notification::error(get_string('badautocompletion', 'completion'));
                     $failurl = new moodle_url($url);
                     $failurl->param('expandreq', $cmid);
                     redirect($failurl);
                 }
+                throw $e;
             }
-        }
-
-        try {
-            $changed = \local_homeschool\local\activity_updater::update_completion(
-                $cmid,
-                $completion,
-                $conditionstate,
-            );
-        } catch (moodle_exception $e) {
-            if ($e->errorcode === 'badautocompletion') {
-                \core\notification::error(get_string('badautocompletion', 'completion'));
-                $failurl = new moodle_url($url);
-                $failurl->param('expandreq', $cmid);
-                redirect($failurl);
-            }
-            throw $e;
+        } else if (optional_param('completion', (int) $cminfo->completion, PARAM_INT) !== (int) $cminfo->completion) {
+            throw new moodle_exception('completionnotenabledforcourse', 'completion');
         }
 
         if ($cm->modname === 'assign') {
@@ -588,6 +609,7 @@ $renderable = new \local_homeschool\output\day_page(
     $showall,
     $maxday,
     $expandreq,
+    $showhidden,
 );
 $renderer = $PAGE->get_renderer('local_homeschool');
 

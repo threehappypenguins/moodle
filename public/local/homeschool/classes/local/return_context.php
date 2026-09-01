@@ -40,9 +40,10 @@ class return_context {
      *
      * @param int $daynumber
      * @param bool $showall
+     * @param bool $showhidden
      * @return void
      */
-    public static function arm(int $daynumber, bool $showall = false): void {
+    public static function arm(int $daynumber, bool $showall = false, bool $showhidden = false): void {
         global $SESSION;
 
         if ($daynumber < 1) {
@@ -52,6 +53,7 @@ class return_context {
         $SESSION->{self::SESSION_KEY} = [
             'day' => $daynumber,
             'showall' => $showall ? 1 : 0,
+            'showhidden' => $showhidden ? 1 : 0,
             'time' => time(),
         ];
     }
@@ -93,6 +95,9 @@ class return_context {
         $url = new \moodle_url('/local/homeschool/day.php', ['day' => $day]);
         if (!empty($data['showall'])) {
             $url->param('showall', 1);
+        }
+        if (!empty($data['showhidden'])) {
+            $url->param('showhidden', 1);
         }
         return $url;
     }

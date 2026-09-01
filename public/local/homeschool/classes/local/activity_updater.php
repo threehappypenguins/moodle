@@ -28,6 +28,18 @@ defined('MOODLE_INTERNAL') || die();
 class activity_updater {
 
     /**
+     * Whether completion settings may be edited for this course.
+     *
+     * Matches core activity forms, which hide completion when disabled.
+     *
+     * @param \stdClass $course
+     * @return bool
+     */
+    public static function is_completion_editable(\stdClass $course): bool {
+        return (bool) (new \completion_info($course))->is_enabled();
+    }
+
+    /**
      * Update completion tracking and automatic conditions for one activity.
      *
      * @param int $cmid
@@ -43,6 +55,11 @@ class activity_updater {
         $context = \context_module::instance($cm->id);
         require_capability('moodle/course:manageactivities', $context);
 
+        $completioninfo = new \completion_info($course);
+        if (!self::is_completion_editable($course)) {
+            throw new \moodle_exception('completionnotenabledforcourse', 'completion');
+        }
+
         if (!plugin_supports('mod', $cm->modname, FEATURE_COMPLETION, true)) {
             throw new \moodle_exception('cannoteditcompletion', 'local_homeschool');
         }
@@ -50,7 +67,6 @@ class activity_updater {
         $modinfo = get_fast_modinfo($course);
         $cminfo = $modinfo->get_cm($cmid);
 
-        $completioninfo = new \completion_info($course);
         $locked = $completioninfo->count_user_data($cminfo) > 0;
 
         $completionchanged = (int) $cminfo->completion !== (int) $completion;

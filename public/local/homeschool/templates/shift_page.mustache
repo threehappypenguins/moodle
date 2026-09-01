@@ -11,6 +11,9 @@
             <form method="post" action="{{shifturl}}" class="mb-0">
                 <input type="hidden" name="sesskey" value="{{sesskey}}">
                 <input type="hidden" name="action" value="undo">
+                {{#showhidden}}
+                    <input type="hidden" name="showhidden" value="1">
+                {{/showhidden}}
                 <button type="submit" class="btn btn-secondary btn-sm">
                     {{#str}} shiftundo, local_homeschool {{/str}}
                 </button>
@@ -62,6 +65,9 @@
                 <form method="post" action="{{shifturl}}" class="local-homeschool-shift-apply">
                     <input type="hidden" name="sesskey" value="{{sesskey}}">
                     <input type="hidden" name="action" value="apply">
+                    {{#showhidden}}
+                        <input type="hidden" name="showhidden" value="1">
+                    {{/showhidden}}
                     <input type="hidden" name="alldays" value="{{applyalldays}}">
                     <input type="hidden" name="fromday" value="{{applyfromday}}">
                     <input type="hidden" name="today" value="{{applytoday}}">
