@@ -315,4 +315,53 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
 
         $this->assertNull(shift_undo::get_available());
     }
+
+    /**
+     * Restore skips rows whose shifted value changed after undo was validated.
+     */
+    public function test_restore_snapshots_skips_stale_shifted_values(): void {
+        global $DB;
+
+        $originalone = strtotime('2026-06-01 09:00:00');
+        $shiftedone = strtotime('2026-06-08 09:00:00');
+        $originaltwo = strtotime('2026-06-02 09:00:00');
+        $shiftedtwo = strtotime('2026-06-09 09:00:00');
+        $editedtwo = strtotime('2026-06-10 09:00:00');
+
+        $this->enable_completion_globally();
+
+        $generator = $this->getDataGenerator();
+        $teacher = $generator->create_user();
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $course = $generator->create_course(['format' => 'daysections', 'enablecompletion' => 1]);
+        $generator->enrol_user($teacher->id, $course->id, $teacherrole->id);
+
+        $assignone = $generator->create_module('assign', [
+            'course' => $course->id,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => $shiftedone,
+        ]);
+        $assigntwo = $generator->create_module('assign', [
+            'course' => $course->id,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => $shiftedtwo,
+        ]);
+
+        $this->setUser($teacher);
+
+        $snapshots = [
+            $this->make_snapshot($assignone->cmid, $originalone, $shiftedone),
+            $this->make_snapshot($assigntwo->cmid, $originaltwo, $shiftedtwo),
+        ];
+
+        $DB->set_field('course_modules', 'completionexpected', $editedtwo, ['id' => $assigntwo->cmid]);
+
+        $method = new \ReflectionMethod(shift_undo::class, 'restore_snapshots');
+        $result = $method->invoke(null, $snapshots);
+
+        $this->assertSame(1, $result->updated);
+        $this->assertSame(1, $result->skipped);
+        $this->assertSame($originalone, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assignone->cmid]));
+        $this->assertSame($editedtwo, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assigntwo->cmid]));
+    }
 }

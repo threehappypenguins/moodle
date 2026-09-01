@@ -138,11 +138,7 @@ class day_scheduler {
             $expected = $timestamp ?: 0;
             if ($conditional && array_key_exists($cmid, $requiredoldbycmid)) {
                 $oldexpected = (int) $requiredoldbycmid[$cmid];
-                $DB->execute(
-                    'UPDATE {course_modules} SET completionexpected = ? WHERE id = ? AND completionexpected = ?',
-                    [$expected, $cm->id, $oldexpected],
-                );
-                if (!$DB->record_exists('course_modules', ['id' => $cm->id, 'completionexpected' => $expected])) {
+                if (!self::compare_and_swap_completionexpected($cm->id, $oldexpected, $expected)) {
                     $result->skippedchanged++;
                     continue;
                 }
@@ -504,6 +500,32 @@ class day_scheduler {
         $date->modify(sprintf('%+d day', $dayoffset));
 
         return $date->getTimestamp();
+    }
+
+    /**
+     * Atomically replace completionexpected when the stored value still matches the preview.
+     *
+     * Must be called inside an open delegated transaction.
+     *
+     * @param int $cmid
+     * @param int $oldexpected Value that must still be stored
+     * @param int $expected Value to write
+     * @return bool True only when the row was locked with $oldexpected and updated
+     */
+    protected static function compare_and_swap_completionexpected(int $cmid, int $oldexpected, int $expected): bool {
+        global $DB;
+
+        $locked = $DB->get_record_sql(
+            'SELECT id, completionexpected FROM {course_modules} WHERE id = ? FOR UPDATE',
+            [$cmid],
+            IGNORE_MISSING,
+        );
+        if (!$locked || (int) $locked->completionexpected !== $oldexpected) {
+            return false;
+        }
+
+        $DB->set_field('course_modules', 'completionexpected', $expected, ['id' => $cmid]);
+        return true;
     }
 
     /**

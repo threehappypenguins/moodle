@@ -40,9 +40,6 @@ class return_context {
     /** Maximum age of an armed return before it is ignored (seconds). */
     public const TTL = 7200;
 
-    /** Maximum age of a pending new-activity course landing redirect (seconds). */
-    private const CREATE_LANDING_TTL = 60;
-
     /** Maximum age of a pending update course landing redirect (seconds). */
     private const UPDATE_LANDING_TTL = 60;
 
@@ -102,16 +99,11 @@ class return_context {
         }
 
         $now = time();
-        foreach (['pendingcreateredirects', 'readyupdateredirects'] as $key) {
-            if (empty($store[$key]) || !is_array($store[$key])) {
-                continue;
-            }
-            foreach (array_keys($store[$key]) as $id) {
-                $entry = $store[$key][$id];
-                $time = (int) ($entry['time'] ?? 0);
-                $ttl = ($key === 'pendingcreateredirects') ? self::CREATE_LANDING_TTL : self::UPDATE_LANDING_TTL;
-                if ($time < 1 || ($now - $time) > $ttl) {
-                    unset($store[$key][$id]);
+        if (!empty($store['readyupdateredirects']) && is_array($store['readyupdateredirects'])) {
+            foreach (array_keys($store['readyupdateredirects']) as $id) {
+                $time = (int) ($store['readyupdateredirects'][$id]['time'] ?? 0);
+                if ($time < 1 || ($now - $time) > self::UPDATE_LANDING_TTL) {
+                    unset($store['readyupdateredirects'][$id]);
                 }
             }
         }
@@ -189,15 +181,7 @@ class return_context {
         }
 
         if (!empty($data->add)) {
-            $token = $data->{self::FLOW_PARAM} ?? '';
-            if ($token !== '') {
-                $store = &self::get_store();
-                $store['pendingcreateredirects'][$token] = [
-                    'url' => $url->out(false),
-                    'courseid' => (int) $course->id,
-                    'time' => time(),
-                ];
-            }
+            redirect($url);
         } else if (!empty($data->coursemodule)) {
             $store = &self::get_store();
             $store['pendingupdateredirects'][(int) $data->coursemodule] = [
@@ -262,105 +246,18 @@ class return_context {
     }
 
     /**
-     * Attach a pending new-activity flow token when core lands on the course page without one.
+     * Course return URL for a new activity save, with the flow token attached.
      *
-     * @param int $courseid
-     * @return bool True when a redirect was issued
-     */
-    public static function maybe_redirect_create_landing(int $courseid): bool {
-        $pending = self::take_pending_create_redirect($courseid);
-        if ($pending === null) {
-            return false;
-        }
-
-        redirect(new \moodle_url($pending['url']));
-    }
-
-    /**
-     * Pending course landing URL for a new activity, if one is queued in the session.
-     *
-     * @param int $courseid
+     * @param \stdClass $data Submitted module form data
+     * @param \stdClass $course Target course
      * @return \moodle_url|null
      */
-    public static function get_pending_create_landing_url(int $courseid): ?\moodle_url {
-        $pending = self::find_pending_create_redirect($courseid);
-        if ($pending === null) {
+    public static function get_create_return_url(\stdClass $data, \stdClass $course): ?\moodle_url {
+        if (empty($data->add)) {
             return null;
         }
 
-        return new \moodle_url($pending['url']);
-    }
-
-    /**
-     * Whether a new-activity course landing redirect is queued for a course.
-     *
-     * @param int $courseid
-     * @return bool
-     */
-    public static function has_pending_create_redirect(int $courseid): bool {
-        return self::find_pending_create_redirect($courseid) !== null;
-    }
-
-    /**
-     * @param int $courseid
-     * @return array{token:string,url:string,courseid:int,time:int}|null
-     */
-    protected static function find_pending_create_redirect(int $courseid): ?array {
-        if ($courseid < 1) {
-            return null;
-        }
-
-        self::purge_expired();
-        $store = self::get_store();
-        if (empty($store['pendingcreateredirects']) || !is_array($store['pendingcreateredirects'])) {
-            return null;
-        }
-
-        $match = null;
-        $matchtoken = null;
-        foreach ($store['pendingcreateredirects'] as $token => $pending) {
-            if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
-                continue;
-            }
-            if (
-                $match === null
-                || (int) ($pending['time'] ?? 0) >= (int) ($match['time'] ?? 0)
-            ) {
-                $match = $pending;
-                $matchtoken = (string) $token;
-            }
-        }
-
-        if ($match === null || $matchtoken === '') {
-            return null;
-        }
-
-        return [
-            'token' => $matchtoken,
-            'url' => (string) ($match['url'] ?? ''),
-            'courseid' => (int) ($match['courseid'] ?? 0),
-            'time' => (int) ($match['time'] ?? 0),
-        ];
-    }
-
-    /**
-     * @param int $courseid
-     * @return array{token:string,url:string,courseid:int,time:int}|null
-     */
-    protected static function take_pending_create_redirect(int $courseid): ?array {
-        $pending = self::find_pending_create_redirect($courseid);
-        if ($pending === null) {
-            return null;
-        }
-
-        $store = &self::get_store();
-        unset($store['pendingcreateredirects'][$pending['token']]);
-
-        if ((time() - $pending['time']) > self::CREATE_LANDING_TTL) {
-            return null;
-        }
-
-        return $pending;
+        return self::build_modedit_course_return_url($data, $course);
     }
 
     /**
@@ -574,7 +471,6 @@ class return_context {
         if (empty($SESSION->{self::SESSION_KEY}) || !is_array($SESSION->{self::SESSION_KEY})) {
             $SESSION->{self::SESSION_KEY} = [
                 'flows' => [],
-                'pendingcreateredirects' => [],
                 'pendingupdateredirects' => [],
                 'readyupdateredirects' => [],
             ];
@@ -582,13 +478,11 @@ class return_context {
             if (!isset($SESSION->{self::SESSION_KEY}['flows'])) {
                 $SESSION->{self::SESSION_KEY} = [
                     'flows' => [],
-                    'pendingcreateredirects' => [],
                     'pendingupdateredirects' => [],
                     'readyupdateredirects' => [],
                 ];
             } else {
                 $SESSION->{self::SESSION_KEY} += [
-                    'pendingcreateredirects' => [],
                     'pendingupdateredirects' => [],
                     'readyupdateredirects' => [],
                 ];

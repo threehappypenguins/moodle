@@ -192,11 +192,31 @@ final class return_context_test extends \local_homeschool\base_testcase {
     }
 
     /**
-     * Create redirects persist in the session for the next course landing request.
+     * New-activity saves redirect through the flow token on the course return URL.
      */
-    public function test_prepare_create_redirect_persists_across_request_boundary(): void {
-        global $SESSION;
+    public function test_create_return_url_carries_flow_token(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
 
+        $token = return_context::arm(1, $course->id);
+        $data = (object) [
+            return_context::FLOW_PARAM => $token,
+            'add' => 'label',
+            'frontend' => true,
+            'section' => 1,
+            'modulename' => 'label',
+        ];
+
+        $url = return_context::get_create_return_url($data, $course);
+
+        $this->assertNotNull($url);
+        $this->assertSame($token, $url->get_param(return_context::FLOW_PARAM));
+    }
+
+    /**
+     * Concurrent create flows for the same course keep distinct return targets.
+     */
+    public function test_concurrent_create_returns_use_distinct_flow_tokens(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
 
@@ -218,16 +238,20 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'modulename' => 'label',
         ];
 
-        return_context::prepare_modedit_course_return($dataone, $course);
-        return_context::prepare_modedit_course_return($datatwo, $course);
+        $urlone = return_context::get_create_return_url($dataone, $course);
+        $urltwo = return_context::get_create_return_url($datatwo, $course);
 
-        $this->assertArrayHasKey($tokenone, $SESSION->{return_context::SESSION_KEY}['pendingcreateredirects']);
-        $this->assertArrayHasKey($tokentwo, $SESSION->{return_context::SESSION_KEY}['pendingcreateredirects']);
+        $this->assertNotNull($urlone);
+        $this->assertNotNull($urltwo);
+        $this->assertSame($tokenone, $urlone->get_param(return_context::FLOW_PARAM));
+        $this->assertSame($tokentwo, $urltwo->get_param(return_context::FLOW_PARAM));
 
-        // Simulate a new PHP request: only session state survives modedit's redirect.
-        $landingurl = return_context::get_pending_create_landing_url((int) $course->id);
-        $this->assertNotNull($landingurl);
-        $this->assertSame($tokentwo, $landingurl->get_param(return_context::FLOW_PARAM));
-        $this->assertTrue(return_context::has_pending_create_redirect((int) $course->id));
+        $dayone = return_context::consume_for_token($tokenone, (int) $course->id);
+        $daytwo = return_context::consume_for_token($tokentwo, (int) $course->id);
+
+        $this->assertNotNull($dayone);
+        $this->assertNotNull($daytwo);
+        $this->assertSame(1, (int) $dayone->get_param('day'));
+        $this->assertSame(2, (int) $daytwo->get_param('day'));
     }
 }

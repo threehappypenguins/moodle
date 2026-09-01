@@ -122,32 +122,46 @@ class shift_undo {
     /**
      * Restore reminder dates from the stored undo payload.
      *
-     * @return \stdClass result with updated count
+     * @return \stdClass result with updated and skipped counts
      */
     public static function apply(): \stdClass {
         $data = self::get_available();
-        $result = (object) [
-            'updated' => 0,
-            'skipped' => 0,
-        ];
-
         if (!$data || empty($data->snapshots)) {
-            return $result;
+            return (object) [
+                'updated' => 0,
+                'skipped' => 0,
+            ];
         }
 
-        // Capture and clear first so restore writes do not re-invalidate.
+        return self::restore_snapshots($data->snapshots);
+    }
+
+    /**
+     * Restore reminder dates from validated undo snapshots.
+     *
+     * Each row is written only when completionexpected still matches the snapshotted
+     * post-shift value, so manual edits after validation are not overwritten.
+     *
+     * @param \stdClass[] $snapshots
+     * @return \stdClass result with updated and skipped counts
+     */
+    protected static function restore_snapshots(array $snapshots): \stdClass {
         self::clear();
 
         $timestampsbycmid = [];
-        foreach ($data->snapshots as $snapshot) {
-            $timestampsbycmid[(int) $snapshot->cmid] = (int) $snapshot->timestamp;
+        $requiredoldbycmid = [];
+        foreach ($snapshots as $snapshot) {
+            $cmid = (int) $snapshot->cmid;
+            $timestampsbycmid[$cmid] = (int) $snapshot->timestamp;
+            $requiredoldbycmid[$cmid] = (int) $snapshot->shifted;
         }
 
-        $apply = day_scheduler::apply_timestamps($timestampsbycmid, false);
-        $result->updated = $apply->updated;
-        $result->skipped = $apply->skipped;
+        $apply = day_scheduler::apply_timestamps($timestampsbycmid, false, $requiredoldbycmid);
 
-        return $result;
+        return (object) [
+            'updated' => $apply->updated,
+            'skipped' => $apply->skipped + $apply->skippedchanged,
+        ];
     }
 
     /**

@@ -135,6 +135,29 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * A row already equal to the target date is not treated as a successful preview apply.
+     */
+    public function test_apply_timestamps_skips_when_value_already_matches_new(): void {
+        global $DB;
+
+        $original = strtotime('2026-06-01 09:00:00');
+        $shifted = strtotime('2026-06-08 09:00:00');
+
+        [$teacher, , $assign] = $this->create_teacher_assign_with_reminder($shifted);
+        $this->setUser($teacher);
+
+        $result = day_scheduler::apply_timestamps(
+            [$assign->cmid => $shifted],
+            false,
+            [$assign->cmid => $original],
+        );
+
+        $this->assertSame(0, $result->updated);
+        $this->assertSame(1, $result->skippedchanged);
+        $this->assertSame($shifted, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assign->cmid]));
+    }
+
+    /**
      * Preview snapshots expire after TTL.
      */
     public function test_shift_preview_session_ttl(): void {
