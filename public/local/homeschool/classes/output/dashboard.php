@@ -122,7 +122,7 @@ class dashboard implements renderable, templatable {
             return $course->format === 'daysections';
         });
         $manageddaysectionscourses = course_repository::get_managed_daysections_courses($this->userid, $this->showhidden);
-        $maxday = course_repository::get_max_day_number($daysectionscourses);
+        $maxday = course_repository::get_max_day_number($manageddaysectionscourses);
         $dayoptions = [];
         $optionmax = max($maxday, 1);
         for ($i = 1; $i <= $optionmax; $i++) {
@@ -139,6 +139,7 @@ class dashboard implements renderable, templatable {
             $now + (upcoming_service::DEFAULT_DAYS_AHEAD * DAYSECS),
         );
 
+        $managedcourseids = array_fill_keys(array_keys($manageddaysectionscourses), true);
         $upcomingrows = [];
         foreach ($upcoming as $item) {
             $itemdayurl = new \moodle_url('/local/homeschool/day.php', ['day' => $item->sectionnum]);
@@ -153,6 +154,7 @@ class dashboard implements renderable, templatable {
                 'overdue' => $item->overdue,
                 'url' => $item->url,
                 'dayurl' => $itemdayurl->out(false),
+                'canmanage' => isset($managedcourseids[$item->courseid]),
             ];
         }
 

@@ -350,6 +350,35 @@ $PAGE->requires->js_init_code(<<<'JS'
         bulkDelete.disabled = root.querySelectorAll('.local-homeschool-select-cm:checked').length === 0;
     };
 
+    var setMultiselectLock = function(container, locked) {
+        if (!container) {
+            return;
+        }
+        if (locked) {
+            container.setAttribute('inert', '');
+            container.querySelectorAll('input, select, textarea, button, fieldset').forEach(function(el) {
+                if (el.type === 'hidden') {
+                    return;
+                }
+                if (el.disabled) {
+                    el.setAttribute('data-multiselect-was-disabled', '1');
+                    return;
+                }
+                el.disabled = true;
+                el.setAttribute('data-multiselect-disabled', '1');
+            });
+            return;
+        }
+        container.removeAttribute('inert');
+        container.querySelectorAll('[data-multiselect-disabled]').forEach(function(el) {
+            el.disabled = false;
+            el.removeAttribute('data-multiselect-disabled');
+        });
+        container.querySelectorAll('[data-multiselect-was-disabled]').forEach(function(el) {
+            el.removeAttribute('data-multiselect-was-disabled');
+        });
+    };
+
     var updateRowEditing = function() {
         var selected = root.querySelectorAll('.local-homeschool-select-cm:checked').length;
         var multi = selected >= 2;
@@ -360,7 +389,9 @@ $PAGE->requires->js_init_code(<<<'JS'
         }
         root.querySelectorAll('.local-homeschool-activity').forEach(function(row) {
             var checkbox = row.querySelector('.local-homeschool-select-cm');
-            row.classList.toggle('is-selected', !!(checkbox && checkbox.checked));
+            var isselected = !!(checkbox && checkbox.checked);
+            row.classList.toggle('is-selected', isselected);
+            setMultiselectLock(row.querySelector('.local-homeschool-activity-details'), multi && isselected);
         });
         syncBulkDeleteFromSelection();
     };

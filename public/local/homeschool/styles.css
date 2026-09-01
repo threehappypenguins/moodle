@@ -38,7 +38,6 @@
 .local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-row-edit,
 .local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-activity-details {
     opacity: 0.5;
-    pointer-events: none;
 }
 
 .local-homeschool-date-form {

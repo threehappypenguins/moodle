@@ -22,6 +22,9 @@ use local_homeschool\local\return_context;
 /**
  * After modedit save/cancel, bounce course landing pages back to the Homeschool day page.
  *
+ * "Save and display" lands on /mod/.../view.php instead; clear armed return there so a
+ * later unrelated course visit is not redirected. Preserve armed return only during modedit.
+ *
  * @package   local_homeschool
  * @copyright 2026 Sarah
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -37,6 +40,14 @@ class course_return {
     ];
 
     /**
+     * Scripts that are part of the active modedit flow (do not clear armed return yet).
+     */
+    private const MODEDIT_FLOW_SCRIPTS = [
+        '/course/modedit.php',
+        '/course/mod.php',
+    ];
+
+    /**
      * @param before_http_headers $hook
      * @return void
      */
@@ -48,26 +59,58 @@ class course_return {
         }
 
         $script = (string) $SCRIPT;
-        $islanding = false;
+
+        if (self::is_modedit_flow_script($script)) {
+            return;
+        }
+
+        if (self::is_course_landing_script($script)) {
+            $courseid = self::get_landing_course_id();
+            if ($courseid < 1) {
+                return;
+            }
+
+            $url = return_context::consume_for_course($courseid);
+            if ($url) {
+                redirect($url);
+            }
+            return;
+        }
+
+        // Modedit finished at a non-course destination (e.g. activity view after "Save and display").
+        if (return_context::get_url() !== null) {
+            return_context::clear();
+        }
+    }
+
+    /**
+     * Whether the current script is a course landing page modedit may return to.
+     *
+     * @param string $script
+     * @return bool
+     */
+    protected static function is_course_landing_script(string $script): bool {
         foreach (self::COURSE_LANDING_SCRIPTS as $suffix) {
             if ($script === $suffix || str_ends_with($script, $suffix)) {
-                $islanding = true;
-                break;
+                return true;
             }
         }
-        if (!$islanding) {
-            return;
-        }
+        return false;
+    }
 
-        $courseid = self::get_landing_course_id();
-        if ($courseid < 1) {
-            return;
+    /**
+     * Whether the current script is part of the active modedit flow.
+     *
+     * @param string $script
+     * @return bool
+     */
+    protected static function is_modedit_flow_script(string $script): bool {
+        foreach (self::MODEDIT_FLOW_SCRIPTS as $suffix) {
+            if ($script === $suffix || str_ends_with($script, $suffix)) {
+                return true;
+            }
         }
-
-        $url = return_context::consume_for_course($courseid);
-        if ($url) {
-            redirect($url);
-        }
+        return false;
     }
 
     /**

@@ -164,6 +164,11 @@
                                         {{/sectionname}}
                                     </td>
                                 {{/canmanage}}
+                                {{^canmanage}}
+                                    {{#../canmanage}}
+                                        <td></td>
+                                    {{/canmanage}}
+                                {{/canmanage}}
                             </tr>
                         {{/upcoming}}
                     </tbody>

@@ -181,10 +181,16 @@ class activity_updater {
         }
 
         if ($changed) {
+            $now = \core\di::get(\core\clock::class)->time();
             $update = new \stdClass();
             $update->id = $assign->get_instance()->id;
             $update->nosubmissions = $assign->is_any_submission_plugin_enabled() ? 0 : 1;
+            $update->timemodified = $now;
             $DB->update_record('assign', $update);
+
+            rebuild_course_cache($course->id, true);
+            $cminfo = get_fast_modinfo($course)->get_cm($cmid);
+            \core\event\course_module_updated::create_from_cm($cminfo, $context)->trigger();
         }
 
         return $changed;
