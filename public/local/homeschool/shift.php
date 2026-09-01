@@ -115,14 +115,14 @@ if ($action === 'undo') {
 if ($action === 'apply') {
     require_sesskey();
 
-    $previewdata = \local_homeschool\local\shift_preview::get_available();
+    $previewtoken = required_param(\local_homeschool\local\shift_preview::TOKEN_PARAM, PARAM_ALPHANUMEXT);
+    $previewdata = \local_homeschool\local\shift_preview::consume($previewtoken);
     if (!$previewdata) {
         \core\notification::error(get_string('shiftpreviewexpired', 'local_homeschool'));
         redirect($url);
     }
 
     $result = \local_homeschool\local\day_scheduler::apply_shift_snapshot($previewdata->items);
-    \local_homeschool\local\shift_preview::clear();
 
     if ($result->updated > 0) {
         $summary = get_string('shiftappliedsummary', 'local_homeschool', (object) [
@@ -161,6 +161,7 @@ $form = new \local_homeschool\form\shift_schedule_form($url, [
 ]);
 
 $preview = null;
+$previewtoken = '';
 if ($form->is_cancelled()) {
     redirect(new moodle_url('/local/homeschool/index.php'));
 } else if ($data = $form->get_data()) {
@@ -181,14 +182,14 @@ if ($form->is_cancelled()) {
             $params->dayoffset,
             $params->alldays,
         );
-        \local_homeschool\local\shift_preview::save($USER->id, $preview, $params);
+        $previewtoken = \local_homeschool\local\shift_preview::save($USER->id, $preview, $params);
     }
 }
 
 $formhtml = $form->render();
 $undo = \local_homeschool\local\shift_undo::get_available();
 
-$renderable = new \local_homeschool\output\shift_page($formhtml, $preview, $undo, $showhidden);
+$renderable = new \local_homeschool\output\shift_page($formhtml, $preview, $undo, $showhidden, $previewtoken);
 $renderer = $PAGE->get_renderer('local_homeschool');
 
 echo $OUTPUT->header();

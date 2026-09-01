@@ -16,14 +16,15 @@
 
 namespace local_homeschool\hook;
 
+use core\hook\after_config;
 use core\hook\output\before_http_headers;
 use local_homeschool\local\return_context;
 
 /**
  * After modedit save/cancel, bounce course landing pages back to the Homeschool day page.
  *
- * "Save and display" lands on /mod/.../view.php instead; clear only that flow there so a
- * concurrent modedit for another day can still consume its return later.
+ * Consumption requires the flow token on the landing URL so unrelated course visits and
+ * concurrent editors cannot steal one another's return targets.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -40,12 +41,16 @@ class course_return {
     ];
 
     /**
-     * Scripts that are part of the active modedit flow (do not consume return yet).
+     * @param after_config $hook
+     * @return void
      */
-    private const MODEDIT_FLOW_SCRIPTS = [
-        '/course/modedit.php',
-        '/course/mod.php',
-    ];
+    public static function after_config(after_config $hook): void {
+        if (during_initial_install()) {
+            return;
+        }
+
+        return_context::maybe_redirect_modedit_cancel();
+    }
 
     /**
      * @param before_http_headers $hook
@@ -60,31 +65,20 @@ class course_return {
 
         $script = (string) $SCRIPT;
 
-        if (self::is_modedit_flow_script($script)) {
-            $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
-            if ($token !== '') {
-                return_context::touch_flow($token);
-            }
-            return;
-        }
-
         if (self::is_course_landing_script($script)) {
+            $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
+            if ($token === '') {
+                return;
+            }
+
             $courseid = self::get_landing_course_id();
             if ($courseid < 1) {
                 return;
             }
 
-            $url = return_context::consume_for_course($courseid);
+            $url = return_context::consume_for_token($token, $courseid);
             if ($url) {
                 redirect($url);
-            }
-            return;
-        }
-
-        if (self::is_mod_view_script($script)) {
-            $cmid = optional_param('id', 0, PARAM_INT);
-            if ($cmid > 0) {
-                return_context::clear_active_for_module($cmid);
             }
             return;
         }
@@ -105,31 +99,6 @@ class course_return {
             }
         }
         return false;
-    }
-
-    /**
-     * Whether the current script is part of the active modedit flow.
-     *
-     * @param string $script
-     * @return bool
-     */
-    protected static function is_modedit_flow_script(string $script): bool {
-        foreach (self::MODEDIT_FLOW_SCRIPTS as $suffix) {
-            if ($script === $suffix || str_ends_with($script, $suffix)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Whether the current script is an activity view page after "Save and display".
-     *
-     * @param string $script
-     * @return bool
-     */
-    protected static function is_mod_view_script(string $script): bool {
-        return (bool) preg_match('#/mod/[^/]+/view\.php$#', $script);
     }
 
     /**

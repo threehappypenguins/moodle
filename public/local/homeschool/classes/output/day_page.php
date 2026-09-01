@@ -315,24 +315,39 @@ class day_page implements renderable, templatable {
             'daynumber' => $this->daynumber,
             'showall' => $this->showall,
             'showhidden' => $this->showhidden,
-            'completionoptions' => [
-                (object) [
-                    'value' => COMPLETION_TRACKING_NONE,
-                    'label' => get_string('completion_none', 'completion'),
-                    'selected' => $activity->completion == COMPLETION_TRACKING_NONE,
-                ],
-                (object) [
-                    'value' => COMPLETION_TRACKING_MANUAL,
-                    'label' => get_string('completion_manual', 'completion'),
-                    'selected' => $activity->completion == COMPLETION_TRACKING_MANUAL,
-                ],
-                (object) [
-                    'value' => COMPLETION_TRACKING_AUTOMATIC,
-                    'label' => get_string('completion_automatic', 'completion'),
-                    'selected' => $activity->completion == COMPLETION_TRACKING_AUTOMATIC,
-                ],
+            'completionoptions' => self::build_completion_options($activity),
+        ];
+    }
+
+    /**
+     * Completion tracking choices for the day page multiselect.
+     *
+     * @param \stdClass $activity
+     * @return \stdClass[]
+     */
+    protected static function build_completion_options(\stdClass $activity): array {
+        $options = [
+            (object) [
+                'value' => COMPLETION_TRACKING_NONE,
+                'label' => get_string('completion_none', 'completion'),
+                'selected' => $activity->completion == COMPLETION_TRACKING_NONE,
+            ],
+            (object) [
+                'value' => COMPLETION_TRACKING_MANUAL,
+                'label' => get_string('completion_manual', 'completion'),
+                'selected' => $activity->completion == COMPLETION_TRACKING_MANUAL,
             ],
         ];
+
+        if (!empty($activity->hasrequirements)) {
+            $options[] = (object) [
+                'value' => COMPLETION_TRACKING_AUTOMATIC,
+                'label' => get_string('completion_automatic', 'completion'),
+                'selected' => $activity->completion == COMPLETION_TRACKING_AUTOMATIC,
+            ];
+        }
+
+        return $options;
     }
 
     /**

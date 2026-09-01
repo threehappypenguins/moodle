@@ -42,17 +42,28 @@ class shift_page implements renderable, templatable {
     /** @var bool */
     protected $showhidden;
 
+    /** @var string */
+    protected $previewtoken;
+
     /**
      * @param string $formhtml Rendered shift form HTML
      * @param \stdClass|null $preview Preview result from day_scheduler::preview_shift()
      * @param \stdClass|null $undo Available undo payload
      * @param bool $showhidden Include courses hidden from students
+     * @param string $previewtoken Token identifying this preview snapshot
      */
-    public function __construct(string $formhtml, ?\stdClass $preview, ?\stdClass $undo, bool $showhidden = false) {
+    public function __construct(
+        string $formhtml,
+        ?\stdClass $preview,
+        ?\stdClass $undo,
+        bool $showhidden = false,
+        string $previewtoken = '',
+    ) {
         $this->formhtml = $formhtml;
         $this->preview = $preview;
         $this->undo = $undo;
         $this->showhidden = $showhidden;
+        $this->previewtoken = $previewtoken;
     }
 
     /**
@@ -133,6 +144,7 @@ class shift_page implements renderable, templatable {
         $data->hasskipped = !empty($skippedparts);
         $data->skippedsummary = implode(' ', $skippedparts);
         $data->canapply = $preview->shiftcount > 0;
+        $data->previewtoken = $this->previewtoken;
 
         return $data;
     }

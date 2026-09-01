@@ -111,7 +111,7 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
     }
 
     /**
-     * Preview snapshot is stored in session and expires after TTL.
+     * Preview snapshots expire after TTL.
      */
     public function test_shift_preview_session_ttl(): void {
         global $SESSION;
@@ -125,11 +125,55 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
             'days' => 7,
             'direction' => 'forward',
         ];
-        shift_preview::save($teacher->id, $preview, $params);
+        $token = shift_preview::save($teacher->id, $preview, $params);
 
-        $this->assertNotNull(shift_preview::get_available());
+        $this->assertNotNull(shift_preview::consume($token));
 
-        $SESSION->{shift_preview::SESSION_KEY}->time = time() - shift_preview::TTL - 1;
-        $this->assertNull(shift_preview::get_available());
+        $token = shift_preview::save($teacher->id, $preview, $params);
+        $SESSION->{shift_preview::SESSION_KEY}['previews'][$token]->time = time() - shift_preview::TTL - 1;
+        $this->assertNull(shift_preview::consume($token));
+    }
+
+    /**
+     * Concurrent previews keep separate snapshots until each token is consumed.
+     */
+    public function test_concurrent_previews_consume_matching_token_only(): void {
+        $original = strtotime('2026-06-01 09:00:00');
+
+        [$teacher, $course, ] = $this->create_teacher_assign_with_reminder($original);
+        $this->setUser($teacher);
+
+        $previewone = day_scheduler::preview_shift([$course], 1, 1, 7, false);
+        $tokenone = shift_preview::save($teacher->id, $previewone, (object) [
+            'days' => 7,
+            'direction' => 'forward',
+        ]);
+
+        $previewtwo = day_scheduler::preview_shift([$course], 1, 1, 14, false);
+        $tokentwo = shift_preview::save($teacher->id, $previewtwo, (object) [
+            'days' => 14,
+            'direction' => 'forward',
+        ]);
+
+        $this->assertNotSame($tokenone, $tokentwo);
+
+        $second = shift_preview::consume($tokentwo);
+        $this->assertNotNull($second);
+        $this->assertSame(14, $second->days);
+        $this->assertSame(
+            (int) $previewtwo->items[0]->newtimestamp,
+            (int) $second->items[0]->newtimestamp,
+        );
+
+        $first = shift_preview::consume($tokenone);
+        $this->assertNotNull($first);
+        $this->assertSame(7, $first->days);
+        $this->assertSame(
+            (int) $previewone->items[0]->newtimestamp,
+            (int) $first->items[0]->newtimestamp,
+        );
+
+        $this->assertNull(shift_preview::consume($tokenone));
+        $this->assertNull(shift_preview::consume($tokentwo));
     }
 }

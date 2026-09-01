@@ -19,8 +19,8 @@ namespace local_homeschool\local;
 /**
  * Session stash so modedit "Save and return to course" can land on the Homeschool day page.
  *
- * Each modedit launch from the day page arms its own flow token so concurrent editors for
- * different days (or the same course) do not overwrite one another.
+ * Each modedit launch arms its own flow token. The token is carried through modedit and appended
+ * to the core course return URL so only that exact flow is consumed on landing.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -31,7 +31,7 @@ class return_context {
     /** @var string Session property name for the flow store. */
     public const SESSION_KEY = 'local_homeschool_returns';
 
-    /** @var string Query param carrying a flow token through modedit. */
+    /** @var string Query param carrying a flow token through modedit and course return. */
     public const FLOW_PARAM = 'local_homeschool_return';
 
     /** @var string Legacy single-slot session key (pre concurrent flows). */
@@ -66,33 +66,9 @@ class return_context {
             'time' => time(),
         ];
 
-        if (!isset($store['course_order'][$courseid])) {
-            $store['course_order'][$courseid] = [];
-        }
-        $store['course_order'][$courseid][] = $token;
-        $store['course_active'][$courseid] = $token;
-
         unset($SESSION->{self::LEGACY_SESSION_KEY});
 
         return $token;
-    }
-
-    /**
-     * Mark a flow as the active modedit session for its course.
-     *
-     * Called when modedit loads with a flow token in the URL.
-     *
-     * @param string $token
-     * @return void
-     */
-    public static function touch_flow(string $token): void {
-        $flow = self::get_valid_flow($token);
-        if (!$flow) {
-            return;
-        }
-
-        $store = &self::get_store();
-        $store['course_active'][(int) $flow['courseid']] = $token;
     }
 
     /**
@@ -132,69 +108,161 @@ class return_context {
     }
 
     /**
-     * Drop the active modedit flow for a course after "Save and display".
+     * Drop a flow without redirecting (e.g. after "Save and display").
      *
-     * @param int $cmid Course-module id from the activity view page
+     * @param string $token
      * @return void
      */
-    public static function clear_active_for_module(int $cmid): void {
-        if ($cmid < 1) {
-            return;
+    public static function discard_flow(string $token): void {
+        if ($token !== '') {
+            self::remove_flow($token);
         }
-
-        $cm = get_coursemodule_from_id('', $cmid, 0, false, IGNORE_MISSING);
-        if (!$cm) {
-            return;
-        }
-
-        self::clear_active_for_course((int) $cm->course);
     }
 
     /**
-     * Consume the oldest pending return for a course landing page.
+     * Consume an armed return when the landing URL names a specific flow token.
      *
+     * @param string $token Flow token from the landing URL
      * @param int $courseid Course id for the current landing request
      * @return \moodle_url|null
      */
-    public static function consume_for_course(int $courseid): ?\moodle_url {
-        if ($courseid < 1) {
+    public static function consume_for_token(string $token, int $courseid): ?\moodle_url {
+        if ($token === '' || $courseid < 1) {
             return null;
         }
 
         self::purge_expired();
-        $store = &self::get_store();
-
-        if (empty($store['course_order'][$courseid])) {
+        $flow = self::get_valid_flow($token);
+        if (!$flow || (int) $flow['courseid'] !== $courseid) {
             return null;
         }
 
-        while (!empty($store['course_order'][$courseid])) {
-            $token = array_shift($store['course_order'][$courseid]);
-            $flow = $store['flows'][$token] ?? null;
-            if (!$flow || !self::is_flow_valid($flow) || (int) $flow['courseid'] !== $courseid) {
-                self::remove_flow($token);
-                continue;
-            }
-
-            self::remove_flow($token);
-            return self::build_url($flow);
-        }
-
-        return null;
+        self::remove_flow($token);
+        return self::build_url($flow);
     }
 
     /**
-     * @param int $courseid
-     * @return void
+     * After a successful modedit save, redirect through core course URL with the flow token attached.
+     *
+     * @param \stdClass $data Submitted module form data
+     * @param \stdClass $course Target course
+     * @return bool True when a redirect was issued
      */
-    protected static function clear_active_for_course(int $courseid): void {
-        $store = &self::get_store();
-        $token = $store['course_active'][$courseid] ?? null;
-        if (!$token) {
-            return;
+    public static function maybe_redirect_after_save(\stdClass $data, \stdClass $course): bool {
+        $token = $data->{self::FLOW_PARAM} ?? '';
+        if ($token === '') {
+            return false;
         }
 
-        self::remove_flow($token);
+        if (!self::get_valid_flow($token)) {
+            return false;
+        }
+
+        if (!empty($data->submitbutton)) {
+            self::discard_flow($token);
+            return false;
+        }
+
+        if (empty($data->frontend)) {
+            return false;
+        }
+
+        if (!empty($data->modulename) && plugin_supports('mod', $data->modulename, FEATURE_PUBLISHES_QUESTIONS)) {
+            return false;
+        }
+
+        if (!isset($data->section)) {
+            return false;
+        }
+
+        $url = course_get_url($course, $data->section, self::extract_return_options($data));
+        if (!empty($data->coursemodule)) {
+            $url->set_anchor('module-' . $data->coursemodule);
+        }
+        $url->param(self::FLOW_PARAM, $token);
+        redirect($url);
+    }
+
+    /**
+     * Redirect a modedit cancel to the core course URL with the flow token attached.
+     *
+     * @return bool True when a redirect was issued
+     */
+    public static function maybe_redirect_modedit_cancel(): bool {
+        global $SCRIPT;
+
+        if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+            return false;
+        }
+
+        $script = (string) $SCRIPT;
+        if ($script !== '/course/modedit.php' && !str_ends_with($script, '/course/modedit.php')) {
+            return false;
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            return false;
+        }
+
+        if (!optional_param('cancel', 0, PARAM_RAW)) {
+            return false;
+        }
+
+        $token = optional_param(self::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
+        if ($token === '' || !self::get_valid_flow($token)) {
+            return false;
+        }
+
+        $update = optional_param('update', 0, PARAM_INT);
+        $return = optional_param('return', 0, PARAM_BOOL);
+        if ($return && $update > 0) {
+            self::discard_flow($token);
+            return false;
+        }
+
+        $returnoptions = optional_param_array('returnoptions', [], PARAM_INT);
+        $add = optional_param('add', '', PARAM_ALPHANUM);
+
+        if ($update > 0) {
+            $cm = get_coursemodule_from_id('', $update, 0, false, IGNORE_MISSING);
+            if (!$cm) {
+                return false;
+            }
+            $course = get_course($cm->course);
+            $url = course_get_url($course, $cm->sectionnum, $returnoptions);
+            $url->set_anchor('module-' . $cm->id);
+        } else if ($add !== '') {
+            $courseid = optional_param('course', 0, PARAM_INT);
+            $sectionnum = optional_param('section', 0, PARAM_INT);
+            if ($courseid < 1) {
+                return false;
+            }
+            $course = get_course($courseid);
+            $url = course_get_url($course, $sectionnum, $returnoptions);
+            $beforemod = optional_param('beforemod', 0, PARAM_INT);
+            if ($beforemod > 0) {
+                $url->set_anchor('module-' . $beforemod);
+            }
+        } else {
+            return false;
+        }
+
+        $url->param(self::FLOW_PARAM, $token);
+        redirect($url);
+    }
+
+    /**
+     * @param \stdClass $data
+     * @return array
+     */
+    protected static function extract_return_options(\stdClass $data): array {
+        $returnoptions = [];
+        foreach ((array) $data as $key => $value) {
+            if (preg_match('/^returnoptions\[(.+)\]$/', (string) $key, $matches)) {
+                $returnoptions[$matches[1]] = (int) $value;
+            }
+        }
+        return $returnoptions;
     }
 
     /**
@@ -251,26 +319,7 @@ class return_context {
      */
     protected static function remove_flow(string $token): void {
         $store = &self::get_store();
-        if (!isset($store['flows'][$token])) {
-            return;
-        }
-
-        $courseid = (int) ($store['flows'][$token]['courseid'] ?? 0);
         unset($store['flows'][$token]);
-
-        if ($courseid > 0 && isset($store['course_order'][$courseid])) {
-            $store['course_order'][$courseid] = array_values(array_filter(
-                $store['course_order'][$courseid],
-                static fn(string $queued): bool => $queued !== $token,
-            ));
-            if ($store['course_order'][$courseid] === []) {
-                unset($store['course_order'][$courseid]);
-            }
-        }
-
-        if ($courseid > 0 && (($store['course_active'][$courseid] ?? null) === $token)) {
-            unset($store['course_active'][$courseid]);
-        }
     }
 
     /**
@@ -282,8 +331,10 @@ class return_context {
         if (empty($SESSION->{self::SESSION_KEY}) || !is_array($SESSION->{self::SESSION_KEY})) {
             $SESSION->{self::SESSION_KEY} = [
                 'flows' => [],
-                'course_order' => [],
-                'course_active' => [],
+            ];
+        } else if (!isset($SESSION->{self::SESSION_KEY}['flows'])) {
+            $SESSION->{self::SESSION_KEY} = [
+                'flows' => [],
             ];
         }
 

@@ -83,6 +83,17 @@ class course_repository {
     }
 
     /**
+     * Count of hidden non-daysections courses the user may view.
+     *
+     * @param int $userid
+     * @return int
+     */
+    public static function count_hidden_viewable_other_format_courses(int $userid): int {
+        return count(self::get_viewable_other_format_courses($userid, true))
+            - count(self::get_viewable_other_format_courses($userid, false));
+    }
+
+    /**
      * Count of viewable courses not using daysections.
      *
      * @param int $userid

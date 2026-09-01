@@ -58,9 +58,14 @@ class dashboard implements renderable, templatable {
      * @return \stdClass
      */
     public function export_for_template(renderer_base $output): \stdClass {
-        $hiddencount = course_repository::count_hidden_viewable_daysections_courses($this->userid);
-        // Include hidden in the count so the cleanup toggle remains discoverable.
-        $otherformatscount = course_repository::count_viewable_other_format_courses($this->userid, true);
+        $hiddendaysectionscount = course_repository::count_hidden_viewable_daysections_courses($this->userid);
+        $hiddenotherformatscount = course_repository::count_hidden_viewable_other_format_courses($this->userid);
+        $hiddencount = $hiddendaysectionscount + $hiddenotherformatscount;
+
+        $visibleotherformatscount = course_repository::count_viewable_other_format_courses($this->userid, false);
+        $otherformatstotalcount = course_repository::count_viewable_other_format_courses($this->userid, true);
+        // Prefer a visible-only label; fall back to total when every other-format course is hidden.
+        $otherformatscount = $visibleotherformatscount > 0 ? $visibleotherformatscount : $otherformatstotalcount;
 
         $courses = course_repository::get_viewable_daysections_courses($this->userid, $this->showhidden);
         if ($this->showotherformats) {
@@ -173,9 +178,9 @@ class dashboard implements renderable, templatable {
             'hashiddencourses' => $hiddencount > 0,
             'hiddencount' => $hiddencount,
             'showotherformats' => $this->showotherformats,
-            'hasotherformats' => $otherformatscount > 0,
+            'hasotherformats' => $otherformatstotalcount > 0,
             'otherformatscount' => $otherformatscount,
-            'showfilters' => ($hiddencount > 0 || $otherformatscount > 0),
+            'showfilters' => ($hiddencount > 0 || $otherformatstotalcount > 0),
             'hascourses' => !empty($courses),
             'hasstudents' => !empty($studentrows),
             'students' => array_values($studentrows),

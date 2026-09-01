@@ -33,63 +33,56 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
 final class return_context_test extends \local_homeschool\base_testcase {
 
     /**
-     * Concurrent arms for the same course get distinct tokens and FIFO consume order.
+     * Concurrent arms for the same course get distinct tokens.
      */
-    public function test_concurrent_flows_consume_in_fifo_order(): void {
+    public function test_concurrent_flows_get_distinct_tokens(): void {
         $tokenone = return_context::arm(1, 42);
         $tokentwo = return_context::arm(2, 42);
 
         $this->assertNotSame('', $tokenone);
         $this->assertNotSame('', $tokentwo);
         $this->assertNotSame($tokenone, $tokentwo);
+        $this->assertTrue(return_context::has_pending());
+    }
 
-        $first = return_context::consume_for_course(42);
-        $this->assertNotNull($first);
-        $this->assertSame(1, (int) $first->get_param('day'));
+    /**
+     * Consumption requires the exact flow token, not just a matching course id.
+     */
+    public function test_consume_for_token_requires_exact_flow(): void {
+        $tokenone = return_context::arm(1, 42);
+        $tokentwo = return_context::arm(2, 42);
 
-        $second = return_context::consume_for_course(42);
+        $second = return_context::consume_for_token($tokentwo, 42);
         $this->assertNotNull($second);
         $this->assertSame(2, (int) $second->get_param('day'));
 
-        $this->assertNull(return_context::consume_for_course(42));
+        $first = return_context::consume_for_token($tokenone, 42);
+        $this->assertNotNull($first);
+        $this->assertSame(1, (int) $first->get_param('day'));
+
+        $this->assertNull(return_context::consume_for_token($tokenone, 42));
+        $this->assertFalse(return_context::has_pending());
     }
 
     /**
-     * Course consume only drains flows armed for that course.
+     * Token consumption rejects a course id mismatch.
      */
-    public function test_consume_for_course_does_not_steal_other_courses(): void {
-        return_context::arm(1, 10);
-        return_context::arm(3, 20);
+    public function test_consume_for_token_rejects_course_mismatch(): void {
+        $token = return_context::arm(3, 20);
 
-        $url = return_context::consume_for_course(20);
-        $this->assertNotNull($url);
-        $this->assertSame(3, (int) $url->get_param('day'));
-
-        $remaining = return_context::consume_for_course(10);
-        $this->assertNotNull($remaining);
-        $this->assertSame(1, (int) $remaining->get_param('day'));
+        $this->assertNull(return_context::consume_for_token($token, 10));
+        $this->assertNotNull(return_context::consume_for_token($token, 20));
     }
 
     /**
-     * touch_flow marks the correct flow active so mod view clears only that flow.
+     * Save and display discards the flow without redirecting to the day page later.
      */
-    public function test_clear_active_for_module_clears_touched_flow_only(): void {
-        $generator = $this->getDataGenerator();
-        $course = $generator->create_course();
-        $assign = $generator->create_module('assign', ['course' => $course->id]);
+    public function test_discard_flow_removes_pending_return(): void {
+        $token = return_context::arm(1, 42);
 
-        $tokenone = return_context::arm(1, $course->id);
-        return_context::arm(2, $course->id);
+        return_context::discard_flow($token);
 
-        return_context::touch_flow($tokenone);
-
-        return_context::clear_active_for_module($assign->cmid);
-
-        $url = return_context::consume_for_course($course->id);
-        $this->assertNotNull($url);
-        $this->assertSame(2, (int) $url->get_param('day'));
-
-        $this->assertNull(return_context::consume_for_course($course->id));
+        $this->assertNull(return_context::consume_for_token($token, 42));
         $this->assertFalse(return_context::has_pending());
     }
 
@@ -107,16 +100,16 @@ final class return_context_test extends \local_homeschool\base_testcase {
         return_context::purge_expired();
 
         $this->assertFalse(return_context::has_pending());
-        $this->assertNull(return_context::consume_for_course(99));
+        $this->assertNull(return_context::consume_for_token($token, 99));
     }
 
     /**
      * showall and showhidden flags are preserved in the return URL.
      */
     public function test_arm_preserves_day_page_flags(): void {
-        return_context::arm(4, 7, true, true);
+        $token = return_context::arm(4, 7, true, true);
 
-        $url = return_context::consume_for_course(7);
+        $url = return_context::consume_for_token($token, 7);
         $this->assertNotNull($url);
         $this->assertSame(4, (int) $url->get_param('day'));
         $this->assertSame('1', (string) $url->get_param('showall'));

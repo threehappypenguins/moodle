@@ -44,3 +44,41 @@ function local_homeschool_extend_navigation(global_navigation $nav): void {
         new pix_icon('i/home', ''),
     );
 }
+
+/**
+ * Carry the Homeschool return flow token through modedit form submissions.
+ *
+ * @param moodleform_mod $formwrapper
+ * @param MoodleQuickForm $mform
+ * @return void
+ */
+function local_homeschool_coursemodule_standard_elements($formwrapper, $mform): void {
+    $mform->addElement('hidden', \local_homeschool\local\return_context::FLOW_PARAM, '');
+    $mform->setType(\local_homeschool\local\return_context::FLOW_PARAM, PARAM_ALPHANUMEXT);
+}
+
+/**
+ * Default the hidden flow token from the modedit launch URL.
+ *
+ * @param moodleform_mod $formwrapper
+ * @param MoodleQuickForm $mform
+ * @return void
+ */
+function local_homeschool_coursemodule_definition_after_data($formwrapper, $mform): void {
+    $token = optional_param(\local_homeschool\local\return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
+    if ($token !== '') {
+        $mform->setDefault(\local_homeschool\local\return_context::FLOW_PARAM, $token);
+    }
+}
+
+/**
+ * Append the flow token to the core course return URL after save.
+ *
+ * @param stdClass $data
+ * @param stdClass $course
+ * @return stdClass
+ */
+function local_homeschool_coursemodule_edit_post_actions($data, $course) {
+    \local_homeschool\local\return_context::maybe_redirect_after_save($data, $course);
+    return $data;
+}

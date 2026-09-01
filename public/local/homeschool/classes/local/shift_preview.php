@@ -19,9 +19,10 @@ namespace local_homeschool\local;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Session-backed snapshot from the last shift preview awaiting apply.
+ * Session-backed shift preview snapshots keyed by unpredictable tokens.
  *
- * Apply uses this snapshot instead of recomputing the selection from live data.
+ * Each preview stores its own snapshot so concurrent shift tabs cannot overwrite
+ * one another before apply.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -29,8 +30,14 @@ defined('MOODLE_INTERNAL') || die();
  */
 class shift_preview {
 
-    /** @var string Session key for preview payload. */
-    public const SESSION_KEY = 'local_homeschool_shift_preview';
+    /** @var string Session key for the preview store. */
+    public const SESSION_KEY = 'local_homeschool_shift_previews';
+
+    /** @var string Apply form parameter naming a preview token. */
+    public const TOKEN_PARAM = 'previewtoken';
+
+    /** @var string Legacy single-preview session key. */
+    private const LEGACY_SESSION_KEY = 'local_homeschool_shift_preview';
 
     /** @var int Preview availability window in seconds. */
     public const TTL = HOURSECS;
@@ -41,9 +48,9 @@ class shift_preview {
      * @param int $userid
      * @param \stdClass $preview Result from day_scheduler::preview_shift()
      * @param \stdClass $params Parsed shift parameters (days, direction, etc.)
-     * @return void
+     * @return string Preview token for the apply form
      */
-    public static function save(int $userid, \stdClass $preview, \stdClass $params): void {
+    public static function save(int $userid, \stdClass $preview, \stdClass $params): string {
         global $SESSION;
 
         $items = [];
@@ -55,43 +62,45 @@ class shift_preview {
             ];
         }
 
-        $SESSION->{self::SESSION_KEY} = (object) [
+        $token = random_string(32);
+        $store = &self::get_store();
+        $store['previews'][$token] = (object) [
             'userid' => $userid,
             'time' => time(),
             'days' => (int) $params->days,
             'direction' => (string) $params->direction,
             'items' => $items,
         ];
+
+        unset($SESSION->{self::LEGACY_SESSION_KEY});
+
+        return $token;
     }
 
     /**
-     * Preview payload for the current user, if any and not expired.
+     * Retrieve and discard the preview snapshot for a specific token.
      *
+     * @param string $token Preview token from the apply form
      * @return \stdClass|null
      */
-    public static function get_available(): ?\stdClass {
-        global $SESSION, $USER;
+    public static function consume(string $token): ?\stdClass {
+        global $USER;
 
-        if (empty($SESSION->{self::SESSION_KEY})) {
+        if ($token === '') {
             return null;
         }
 
-        $data = $SESSION->{self::SESSION_KEY};
-        if ((int) $data->userid !== (int) $USER->id) {
-            self::clear();
+        self::purge_expired();
+        $store = &self::get_store();
+        $data = $store['previews'][$token] ?? null;
+        if (!$data || !self::is_valid($data, (int) $USER->id)) {
+            if ($data) {
+                unset($store['previews'][$token]);
+            }
             return null;
         }
 
-        if (empty($data->time) || (time() - (int) $data->time) > self::TTL) {
-            self::clear();
-            return null;
-        }
-
-        if (empty($data->items)) {
-            self::clear();
-            return null;
-        }
-
+        unset($store['previews'][$token]);
         return $data;
     }
 
@@ -102,6 +111,58 @@ class shift_preview {
      */
     public static function clear(): void {
         global $SESSION;
-        unset($SESSION->{self::SESSION_KEY});
+
+        unset($SESSION->{self::SESSION_KEY}, $SESSION->{self::LEGACY_SESSION_KEY});
+    }
+
+    /**
+     * Remove expired preview snapshots.
+     *
+     * @return void
+     */
+    public static function purge_expired(): void {
+        global $USER;
+
+        $store = &self::get_store();
+        foreach (array_keys($store['previews']) as $token) {
+            if (!self::is_valid($store['previews'][$token], (int) $USER->id)) {
+                unset($store['previews'][$token]);
+            }
+        }
+    }
+
+    /**
+     * @param \stdClass $data
+     * @param int $userid
+     * @return bool
+     */
+    protected static function is_valid(\stdClass $data, int $userid): bool {
+        if ((int) $data->userid !== $userid) {
+            return false;
+        }
+
+        if (empty($data->time) || (time() - (int) $data->time) > self::TTL) {
+            return false;
+        }
+
+        return !empty($data->items);
+    }
+
+    /**
+     * @return array
+     */
+    protected static function &get_store(): array {
+        global $SESSION;
+
+        $sessionkey = self::SESSION_KEY;
+        $store = $SESSION->{$sessionkey} ?? null;
+        if (!is_array($store) || !isset($store['previews'])) {
+            $store = [
+                'previews' => [],
+            ];
+            $SESSION->{$sessionkey} = $store;
+        }
+
+        return $SESSION->{$sessionkey};
     }
 }
