@@ -43,11 +43,8 @@ class return_context {
     /** Maximum age of a pending new-activity course landing redirect (seconds). */
     private const CREATE_LANDING_TTL = 60;
 
-    /** @var array<int,\moodle_url> Pending redirects keyed by course-module id for updates. */
-    private static array $pendingupdateredirects = [];
-
-    /** @var array<int,array{url:\moodle_url,time:int}> Pending redirects keyed by course id for new activities. */
-    private static array $pendingcreateredirects = [];
+    /** Maximum age of a pending update course landing redirect (seconds). */
+    private const UPDATE_LANDING_TTL = 60;
 
     /**
      * Remember which Homeschool day page to return to after modedit.
@@ -89,12 +86,10 @@ class return_context {
         global $SESSION;
 
         unset($SESSION->{self::SESSION_KEY}, $SESSION->{self::LEGACY_SESSION_KEY});
-        self::$pendingupdateredirects = [];
-        self::$pendingcreateredirects = [];
     }
 
     /**
-     * Remove expired flows from the session store.
+     * Remove expired flows and stale modedit landing redirects from the session store.
      *
      * @return void
      */
@@ -103,6 +98,31 @@ class return_context {
         foreach (array_keys($store['flows']) as $token) {
             if (!self::is_flow_valid($store['flows'][$token])) {
                 self::remove_flow($token);
+            }
+        }
+
+        $now = time();
+        foreach (['pendingcreateredirects', 'readyupdateredirects'] as $key) {
+            if (empty($store[$key]) || !is_array($store[$key])) {
+                continue;
+            }
+            foreach (array_keys($store[$key]) as $id) {
+                $entry = $store[$key][$id];
+                $time = (int) ($entry['time'] ?? 0);
+                $ttl = ($key === 'pendingcreateredirects') ? self::CREATE_LANDING_TTL : self::UPDATE_LANDING_TTL;
+                if ($time < 1 || ($now - $time) > $ttl) {
+                    unset($store[$key][$id]);
+                }
+            }
+        }
+
+        if (empty($store['pendingupdateredirects']) || !is_array($store['pendingupdateredirects'])) {
+            return;
+        }
+        foreach (array_keys($store['pendingupdateredirects']) as $cmid) {
+            $time = (int) ($store['pendingupdateredirects'][$cmid]['time'] ?? 0);
+            if ($time < 1 || ($now - $time) > self::UPDATE_LANDING_TTL) {
+                unset($store['pendingupdateredirects'][$cmid]);
             }
         }
     }
@@ -169,31 +189,76 @@ class return_context {
         }
 
         if (!empty($data->add)) {
-            self::$pendingcreateredirects[(int) $course->id] = [
-                'url' => $url,
+            $token = $data->{self::FLOW_PARAM} ?? '';
+            if ($token !== '') {
+                $store = &self::get_store();
+                $store['pendingcreateredirects'][$token] = [
+                    'url' => $url->out(false),
+                    'courseid' => (int) $course->id,
+                    'time' => time(),
+                ];
+            }
+        } else if (!empty($data->coursemodule)) {
+            $store = &self::get_store();
+            $store['pendingupdateredirects'][(int) $data->coursemodule] = [
+                'url' => $url->out(false),
+                'courseid' => (int) $course->id,
                 'time' => time(),
             ];
-        } else if (!empty($data->coursemodule)) {
-            self::$pendingupdateredirects[(int) $data->coursemodule] = $url;
         }
 
         return $data;
     }
 
     /**
-     * Issue a deferred update redirect after update_moduleinfo has fully completed.
+     * Mark a pending update redirect ready after update_moduleinfo has fully completed.
+     *
+     * Observers must not redirect; course landing handles navigation once core is done.
      *
      * @param int $cmid
      * @return void
      */
-    public static function issue_pending_update_redirect(int $cmid): void {
-        if ($cmid < 1 || !isset(self::$pendingupdateredirects[$cmid])) {
+    public static function mark_update_redirect_ready(int $cmid): void {
+        if ($cmid < 1) {
             return;
         }
 
-        $url = self::$pendingupdateredirects[$cmid];
-        unset(self::$pendingupdateredirects[$cmid]);
-        redirect($url);
+        $store = &self::get_store();
+        if (empty($store['pendingupdateredirects'][$cmid])) {
+            return;
+        }
+
+        $store['readyupdateredirects'][$cmid] = $store['pendingupdateredirects'][$cmid];
+        unset($store['pendingupdateredirects'][$cmid]);
+    }
+
+    /**
+     * Redirect a course landing after modedit update when a Homeschool flow is ready.
+     *
+     * @param int $courseid
+     * @return bool True when a redirect was issued
+     */
+    public static function maybe_redirect_pending_update_landing(int $courseid): bool {
+        if ($courseid < 1) {
+            return false;
+        }
+
+        self::purge_expired();
+        $store = &self::get_store();
+        if (empty($store['readyupdateredirects']) || !is_array($store['readyupdateredirects'])) {
+            return false;
+        }
+
+        foreach ($store['readyupdateredirects'] as $cmid => $pending) {
+            if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
+                continue;
+            }
+
+            unset($store['readyupdateredirects'][$cmid]);
+            redirect(new \moodle_url($pending['url']));
+        }
+
+        return false;
     }
 
     /**
@@ -203,18 +268,99 @@ class return_context {
      * @return bool True when a redirect was issued
      */
     public static function maybe_redirect_create_landing(int $courseid): bool {
-        if ($courseid < 1 || !isset(self::$pendingcreateredirects[$courseid])) {
+        $pending = self::take_pending_create_redirect($courseid);
+        if ($pending === null) {
             return false;
         }
 
-        $pending = self::$pendingcreateredirects[$courseid];
-        unset(self::$pendingcreateredirects[$courseid]);
+        redirect(new \moodle_url($pending['url']));
+    }
 
-        if ((time() - (int) $pending['time']) > self::CREATE_LANDING_TTL) {
-            return false;
+    /**
+     * Pending course landing URL for a new activity, if one is queued in the session.
+     *
+     * @param int $courseid
+     * @return \moodle_url|null
+     */
+    public static function get_pending_create_landing_url(int $courseid): ?\moodle_url {
+        $pending = self::find_pending_create_redirect($courseid);
+        if ($pending === null) {
+            return null;
         }
 
-        redirect($pending['url']);
+        return new \moodle_url($pending['url']);
+    }
+
+    /**
+     * Whether a new-activity course landing redirect is queued for a course.
+     *
+     * @param int $courseid
+     * @return bool
+     */
+    public static function has_pending_create_redirect(int $courseid): bool {
+        return self::find_pending_create_redirect($courseid) !== null;
+    }
+
+    /**
+     * @param int $courseid
+     * @return array{token:string,url:string,courseid:int,time:int}|null
+     */
+    protected static function find_pending_create_redirect(int $courseid): ?array {
+        if ($courseid < 1) {
+            return null;
+        }
+
+        self::purge_expired();
+        $store = self::get_store();
+        if (empty($store['pendingcreateredirects']) || !is_array($store['pendingcreateredirects'])) {
+            return null;
+        }
+
+        $match = null;
+        $matchtoken = null;
+        foreach ($store['pendingcreateredirects'] as $token => $pending) {
+            if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
+                continue;
+            }
+            if (
+                $match === null
+                || (int) ($pending['time'] ?? 0) >= (int) ($match['time'] ?? 0)
+            ) {
+                $match = $pending;
+                $matchtoken = (string) $token;
+            }
+        }
+
+        if ($match === null || $matchtoken === '') {
+            return null;
+        }
+
+        return [
+            'token' => $matchtoken,
+            'url' => (string) ($match['url'] ?? ''),
+            'courseid' => (int) ($match['courseid'] ?? 0),
+            'time' => (int) ($match['time'] ?? 0),
+        ];
+    }
+
+    /**
+     * @param int $courseid
+     * @return array{token:string,url:string,courseid:int,time:int}|null
+     */
+    protected static function take_pending_create_redirect(int $courseid): ?array {
+        $pending = self::find_pending_create_redirect($courseid);
+        if ($pending === null) {
+            return null;
+        }
+
+        $store = &self::get_store();
+        unset($store['pendingcreateredirects'][$pending['token']]);
+
+        if ((time() - $pending['time']) > self::CREATE_LANDING_TTL) {
+            return null;
+        }
+
+        return $pending;
     }
 
     /**
@@ -224,7 +370,19 @@ class return_context {
      * @return bool
      */
     public static function has_pending_update_redirect(int $cmid): bool {
-        return isset(self::$pendingupdateredirects[$cmid]);
+        $store = self::get_store();
+        return !empty($store['pendingupdateredirects'][$cmid]);
+    }
+
+    /**
+     * Whether an update redirect is ready for course landing after modedit save.
+     *
+     * @param int $cmid
+     * @return bool
+     */
+    public static function has_ready_update_redirect(int $cmid): bool {
+        $store = self::get_store();
+        return !empty($store['readyupdateredirects'][$cmid]);
     }
 
     /**
@@ -416,11 +574,25 @@ class return_context {
         if (empty($SESSION->{self::SESSION_KEY}) || !is_array($SESSION->{self::SESSION_KEY})) {
             $SESSION->{self::SESSION_KEY} = [
                 'flows' => [],
+                'pendingcreateredirects' => [],
+                'pendingupdateredirects' => [],
+                'readyupdateredirects' => [],
             ];
-        } else if (!isset($SESSION->{self::SESSION_KEY}['flows'])) {
-            $SESSION->{self::SESSION_KEY} = [
-                'flows' => [],
-            ];
+        } else {
+            if (!isset($SESSION->{self::SESSION_KEY}['flows'])) {
+                $SESSION->{self::SESSION_KEY} = [
+                    'flows' => [],
+                    'pendingcreateredirects' => [],
+                    'pendingupdateredirects' => [],
+                    'readyupdateredirects' => [],
+                ];
+            } else {
+                $SESSION->{self::SESSION_KEY} += [
+                    'pendingcreateredirects' => [],
+                    'pendingupdateredirects' => [],
+                    'readyupdateredirects' => [],
+                ];
+            }
         }
 
         return $SESSION->{self::SESSION_KEY};

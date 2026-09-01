@@ -67,9 +67,14 @@ class day_scheduler {
      *
      * @param array $timestampsbycmid Map of cmid => unix timestamp (0 clears the date)
      * @param bool $invalidateundo Clear shift undo when a snapshotted activity is changed
-     * @return \stdClass result stats (updated, skipped, courses, updatedcmids)
+     * @param array $requiredoldbycmid Optional map of cmid => completionexpected that must still match at write time
+     * @return \stdClass result stats (updated, skipped, skippedchanged, courses, updatedcmids)
      */
-    public static function apply_timestamps(array $timestampsbycmid, bool $invalidateundo = true): \stdClass {
+    public static function apply_timestamps(
+        array $timestampsbycmid,
+        bool $invalidateundo = true,
+        array $requiredoldbycmid = [],
+    ): \stdClass {
         global $CFG, $DB;
 
         require_once($CFG->libdir . '/completionlib.php');
@@ -77,12 +82,19 @@ class day_scheduler {
         $result = (object) [
             'updated' => 0,
             'skipped' => 0,
+            'skippedchanged' => 0,
             'courses' => 0,
             'updatedcmids' => [],
         ];
 
         if (empty($timestampsbycmid)) {
             return $result;
+        }
+
+        $conditional = !empty($requiredoldbycmid);
+        $transaction = null;
+        if ($conditional) {
+            $transaction = $DB->start_delegated_transaction();
         }
 
         $cmids = array_map('intval', array_keys($timestampsbycmid));
@@ -104,7 +116,7 @@ class day_scheduler {
             }
 
             $context = \context_module::instance($cm->id);
-            if (!has_capability('moodle/course:manageactivities', $context)) {
+            if (!self::can_modify_activity_schedule($cm)) {
                 $result->skipped++;
                 continue;
             }
@@ -124,11 +136,23 @@ class day_scheduler {
             }
 
             $expected = $timestamp ?: 0;
-            $DB->update_record('course_modules', (object) [
-                'id' => $cm->id,
-                'completionexpected' => $expected,
-                'timemodified' => time(),
-            ]);
+            if ($conditional && array_key_exists($cmid, $requiredoldbycmid)) {
+                $oldexpected = (int) $requiredoldbycmid[$cmid];
+                $DB->execute(
+                    'UPDATE {course_modules} SET completionexpected = ? WHERE id = ? AND completionexpected = ?',
+                    [$expected, $cm->id, $oldexpected],
+                );
+                if (!$DB->record_exists('course_modules', ['id' => $cm->id, 'completionexpected' => $expected])) {
+                    $result->skippedchanged++;
+                    continue;
+                }
+            } else {
+                $DB->update_record('course_modules', (object) [
+                    'id' => $cm->id,
+                    'completionexpected' => $expected,
+                    'timemodified' => time(),
+                ]);
+            }
 
             $calendartime = $expected ?: null;
             \core_completion\api::update_completion_date_event(
@@ -145,6 +169,10 @@ class day_scheduler {
                 'cm' => $cm,
                 'context' => $context,
             ];
+        }
+
+        if ($transaction) {
+            $transaction->allow_commit();
         }
 
         foreach (array_keys($touchedcourses) as $courseid) {
@@ -258,7 +286,7 @@ class day_scheduler {
                     }
 
                     $context = \context_module::instance($cm->id);
-                    if (!has_capability('moodle/course:manageactivities', $context)) {
+                    if (!self::can_modify_activity_schedule($cm)) {
                         $preview->skippedpermission++;
                         continue;
                     }
@@ -335,7 +363,7 @@ class day_scheduler {
             }
 
             $context = \context_module::instance($cm->id);
-            if (!has_capability('moodle/course:manageactivities', $context)) {
+            if (!self::can_modify_activity_schedule($cm)) {
                 $result->skipped++;
                 continue;
             }
@@ -382,7 +410,7 @@ class day_scheduler {
      * Apply a stored preview snapshot, shifting only rows whose reminder still matches preview.
      *
      * Each item must include cmid, oldtimestamp, and newtimestamp from preview_shift().
-     * Rows whose current completionexpected differs from oldtimestamp are skipped as changed.
+     * Rows whose completionexpected differs from oldtimestamp at write time are skipped as changed.
      *
      * @param \stdClass[] $items Preview snapshot rows
      * @return \stdClass updated, skipped, skippedchanged, snapshots (for undo)
@@ -419,7 +447,7 @@ class day_scheduler {
             }
 
             $context = \context_module::instance($cm->id);
-            if (!has_capability('moodle/course:manageactivities', $context)) {
+            if (!self::can_modify_activity_schedule($cm)) {
                 $result->skipped++;
                 continue;
             }
@@ -437,17 +465,13 @@ class day_scheduler {
                 continue;
             }
 
-            if ((int) $cm->completionexpected !== $oldexpected) {
-                $result->skippedchanged++;
-                continue;
-            }
-
             $oldtimestamps[$cmid] = $oldexpected;
             $timestampsbycmid[$cmid] = $newexpected;
         }
 
-        $apply = self::apply_timestamps($timestampsbycmid, false);
+        $apply = self::apply_timestamps($timestampsbycmid, false, $oldtimestamps);
         $result->skipped += $apply->skipped;
+        $result->skippedchanged = $apply->skippedchanged;
         $result->updated = $apply->updated;
 
         foreach ($apply->updatedcmids as $cmid) {
@@ -480,5 +504,34 @@ class day_scheduler {
         $date->modify(sprintf('%+d day', $dayoffset));
 
         return $date->getTimestamp();
+    }
+
+    /**
+     * Whether the current user may change Homeschool schedule data in a course.
+     *
+     * @param int $courseid
+     * @return bool
+     */
+    protected static function can_manage_course_schedule(int $courseid): bool {
+        global $USER;
+
+        return requirements::user_has_active_enrolment_in_course(
+            (int) $USER->id,
+            $courseid,
+            'local/homeschool:manage',
+        );
+    }
+
+    /**
+     * Whether the current user may update timeline reminders for an activity.
+     *
+     * @param object $cm Course-module with id and course (stdClass or cm_info)
+     * @return bool
+     */
+    protected static function can_modify_activity_schedule(object $cm): bool {
+        $context = \context_module::instance($cm->id);
+
+        return has_capability('moodle/course:manageactivities', $context)
+            && self::can_manage_course_schedule((int) $cm->course);
     }
 }

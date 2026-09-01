@@ -243,6 +243,61 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * Undo skips activities when Homeschool manage is revoked but manageactivities remains.
+     */
+    public function test_apply_skips_activities_without_homeschool_manage(): void {
+        global $DB;
+
+        $this->enable_completion_globally();
+
+        $generator = $this->getDataGenerator();
+        $teacher = $generator->create_user();
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+
+        $courseone = $generator->create_course(['format' => 'daysections', 'enablecompletion' => 1]);
+        $coursetwo = $generator->create_course(['format' => 'daysections', 'enablecompletion' => 1]);
+        $generator->enrol_user($teacher->id, $courseone->id, $teacherrole->id);
+        $generator->enrol_user($teacher->id, $coursetwo->id, $teacherrole->id);
+
+        assign_capability(
+            'local/homeschool:manage',
+            CAP_PROHIBIT,
+            $teacherrole->id,
+            \context_course::instance($coursetwo->id),
+            true,
+        );
+
+        $originalone = strtotime('2026-06-01 09:00:00');
+        $shiftedone = strtotime('2026-06-08 09:00:00');
+        $originaltwo = strtotime('2026-06-02 09:00:00');
+        $shiftedtwo = strtotime('2026-06-09 09:00:00');
+
+        $assignone = $generator->create_module('assign', [
+            'course' => $courseone->id,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => $shiftedone,
+        ]);
+        $assigntwo = $generator->create_module('assign', [
+            'course' => $coursetwo->id,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => $shiftedtwo,
+        ]);
+
+        $this->setUser($teacher);
+        $this->save_undo($teacher->id, [
+            $this->make_snapshot($assignone->cmid, $originalone, $shiftedone),
+            $this->make_snapshot($assigntwo->cmid, $originaltwo, $shiftedtwo),
+        ]);
+
+        $result = shift_undo::apply();
+
+        $this->assertSame(1, $result->updated);
+        $this->assertSame(1, $result->skipped);
+        $this->assertSame($originalone, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assignone->cmid]));
+        $this->assertSame($shiftedtwo, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assigntwo->cmid]));
+    }
+
+    /**
      * Touching a snapshotted activity clears undo before the next apply().
      */
     public function test_invalidate_for_cmids_clears_matching_undo(): void {

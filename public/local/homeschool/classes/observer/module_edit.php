@@ -30,10 +30,12 @@ class module_edit {
     /**
      * Redirect after update_moduleinfo has fully finished (including completion reset).
      *
+     * Navigation is deferred to the course landing hook so other observers can run.
+     *
      * @param \core\event\course_module_updated $event
      * @return void
      */
     public static function course_module_updated(\core\event\course_module_updated $event): void {
-        return_context::issue_pending_update_redirect((int) $event->objectid);
+        return_context::mark_update_redirect_ready((int) $event->objectid);
     }
 }

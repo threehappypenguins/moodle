@@ -163,4 +163,71 @@ final class return_context_test extends \local_homeschool\base_testcase {
         $this->assertFalse(return_context::has_pending_update_redirect($label->cmid));
         $this->assertFalse(return_context::has_pending());
     }
+
+    /**
+     * Update redirects are marked ready by the observer and issued on course landing.
+     */
+    public function test_mark_update_redirect_ready_defers_navigation_to_course_landing(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+        $label = $generator->create_module('label', ['course' => $course->id]);
+
+        $token = return_context::arm(2, $course->id);
+        $data = (object) [
+            return_context::FLOW_PARAM => $token,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $label->cmid,
+            'modulename' => 'label',
+        ];
+
+        return_context::prepare_modedit_course_return($data, $course);
+        $this->assertTrue(return_context::has_pending_update_redirect($label->cmid));
+        $this->assertFalse(return_context::has_ready_update_redirect($label->cmid));
+
+        return_context::mark_update_redirect_ready($label->cmid);
+
+        $this->assertFalse(return_context::has_pending_update_redirect($label->cmid));
+        $this->assertTrue(return_context::has_ready_update_redirect($label->cmid));
+    }
+
+    /**
+     * Create redirects persist in the session for the next course landing request.
+     */
+    public function test_prepare_create_redirect_persists_across_request_boundary(): void {
+        global $SESSION;
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+
+        $tokenone = return_context::arm(1, $course->id);
+        $tokentwo = return_context::arm(2, $course->id);
+
+        $dataone = (object) [
+            return_context::FLOW_PARAM => $tokenone,
+            'add' => 'label',
+            'frontend' => true,
+            'section' => 1,
+            'modulename' => 'label',
+        ];
+        $datatwo = (object) [
+            return_context::FLOW_PARAM => $tokentwo,
+            'add' => 'label',
+            'frontend' => true,
+            'section' => 1,
+            'modulename' => 'label',
+        ];
+
+        return_context::prepare_modedit_course_return($dataone, $course);
+        return_context::prepare_modedit_course_return($datatwo, $course);
+
+        $this->assertArrayHasKey($tokenone, $SESSION->{return_context::SESSION_KEY}['pendingcreateredirects']);
+        $this->assertArrayHasKey($tokentwo, $SESSION->{return_context::SESSION_KEY}['pendingcreateredirects']);
+
+        // Simulate a new PHP request: only session state survives modedit's redirect.
+        $landingurl = return_context::get_pending_create_landing_url((int) $course->id);
+        $this->assertNotNull($landingurl);
+        $this->assertSame($tokentwo, $landingurl->get_param(return_context::FLOW_PARAM));
+        $this->assertTrue(return_context::has_pending_create_redirect((int) $course->id));
+    }
 }
