@@ -157,10 +157,18 @@ class course_repository {
         $managed = [];
         if (!empty($courses)) {
             foreach ($courses as $course) {
-                if ((int) $course->id === (int) SITEID) {
+                $courseid = (int) $course->id;
+                if ($courseid === (int) SITEID) {
                     continue;
                 }
-                $managed[(int) $course->id] = $course;
+                if (!requirements::user_has_active_enrolment_in_course(
+                    $userid,
+                    $courseid,
+                    'moodle/course:manageactivities',
+                )) {
+                    continue;
+                }
+                $managed[$courseid] = $course;
             }
         }
 

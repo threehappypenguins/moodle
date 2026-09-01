@@ -110,17 +110,48 @@ class requirements {
     }
 
     /**
-     * True if the user has the capability at system context or in at least one course.
+     * True if the user has the capability at system context or in at least one course
+     * with an active (non-suspended) enrolment.
      *
      * @param string $capability
      * @return bool
      */
     protected static function user_has_capability_somewhere(string $capability): bool {
+        global $USER;
+
         if (has_capability($capability, \context_system::instance())) {
             return true;
         }
 
-        $courses = get_user_capability_course($capability, null, true, '', '', 1);
-        return !empty($courses);
+        $courses = get_user_capability_course($capability, $USER->id, true, 'id', '', 0);
+        if (empty($courses)) {
+            return false;
+        }
+
+        foreach ($courses as $course) {
+            if (self::user_has_active_enrolment_in_course((int) $USER->id, (int) $course->id, $capability)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * True when the user may use a course-scoped capability via system grant or active enrolment.
+     *
+     * Suspended or inactive enrolments are excluded unless the capability is held at system context.
+     *
+     * @param int $userid
+     * @param int $courseid
+     * @param string $capability
+     * @return bool
+     */
+    public static function user_has_active_enrolment_in_course(int $userid, int $courseid, string $capability): bool {
+        if (has_capability($capability, \context_system::instance(), $userid)) {
+            return true;
+        }
+
+        return is_enrolled(\context_course::instance($courseid), $userid, $capability, true);
     }
 }
