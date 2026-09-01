@@ -190,8 +190,7 @@ if ($day > 0) {
             redirect($url);
         }
 
-        $hour = 0;
-        $minute = 0;
+        [$hour, $minute] = \local_homeschool\local\reminder_time::get_new_reminder_hour_minute();
         if (!empty($cm->completionexpected)) {
             $hour = (int) userdate($cm->completionexpected, '%H');
             $minute = (int) userdate($cm->completionexpected, '%M');

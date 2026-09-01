@@ -371,6 +371,10 @@
     border: 0;
 }
 
+.local-homeschool-shift-form .mform {
+    max-width: 48rem;
+}
+
 .local-homeschool-shift-preview-table th,
 .local-homeschool-shift-preview-table td {
     vertical-align: top;

@@ -72,13 +72,13 @@ class shift_schedule_form extends \moodleform {
         $mform->addRule('days', null, 'numeric', null, 'client');
         $mform->addHelpButton('days', 'shiftdaycount', 'local_homeschool');
 
-        $this->add_action_buttons(false, get_string('shiftpreview', 'local_homeschool'));
+        $this->add_action_buttons(true, get_string('shiftpreview', 'local_homeschool'));
     }
 
     /**
      * @param array $data
      * @param array $files
-     * @return bool
+     * @return array
      */
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);

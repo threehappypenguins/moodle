@@ -3,83 +3,79 @@
         <a href="{{dashboardurl}}">{{#str}} backtodashboard, local_homeschool {{/str}}</a>
     </p>
 
-    <p class="text-muted">{{#str}} shiftintro, local_homeschool {{/str}}</p>
+    <p>{{#str}} shiftintro, local_homeschool {{/str}}</p>
 
     {{#hasundo}}
-        <div class="alert alert-secondary local-homeschool-shift-undo d-flex flex-wrap align-items-center gap-2">
+        <div class="alert alert-info local-homeschool-shift-undo d-flex flex-wrap align-items-center gap-2">
             <span>{{#str}} shiftundoavailable, local_homeschool, {{undosummary}} {{/str}}</span>
             <form method="post" action="{{shifturl}}" class="mb-0">
                 <input type="hidden" name="sesskey" value="{{sesskey}}">
                 <input type="hidden" name="action" value="undo">
-                <button type="submit" class="btn btn-outline-primary btn-sm">
+                <button type="submit" class="btn btn-secondary btn-sm">
                     {{#str}} shiftundo, local_homeschool {{/str}}
                 </button>
             </form>
         </div>
     {{/hasundo}}
 
-    <div class="local-homeschool-shift-form card mb-4">
-        <div class="card-body">
-            {{{formhtml}}}
-        </div>
+    <div class="mb-4 local-homeschool-shift-form">
+        {{{formhtml}}}
     </div>
 
     {{#haspreview}}
-        <div class="local-homeschool-shift-preview card mb-4">
-            <div class="card-body">
-                <h3 class="h5">{{#str}} shiftpreviewheading, local_homeschool {{/str}}</h3>
-                <p class="mb-2">{{previewsummary}}</p>
-                {{#hasskipped}}
-                    <p class="text-muted small mb-3">{{skippedsummary}}</p>
-                {{/hasskipped}}
+        <div class="mb-4 local-homeschool-shift-preview">
+            <h3>{{#str}} shiftpreviewheading, local_homeschool {{/str}}</h3>
+            <p class="mb-2">{{previewsummary}}</p>
+            {{#hasskipped}}
+                <p class="text-muted small mb-3">{{skippedsummary}}</p>
+            {{/hasskipped}}
 
-                {{#canapply}}
-                    <div class="table-responsive mb-3">
-                        <table class="table table-sm table-striped generaltable local-homeschool-shift-preview-table">
-                            <thead>
+            {{#canapply}}
+                <div class="table-responsive mb-3">
+                    <table class="table table-striped generaltable w-100 local-homeschool-shift-preview-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{#str}} section {{/str}}</th>
+                                <th scope="col">{{#str}} course {{/str}}</th>
+                                <th scope="col">{{#str}} activity {{/str}}</th>
+                                <th scope="col">{{#str}} shiftcurrentdate, local_homeschool {{/str}}</th>
+                                <th scope="col">{{#str}} shiftnewdate, local_homeschool {{/str}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#previewrows}}
                                 <tr>
-                                    <th scope="col">{{#str}} section {{/str}}</th>
-                                    <th scope="col">{{#str}} course {{/str}}</th>
-                                    <th scope="col">{{#str}} activity {{/str}}</th>
-                                    <th scope="col">{{#str}} shiftcurrentdate, local_homeschool {{/str}}</th>
-                                    <th scope="col">{{#str}} shiftnewdate, local_homeschool {{/str}}</th>
+                                    <td>{{sectionname}}</td>
+                                    <td>{{coursename}}</td>
+                                    <td>{{activityname}}</td>
+                                    <td>{{olddateformatted}}</td>
+                                    <td>{{newdateformatted}}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {{#previewrows}}
-                                    <tr>
-                                        <td>{{sectionname}}</td>
-                                        <td>{{coursename}}</td>
-                                        <td>{{activityname}}</td>
-                                        <td>{{olddateformatted}}</td>
-                                        <td>{{newdateformatted}}</td>
-                                    </tr>
-                                {{/previewrows}}
-                            </tbody>
-                        </table>
-                    </div>
-                    {{#previewhiddennote}}
-                        <p class="text-muted small">{{previewhiddennote}}</p>
-                    {{/previewhiddennote}}
+                            {{/previewrows}}
+                        </tbody>
+                    </table>
+                </div>
+                {{#previewhiddennote}}
+                    <p class="text-muted small">{{previewhiddennote}}</p>
+                {{/previewhiddennote}}
 
-                    <form method="post" action="{{shifturl}}" class="local-homeschool-shift-apply">
-                        <input type="hidden" name="sesskey" value="{{sesskey}}">
-                        <input type="hidden" name="action" value="apply">
-                        <input type="hidden" name="alldays" value="{{applyalldays}}">
-                        <input type="hidden" name="fromday" value="{{applyfromday}}">
-                        <input type="hidden" name="today" value="{{applytoday}}">
-                        <input type="hidden" name="direction" value="{{applydirection}}">
-                        <input type="hidden" name="days" value="{{applydays}}">
-                        <button type="submit" class="btn btn-primary">
-                            {{#str}} shiftapply, local_homeschool {{/str}}
-                        </button>
-                    </form>
-                {{/canapply}}
+                <form method="post" action="{{shifturl}}" class="local-homeschool-shift-apply">
+                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                    <input type="hidden" name="action" value="apply">
+                    <input type="hidden" name="alldays" value="{{applyalldays}}">
+                    <input type="hidden" name="fromday" value="{{applyfromday}}">
+                    <input type="hidden" name="today" value="{{applytoday}}">
+                    <input type="hidden" name="direction" value="{{applydirection}}">
+                    <input type="hidden" name="days" value="{{applydays}}">
+                    <button type="submit" class="btn btn-primary">
+                        {{#str}} shiftapply, local_homeschool {{/str}}
+                    </button>
+                </form>
+            {{/canapply}}
 
-                {{^canapply}}
-                    <div class="alert alert-info mb-0">{{#str}} shiftnothingtoapply, local_homeschool {{/str}}</div>
-                {{/canapply}}
-            </div>
+            {{^canapply}}
+                <div class="alert alert-info mb-0">{{#str}} shiftnothingtoapply, local_homeschool {{/str}}</div>
+            {{/canapply}}
         </div>
     {{/haspreview}}
 </div>

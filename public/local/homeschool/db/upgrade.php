@@ -15,20 +15,28 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version metadata for local_homeschool.
+ * Upgrade steps for local_homeschool.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+/**
+ * Upgrade local_homeschool.
+ *
+ * @param int|float $oldversion
+ * @return bool
+ */
+function xmldb_local_homeschool_upgrade($oldversion) {
+    if ($oldversion < 2026083206) {
+        // Earlier builds used forced 23:59 select defaults; clear so admins must choose.
+        unset_config('reminderhour', 'local_homeschool');
+        unset_config('reminderminute', 'local_homeschool');
+        unset_config('enablereminderdefault', 'local_homeschool');
 
-$plugin->component = 'local_homeschool';
-$plugin->version   = 2026083206;
-$plugin->requires  = 2026041000;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.6.6';
-$plugin->dependencies = [
-    'format_daysections' => 2026083100,
-];
+        upgrade_plugin_savepoint(true, 2026083206, 'local', 'homeschool');
+    }
+
+    return true;
+}

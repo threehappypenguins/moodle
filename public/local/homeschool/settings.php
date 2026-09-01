@@ -48,4 +48,59 @@ if ($hassiteconfig) {
         get_string('showchildsurname_desc', 'local_homeschool'),
         0,
     ));
+
+    $choosedots = get_string('choosedots');
+    $houroptions = ['' => $choosedots];
+    for ($i = 0; $i <= 23; $i++) {
+        $houroptions[$i] = sprintf('%02d', $i);
+    }
+    $minuteoptions = ['' => $choosedots];
+    for ($i = 0; $i <= 59; $i++) {
+        $minuteoptions[$i] = sprintf('%02d', $i);
+    }
+
+    $settings->add(new admin_setting_heading(
+        'local_homeschool/reminderdefaults',
+        get_string('reminderdefaults', 'local_homeschool'),
+        get_string('reminderdefaults_desc', 'local_homeschool'),
+    ));
+
+    $settings->add(new \local_homeschool\admin\setting_enablereminderdefault(
+        'local_homeschool/enablereminderdefault',
+        get_string('enablereminderdefault', 'local_homeschool'),
+        get_string('enablereminderdefault_desc', 'local_homeschool'),
+        0,
+    ));
+
+    $reminderhour = new admin_setting_configselect(
+        'local_homeschool/reminderhour',
+        get_string('reminderhour', 'local_homeschool'),
+        get_string('reminderhour_desc', 'local_homeschool'),
+        '',
+        $houroptions,
+    );
+    $reminderhour->set_validate_function(static function(string $data): string {
+        if (\local_homeschool\admin\setting_enablereminderdefault::submitted_enable_is_on() && $data === '') {
+            return get_string('reminderdefaultrequired', 'local_homeschool');
+        }
+        return '';
+    });
+    $settings->add($reminderhour);
+    $settings->hide_if('local_homeschool/reminderhour', 'local_homeschool/enablereminderdefault', 'notchecked');
+
+    $reminderminute = new admin_setting_configselect(
+        'local_homeschool/reminderminute',
+        get_string('reminderminute', 'local_homeschool'),
+        get_string('reminderminute_desc', 'local_homeschool'),
+        '',
+        $minuteoptions,
+    );
+    $reminderminute->set_validate_function(static function(string $data): string {
+        if (\local_homeschool\admin\setting_enablereminderdefault::submitted_enable_is_on() && $data === '') {
+            return get_string('reminderdefaultrequired', 'local_homeschool');
+        }
+        return '';
+    });
+    $settings->add($reminderminute);
+    $settings->hide_if('local_homeschool/reminderminute', 'local_homeschool/enablereminderdefault', 'notchecked');
 }

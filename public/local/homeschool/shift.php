@@ -169,7 +169,9 @@ $form = new \local_homeschool\form\shift_schedule_form($url, [
 ]);
 
 $preview = null;
-if ($data = $form->get_data()) {
+if ($form->is_cancelled()) {
+    redirect(new moodle_url('/local/homeschool/index.php'));
+} else if ($data = $form->get_data()) {
     $params = $parse_shift_params(
         !empty($data->alldays),
         (int) ($data->fromday ?? 1),

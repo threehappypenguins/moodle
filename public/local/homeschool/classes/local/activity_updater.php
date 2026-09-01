@@ -109,8 +109,9 @@ class activity_updater {
 
         rebuild_course_cache($course->id, true);
         $modinfo = get_fast_modinfo($course);
+        $cminfo = $modinfo->get_cm($cmid);
         $completioninfo = new \completion_info($modinfo->get_course());
-        $completioninfo->reset_all_state($modinfo->get_cm($cmid));
+        $completioninfo->reset_all_state($cminfo);
 
         \core\event\course_module_updated::create_from_cm($cminfo, $context)->trigger();
 

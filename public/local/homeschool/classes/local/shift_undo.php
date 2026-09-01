@@ -21,7 +21,7 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Session-backed undo for the most recent schedule shift.
  *
- * Undo is invalidated when any snapshotted activity's reminder date is
+ * Undo lasts 30 minutes, or until a snapshotted activity's reminder date is
  * changed outside of shift apply / undo restore.
  *
  * @package   local_homeschool
@@ -32,6 +32,9 @@ class shift_undo {
 
     /** @var string Session key for undo payload. */
     public const SESSION_KEY = 'local_homeschool_shift_undo';
+
+    /** @var int Undo availability window in seconds. */
+    public const TTL = 30 * MINSECS;
 
     /**
      * Store undo snapshots, replacing any previous undo for this user.
@@ -58,7 +61,7 @@ class shift_undo {
     }
 
     /**
-     * Undo payload for the current user, if any.
+     * Undo payload for the current user, if any and not expired.
      *
      * @return \stdClass|null
      */
@@ -71,6 +74,12 @@ class shift_undo {
 
         $data = $SESSION->{self::SESSION_KEY};
         if ((int) $data->userid !== (int) $USER->id) {
+            self::clear();
+            return null;
+        }
+
+        if (empty($data->time) || (time() - (int) $data->time) > self::TTL) {
+            self::clear();
             return null;
         }
 

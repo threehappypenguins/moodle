@@ -49,7 +49,10 @@ class schedule_date_form extends \moodleform {
             'date_time_selector',
             'scheduledate',
             get_string('scheduledate', 'local_homeschool'),
-            ['optional' => false],
+            array_merge(
+                ['optional' => false],
+                \local_homeschool\local\reminder_time::get_datetime_selector_options(),
+            ),
         );
         $mform->addHelpButton('scheduledate', 'scheduledate', 'local_homeschool');
 
