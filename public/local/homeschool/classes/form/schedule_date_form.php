@@ -21,7 +21,7 @@ defined('MOODLE_INTERNAL') || die();
 require_once($GLOBALS['CFG']->libdir . '/formslib.php');
 
 /**
- * Bulk timeline reminder date for selected review activities.
+ * Bulk timeline reminder date for selected day activities.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah

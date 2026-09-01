@@ -1,9 +1,9 @@
-<div class="local-homeschool-review">
+<div class="local-homeschool-day">
     <p>
         <a href="{{dashboardurl}}">{{#str}} backtodashboard, local_homeschool {{/str}}</a>
     </p>
 
-    <form method="get" action="{{reviewformaction}}" class="mb-3 local-homeschool-day-picker">
+    <form method="get" action="{{dayformaction}}" class="mb-3 local-homeschool-day-picker">
         <div class="mb-2">
             <label for="local-homeschool-day" class="form-label">{{#str}} daynumber, local_homeschool {{/str}}</label>
             <div class="local-homeschool-day-picker-controls">
@@ -100,7 +100,7 @@
                 <button type="button"
                         class="btn btn-outline-danger btn-sm local-homeschool-delete-selected ms-2"
                         data-action="local-homeschool-delete-selected"
-                        data-reviewurl="{{reviewurl}}"
+                        data-dayurl="{{dayurl}}"
                         data-sesskey="{{sesskey}}"
                         data-day="{{daynumber}}"
                         data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
@@ -123,7 +123,7 @@
             {{/hasdateform}}
 
             {{#showall}}
-                {{> local_homeschool/review_activity_table}}
+                {{> local_homeschool/day_activity_table}}
             {{/showall}}
 
             {{^showall}}
@@ -139,7 +139,7 @@
                             {{/nostudents}}
                         </summary>
                         <div class="local-homeschool-child-group-body">
-                            {{> local_homeschool/review_activity_table}}
+                            {{> local_homeschool/day_activity_table}}
                         </div>
                     </details>
                 {{/groups}}

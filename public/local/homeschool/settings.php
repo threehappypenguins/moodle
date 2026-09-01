@@ -41,4 +41,11 @@ if ($hassiteconfig) {
         'student',
         PARAM_ALPHANUMEXT,
     ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'local_homeschool/showchildsurname',
+        get_string('showchildsurname', 'local_homeschool'),
+        get_string('showchildsurname_desc', 'local_homeschool'),
+        0,
+    ));
 }

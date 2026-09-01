@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Homeschool day hub — manage activities, reminders, and settings for a day section.
+ *
+ * @package   local_homeschool
+ * @copyright 2026 Sarah
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/completionlib.php');
 
@@ -37,7 +45,7 @@ if (!\local_homeschool\local\requirements::daysections_available()) {
 $courses = \local_homeschool\local\course_repository::get_managed_daysections_courses($USER->id);
 $maxday = \local_homeschool\local\course_repository::get_max_day_number($courses);
 
-$url = new moodle_url('/local/homeschool/review.php');
+$url = new moodle_url('/local/homeschool/day.php');
 if ($day > 0) {
     $url->param('day', $day);
 }
@@ -50,16 +58,16 @@ $PAGE->set_context($context);
 $PAGE->set_pagelayout('base');
 $PAGE->set_primary_active_tab('local_homeschool');
 if ($day > 0) {
-    $PAGE->set_title(get_string('reviewday', 'local_homeschool', $day));
-    $PAGE->set_heading(get_string('reviewday', 'local_homeschool', $day));
+    $PAGE->set_title(get_string('daytitle', 'local_homeschool', $day));
+    $PAGE->set_heading(get_string('daytitle', 'local_homeschool', $day));
 } else {
-    $PAGE->set_title(get_string('schedule', 'local_homeschool'));
-    $PAGE->set_heading(get_string('schedule', 'local_homeschool'));
+    $PAGE->set_title(get_string('openday', 'local_homeschool'));
+    $PAGE->set_heading(get_string('openday', 'local_homeschool'));
 }
 
 if ($day < 0 || (array_key_exists('day', $_GET) && $day < 1)) {
     \core\notification::error(get_string('invaliddaynumber', 'local_homeschool'));
-    redirect(new moodle_url('/local/homeschool/review.php'));
+    redirect(new moodle_url('/local/homeschool/day.php'));
 }
 
 $activities = [];
@@ -258,8 +266,9 @@ if ($day > 0) {
                     $enabled[] = $submission->type;
                 }
             }
-            \local_homeschool\local\activity_updater::update_assign_submissions($cmid, $enabled);
-            $changed = true;
+            if (\local_homeschool\local\activity_updater::update_assign_submissions($cmid, $enabled)) {
+                $changed = true;
+            }
         }
 
         if ($changed) {
@@ -288,7 +297,7 @@ $PAGE->requires->js_init_code(<<<'JS'
         });
     }
 
-    var root = document.querySelector('.local-homeschool-review');
+    var root = document.querySelector('.local-homeschool-day');
     if (!root) {
         return;
     }
@@ -559,7 +568,7 @@ JS
 );
 
 $dateformhtml = ($day > 0 && !empty($activities) && $dateform) ? $dateform->render() : '';
-$renderable = new \local_homeschool\output\day_review(
+$renderable = new \local_homeschool\output\day_page(
     $day,
     $courses,
     $dateformhtml,

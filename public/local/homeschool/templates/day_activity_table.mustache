@@ -25,14 +25,14 @@
                     data-modname="{{modname}}"
                     data-day="{{daynumber}}"
                     data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
-                    data-reviewurl="{{reviewurl}}"
+                    data-dayurl="{{dayurl}}"
                     data-sesskey="{{sesskey}}"
                     title="{{#str}} delete {{/str}}"
                     aria-label="{{#str}} deleteactivity, local_homeschool, {{activityname}} {{/str}}">
                 {{#pix}} t/delete, core {{/pix}}
             </button>
 
-            <form method="post" action="{{reviewurl}}"
+            <form method="post" action="{{dayurl}}"
                   class="local-homeschool-row-date local-homeschool-activity-date{{^dateeditable}} is-disabled{{/dateeditable}}"
                   {{^dateeditable}}title="{{#str}} datenotavailable, local_homeschool {{/str}}"{{/dateeditable}}>
                 <input type="hidden" name="sesskey" value="{{sesskey}}">
@@ -41,7 +41,6 @@
                 {{#showall}}
                     <input type="hidden" name="showall" value="1">
                 {{/showall}}
-                <span class="local-homeschool-date-label text-muted small">{{#str}} reminderdate, local_homeschool {{/str}}</span>
                 <span class="local-homeschool-date-value">{{completionexpectedformatted}}</span>
                 <span class="local-homeschool-calendar-wrap" title="{{#str}} changedate, local_homeschool {{/str}}">
                     <span class="local-homeschool-calendar-btn" aria-hidden="true">
@@ -70,9 +69,9 @@
 
             <details class="local-homeschool-activity-details" data-cmid="{{cmid}}">
                 <summary class="local-homeschool-activity-details-toggle">
-                    {{#str}} reviewsettings, local_homeschool {{/str}}
+                    {{#str}} activitysettings, local_homeschool {{/str}}
                 </summary>
-                <form method="post" action="{{reviewurl}}" class="local-homeschool-row-edit mt-2">
+                <form method="post" action="{{dayurl}}" class="local-homeschool-row-edit mt-2">
                     <input type="hidden" name="sesskey" value="{{sesskey}}">
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="cmid" value="{{cmid}}">

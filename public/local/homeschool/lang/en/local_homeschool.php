@@ -25,7 +25,7 @@
 $string['pluginname'] = 'Homeschool dashboard';
 $string['privacy:metadata'] = 'The Homeschool dashboard plugin does not store any personal data.';
 $string['dashboard'] = 'Dashboard';
-$string['schedule'] = 'Open a day';
+$string['openday'] = 'Open a day';
 $string['homeschool:view'] = 'View the homeschool dashboard';
 $string['homeschool:manage'] = 'Manage homeschool dashboard settings and schedules';
 $string['missingdaysections'] = 'The Day sections course format plugin (format_daysections) must be installed and enabled before using the homeschool dashboard.';
@@ -39,14 +39,15 @@ $string['upcoming'] = 'Upcoming timeline reminders';
 $string['nodatahelp'] = 'No Day sections courses found that you can manage. Create courses using the Day sections format and ensure you have permission to manage activities.';
 $string['nostudents'] = 'No enrolled students found in your Day sections courses.';
 $string['noupcoming'] = 'No timeline reminders scheduled in the next two weeks.';
-$string['reviewdaylink'] = 'Review day';
+$string['opendaylink'] = 'Open day';
 $string['showhiddencourses'] = 'Show hidden courses ({$a})';
 $string['showotherformats'] = 'Show courses not using Day sections ({$a})';
 $string['otherformatshelp'] = 'No Day sections courses are visible yet. Enable “Show courses not using Day sections” to find courses to convert under Course settings → Course format.';
 $string['convertformatlink'] = 'Change format';
 $string['hidden'] = 'Hidden';
 
-// Open / schedule day.
+// Day hub.
+$string['daytitle'] = 'Day {$a}';
 $string['chooseday'] = 'Choose a day…';
 $string['daynumber'] = 'Day number';
 $string['daynumber_help'] = 'Section number (1 = Day 1, 2 = Day 2, etc.). Section 0 (General) is not used.';
@@ -68,10 +69,6 @@ $string['addactivity'] = 'Add activity or resource';
 $string['sectionmissingforadd'] = 'This course does not have Day {$a} yet. Open the course to add more days first.';
 $string['sectionmissingshort'] = 'day missing';
 $string['opencourse'] = 'Open course';
-
-// Review.
-$string['reviewday'] = 'Day {$a}';
-$string['daytitle'] = 'Day {$a}';
 $string['multiselecthint'] = 'Multiple activities selected — completion and submission settings are locked on those rows. Use the date controls above (or each row’s date) to set or clear timeline reminders.';
 $string['showalllist'] = 'Show all courses/activities in one list';
 $string['showallactivities'] = 'Show all courses/activities in one list';
@@ -88,7 +85,7 @@ $string['reminderdateupdated'] = 'Timeline reminder date saved.';
 $string['reminderdatecleared'] = 'Timeline reminder date cleared.';
 $string['completion'] = 'Completion';
 $string['submissions'] = 'Submission types';
-$string['reviewsettings'] = 'Settings';
+$string['activitysettings'] = 'Settings';
 $string['noactivitiesforday'] = 'No activities found for Day {$a}.';
 $string['activityupdated'] = 'Saved.';
 $string['nochanges'] = 'No changes were made.';
@@ -106,3 +103,5 @@ $string['activitiesdeleted'] = 'Deleted {$a} activities.';
 $string['settingsintro'] = 'Configure how the homeschool dashboard identifies students and aggregates courses.';
 $string['studentrole'] = 'Student role shortname';
 $string['studentrole_desc'] = 'Users with this role in your Day sections courses appear as children on the dashboard. Default: student';
+$string['showchildsurname'] = 'Show surname in child names';
+$string['showchildsurname_desc'] = 'When enabled, children are shown with first name and surname (Moodle\'s last name field), using the site full name format. When disabled, only the first name is shown on the dashboard and day page.';

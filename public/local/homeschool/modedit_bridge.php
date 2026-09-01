@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Arms Homeschool review return, then redirects into core modedit.
+ * Arms Homeschool day-page return, then redirects into core modedit.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah

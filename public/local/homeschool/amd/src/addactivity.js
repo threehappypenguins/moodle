@@ -14,7 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Open Moodle's activity chooser for a selected course/day from Homeschool review.
+ * Open Moodle's activity chooser for a selected course/day from the Homeschool day page.
  *
  * @module     local_homeschool/addactivity
  * @copyright  2026 Sarah
@@ -28,7 +28,7 @@ import Pending from 'core/pending';
 import * as Repository from 'core_courseformat/local/activitychooser/repository';
 
 /**
- * Wrap chooser module links so they arm a Homeschool review return before modedit.
+ * Wrap chooser module links so they arm a Homeschool day-page return before modedit.
  *
  * @param {Array} modules
  * @param {Number} day

@@ -90,7 +90,7 @@ class dashboard implements renderable, templatable {
                 ];
             }
             $studentrows[] = (object) [
-                'name' => fullname($student),
+                'name' => student_repository::format_child_name($student),
                 'courses' => $studentcourses,
                 'hascourses' => !empty($studentcourses),
             ];
@@ -101,7 +101,7 @@ class dashboard implements renderable, templatable {
             $childnames = [];
             foreach ($students as $student) {
                 if (isset($student->courseids[$course->id])) {
-                    $childnames[] = fullname($student);
+                    $childnames[] = student_repository::format_child_name($student);
                 }
             }
             $isdaysections = ($course->format === 'daysections');
@@ -147,7 +147,7 @@ class dashboard implements renderable, templatable {
                 'dateformatted' => $item->dateformatted,
                 'overdue' => $item->overdue,
                 'url' => $item->url,
-                'reviewurl' => $item->reviewurl,
+                'dayurl' => $item->dayurl,
             ];
         }
 
@@ -166,7 +166,7 @@ class dashboard implements renderable, templatable {
             'courses' => array_values($courserows),
             'upcoming' => $upcomingrows,
             'hasupcoming' => !empty($upcomingrows),
-            'reviewurl' => (new \moodle_url('/local/homeschool/review.php'))->out(false),
+            'dayurl' => (new \moodle_url('/local/homeschool/day.php'))->out(false),
             'hasdaypicker' => requirements::user_can_manage() && !empty($daysectionscourses),
             'dayoptions' => $dayoptions,
             'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),

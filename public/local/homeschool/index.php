@@ -50,14 +50,14 @@ $renderer = $PAGE->get_renderer('local_homeschool');
 $PAGE->requires->js_init_code(<<<'JS'
 (function() {
     var daySelect = document.getElementById('local-homeschool-dashboard-day');
-    if (!daySelect || !daySelect.dataset.reviewurl) {
+    if (!daySelect || !daySelect.dataset.dayurl) {
         return;
     }
     daySelect.addEventListener('change', function() {
         if (!daySelect.value) {
             return;
         }
-        var url = new URL(daySelect.dataset.reviewurl, window.location.origin);
+        var url = new URL(daySelect.dataset.dayurl, window.location.origin);
         url.searchParams.set('day', daySelect.value);
         window.location.href = url.toString();
     });

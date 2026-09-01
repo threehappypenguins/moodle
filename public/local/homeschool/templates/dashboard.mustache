@@ -5,7 +5,7 @@
                 <label for="local-homeschool-dashboard-day" class="form-label mb-1">{{#str}} daynumber, local_homeschool {{/str}}</label>
                 <select class="form-select"
                         id="local-homeschool-dashboard-day"
-                        data-reviewurl="{{reviewurl}}">
+                        data-dayurl="{{dayurl}}">
                     <option value="">{{#str}} chooseday, local_homeschool {{/str}}</option>
                     {{#dayoptions}}
                         <option value="{{value}}">{{label}}</option>
@@ -152,7 +152,7 @@
                                 {{#canmanage}}
                                     <td>
                                         {{#sectionname}}
-                                            <a href="{{reviewurl}}">{{#str}} reviewdaylink, local_homeschool {{/str}}</a>
+                                            <a href="{{dayurl}}">{{#str}} opendaylink, local_homeschool {{/str}}</a>
                                         {{/sectionname}}
                                     </td>
                                 {{/canmanage}}

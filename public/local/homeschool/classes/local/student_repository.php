@@ -41,6 +41,33 @@ class student_repository {
     }
 
     /**
+     * Whether child names should include surname (Moodle lastname field).
+     *
+     * @return bool
+     */
+    public static function shows_child_surname(): bool {
+        return (bool) get_config('local_homeschool', 'showchildsurname');
+    }
+
+    /**
+     * Format a child's name for Homeschool dashboard and day page display.
+     *
+     * @param \stdClass $user User record with at least name fields loaded
+     * @return string
+     */
+    public static function format_child_name(\stdClass $user): string {
+        if (self::shows_child_surname()) {
+            return fullname($user);
+        }
+
+        if (!empty($user->firstname)) {
+            return $user->firstname;
+        }
+
+        return fullname($user);
+    }
+
+    /**
      * Students enrolled in the given courses, keyed by user id.
      *
      * Only users who are enrolled AND have the configured student role in the

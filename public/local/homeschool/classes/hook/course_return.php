@@ -20,7 +20,7 @@ use core\hook\output\before_http_headers;
 use local_homeschool\local\return_context;
 
 /**
- * After modedit save/cancel, bounce course landing pages back to Homeschool review.
+ * After modedit save/cancel, bounce course landing pages back to the Homeschool day page.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah

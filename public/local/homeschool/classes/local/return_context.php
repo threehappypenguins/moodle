@@ -17,10 +17,10 @@
 namespace local_homeschool\local;
 
 /**
- * Session stash so modedit "Save and return to course" can land on Homeschool review.
+ * Session stash so modedit "Save and return to course" can land on the Homeschool day page.
  *
  * Core modedit only redirects via course_get_url(); there is no arbitrary return URL.
- * We arm this context when the activity chooser launches modedit from review, then
+ * We arm this context when the activity chooser launches modedit from the day page, then
  * intercept the subsequent course/section page load and redirect once.
  *
  * @package   local_homeschool
@@ -36,7 +36,7 @@ class return_context {
     public const TTL = 7200;
 
     /**
-     * Remember which Homeschool review page to return to after modedit.
+     * Remember which Homeschool day page to return to after modedit.
      *
      * @param int $daynumber
      * @param bool $showall
@@ -68,7 +68,7 @@ class return_context {
     }
 
     /**
-     * Build the review URL if a recent return is armed; otherwise null.
+     * Build the day page URL if a recent return is armed; otherwise null.
      *
      * Does not clear the session value.
      *
@@ -90,7 +90,7 @@ class return_context {
             return null;
         }
 
-        $url = new \moodle_url('/local/homeschool/review.php', ['day' => $day]);
+        $url = new \moodle_url('/local/homeschool/day.php', ['day' => $day]);
         if (!empty($data['showall'])) {
             $url->param('showall', 1);
         }

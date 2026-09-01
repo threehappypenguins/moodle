@@ -136,16 +136,21 @@ class activity_updater {
         $modinfo = get_fast_modinfo($course);
         $cminfo = $modinfo->get_cm($cmid);
         $assign = new \assign($context, $cminfo, $course);
+        $changed = false;
 
         foreach ($assign->get_submission_plugins() as $plugin) {
             if (!$plugin->is_visible() || !$plugin->is_configurable()) {
                 continue;
             }
             $type = $plugin->get_type();
-            $enabled = in_array($type, $enabledtypes, true) ? 1 : 0;
-            $plugin->set_config('enabled', $enabled);
+            $wantenabled = in_array($type, $enabledtypes, true);
+            if ((bool) $plugin->is_enabled() === $wantenabled) {
+                continue;
+            }
+            $plugin->set_config('enabled', $wantenabled ? 1 : 0);
+            $changed = true;
         }
 
-        return true;
+        return $changed;
     }
 }

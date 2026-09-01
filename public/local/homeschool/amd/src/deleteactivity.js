@@ -14,7 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Confirm and delete activities from Homeschool day review.
+ * Confirm and delete activities from the Homeschool day page.
  *
  * @module     local_homeschool/deleteactivity
  * @copyright  2026 Sarah
@@ -53,16 +53,16 @@ const syncBulkDeleteButton = (root) => {
  * Submit a POST delete request.
  *
  * @param {Object} params
- * @param {string} params.reviewurl
+ * @param {string} params.dayurl
  * @param {string} params.sesskey
  * @param {string} params.day
  * @param {string} params.showall
  * @param {number[]} params.cmids
  */
-const submitDelete = ({reviewurl, sesskey, day, showall, cmids}) => {
+const submitDelete = ({dayurl, sesskey, day, showall, cmids}) => {
     const form = document.createElement('form');
     form.method = 'post';
-    form.action = reviewurl;
+    form.action = dayurl;
     form.className = 'd-none';
 
     const fields = {
@@ -123,7 +123,7 @@ const confirmAndDeleteSingle = async(button) => {
         e.preventDefault();
         modal.destroy();
         submitDelete({
-            reviewurl: button.dataset.reviewurl,
+            dayurl: button.dataset.dayurl,
             sesskey: button.dataset.sesskey,
             day: button.dataset.day,
             showall: button.dataset.showall,
@@ -158,7 +158,7 @@ const confirmAndDeleteSelected = async(button, root) => {
         e.preventDefault();
         modal.destroy();
         submitDelete({
-            reviewurl: button.dataset.reviewurl,
+            dayurl: button.dataset.dayurl,
             sesskey: button.dataset.sesskey,
             day: button.dataset.day,
             showall: button.dataset.showall,
@@ -171,7 +171,7 @@ const confirmAndDeleteSelected = async(button, root) => {
  * @return {void}
  */
 export const init = () => {
-    const root = document.querySelector('.local-homeschool-review');
+    const root = document.querySelector('.local-homeschool-day');
     if (!root || root.dataset.deleteActivityBound) {
         return;
     }

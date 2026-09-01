@@ -23,13 +23,13 @@ use renderer_base;
 use templatable;
 
 /**
- * Day activity review page renderable.
+ * Day hub page renderable.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class day_review implements renderable, templatable {
+class day_page implements renderable, templatable {
 
     /** @var int */
     protected $daynumber;
@@ -138,8 +138,8 @@ class day_review implements renderable, templatable {
             'hasactivities' => !empty($rows),
             'noactivities' => $hasday && empty($rows),
             'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
-            'reviewurl' => $this->review_url()->out(false),
-            'reviewformaction' => (new \moodle_url('/local/homeschool/review.php'))->out(false),
+            'dayurl' => $this->day_url()->out(false),
+            'dayformaction' => (new \moodle_url('/local/homeschool/day.php'))->out(false),
             'sesskey' => sesskey(),
             'multiselecthint' => get_string('multiselecthint', 'local_homeschool'),
             'dateformhtml' => $this->dateformhtml,
@@ -240,8 +240,8 @@ class day_review implements renderable, templatable {
     /**
      * @return \moodle_url
      */
-    protected function review_url(): \moodle_url {
-        $url = new \moodle_url('/local/homeschool/review.php');
+    protected function day_url(): \moodle_url {
+        $url = new \moodle_url('/local/homeschool/day.php');
         if ($this->daynumber > 0) {
             $url->param('day', $this->daynumber);
         }
@@ -288,7 +288,7 @@ class day_review implements renderable, templatable {
             'requirementsopen' => ((int) $this->expandreqcmid === (int) $activity->cmid),
             'requirements' => self::export_requirements($activity),
             'editurl' => $activity->editurl,
-            'reviewurl' => $this->review_url()->out(false),
+            'dayurl' => $this->day_url()->out(false),
             'sesskey' => sesskey(),
             'daynumber' => $this->daynumber,
             'showall' => $this->showall,
@@ -390,7 +390,7 @@ class day_review implements renderable, templatable {
 
         $names = [];
         foreach ($ids as $id) {
-            $names[] = fullname($students[$id]);
+            $names[] = student_repository::format_child_name($students[$id]);
         }
         $shared = count($ids) > 1;
         if ($ids === []) {

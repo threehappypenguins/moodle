@@ -19,7 +19,7 @@ namespace local_homeschool\local;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Automatic completion condition helpers for the review UI.
+ * Automatic completion condition helpers for the day page UI.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -316,7 +316,7 @@ class completion_conditions {
     }
 
     /**
-     * Build a custom rule definition for the review UI, or null to skip.
+     * Build a custom rule definition for the day page UI, or null to skip.
      *
      * @param \cm_info $cm
      * @param string $rule

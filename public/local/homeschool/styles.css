@@ -4,7 +4,7 @@
     max-width: 100%;
 }
 
-.local-homeschool-review {
+.local-homeschool-day {
     max-width: 100%;
     min-width: 0;
     /* Keep a little inset so focus rings are not clipped by the page edge. */
@@ -35,8 +35,8 @@
     max-width: 100%;
 }
 
-.local-homeschool-review.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-row-edit,
-.local-homeschool-review.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-activity-details {
+.local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-row-edit,
+.local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-activity-details {
     opacity: 0.5;
     pointer-events: none;
 }
@@ -389,10 +389,6 @@
 
     .local-homeschool-activity-date {
         flex-wrap: nowrap;
-    }
-
-    .local-homeschool-date-label {
-        display: none;
     }
 
     .local-homeschool-activity-details > summary {
