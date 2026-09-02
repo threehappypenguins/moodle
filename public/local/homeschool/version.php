@@ -25,10 +25,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_homeschool';
-$plugin->version   = 2026090104;
+$plugin->version   = 2026090200;
 $plugin->requires  = 2026041000;
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.6.24';
+$plugin->maturity  = MATURITY_STABLE;
+$plugin->release   = '1.0.0';
 $plugin->dependencies = [
-    'format_daysections' => 2026083100,
+    'format_daysections' => 2026090200,
 ];
