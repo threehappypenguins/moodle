@@ -26,7 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $definitions = [
     'shiftpreviews' => [
-        'mode' => cache_store::MODE_SESSION,
+        'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,
         'simpledata' => false,
         'ttl' => HOURSECS,

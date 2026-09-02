@@ -16,14 +16,28 @@
 /**
  * Append a Homeschool flow token to core's post-modedit course landing URL.
  *
- * Core redirects to course/view.php#module-{cmid} without query params. This module
- * matches the hash against flows recorded at save time and reloads with the token
- * so the server hook can redirect to the Homeschool day page.
+ * Each modedit tab stores its flow token in session storage so concurrent edits of
+ * the same activity can return to the correct day page.
  *
  * @module     local_homeschool/course_return
  * @copyright  2026 Sarah
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+/** @type {String} Session storage key for the per-tab modedit flow token. */
+const TAB_FLOW_STORAGE_KEY = 'local_homeschool_modedit_return';
+
+/**
+ * Remember the flow token for this modedit tab until the course landing page loads.
+ *
+ * @param {String} token Flow token from the modedit launch URL
+ */
+export const armModedit = (token) => {
+    if (!token) {
+        return;
+    }
+    sessionStorage.setItem(TAB_FLOW_STORAGE_KEY, token);
+};
 
 /**
  * @param {Array} landings Pending landing descriptors from the server
@@ -34,16 +48,27 @@ export const init = (landings, flowparam) => {
         return;
     }
 
+    const token = sessionStorage.getItem(TAB_FLOW_STORAGE_KEY);
+    if (!token) {
+        return;
+    }
+
+    const landing = landings.find((entry) => entry.token === token);
+    if (!landing) {
+        return;
+    }
+
     const hashmatch = /^#module-(\d+)$/.exec(window.location.hash || '');
     if (!hashmatch) {
         return;
     }
 
     const cmid = parseInt(hashmatch[1], 10);
-    const landing = landings.find((entry) => entry.cmid === cmid);
-    if (!landing || !landing.token) {
+    if (landing.cmid !== cmid) {
         return;
     }
+
+    sessionStorage.removeItem(TAB_FLOW_STORAGE_KEY);
 
     const url = new URL(window.location.href);
     if (url.searchParams.get(flowparam) === landing.token) {

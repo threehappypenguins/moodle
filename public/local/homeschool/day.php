@@ -69,7 +69,12 @@ if ($day > 0) {
     $PAGE->set_heading(get_string('openday', 'local_homeschool'));
 }
 
-if ($day < 0 || (array_key_exists('day', $_GET) && $day < 1)) {
+if ($day < 0 || ((isset($_GET['day']) || isset($_POST['day'])) && $day < 1)) {
+    \core\notification::error(get_string('invaliddaynumber', 'local_homeschool'));
+    redirect(new moodle_url('/local/homeschool/day.php'));
+}
+
+if ($day > 0 && ($maxday < 1 || $day > $maxday)) {
     \core\notification::error(get_string('invaliddaynumber', 'local_homeschool'));
     redirect(new moodle_url('/local/homeschool/day.php'));
 }

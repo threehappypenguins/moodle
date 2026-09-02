@@ -24,7 +24,7 @@ use local_homeschool\local\return_context;
  * After modedit save/cancel, bounce course landing pages back to the Homeschool day page.
  *
  * Consumption requires the flow token on the landing URL. When core omits it from the
- * post-modedit redirect, client JS appends the token by matching the module anchor hash.
+ * post-modedit redirect, client JS reloads with the per-tab token stored during modedit.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -91,7 +91,25 @@ class course_return {
             return;
         }
 
+        if (self::is_modedit_script($script)) {
+            $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
+            if ($token !== '' && return_context::flow_is_active($token)) {
+                $PAGE->requires->js_call_amd('local_homeschool/course_return', 'armModedit', [$token]);
+            }
+            return;
+        }
+
         return_context::purge_expired();
+    }
+
+    /**
+     * Whether the current script is the activity edit form.
+     *
+     * @param string $script
+     * @return bool
+     */
+    protected static function is_modedit_script(string $script): bool {
+        return $script === '/course/modedit.php' || str_ends_with($script, '/course/modedit.php');
     }
 
     /**

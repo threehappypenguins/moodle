@@ -88,11 +88,13 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
         $snapshot = [
             (object) [
                 'cmid' => $assignone->cmid,
+                'sectionnum' => 1,
                 'oldtimestamp' => $original,
                 'newtimestamp' => $shifted,
             ],
             (object) [
                 'cmid' => $assigntwo->cmid,
+                'sectionnum' => 1,
                 'oldtimestamp' => $otheroriginal,
                 'newtimestamp' => $othershifted,
             ],
@@ -155,6 +157,57 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
         $this->assertSame(0, $result->updated);
         $this->assertSame(1, $result->skippedchanged);
         $this->assertSame($shifted, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assign->cmid]));
+    }
+
+    /**
+     * Non-conditional writes skip rows that already match the target value.
+     */
+    public function test_apply_timestamps_skips_unchanged_without_conditional(): void {
+        global $DB;
+
+        $original = strtotime('2026-06-01 09:00:00');
+
+        [$teacher, , $assign] = $this->create_teacher_assign_with_reminder(0);
+        $this->setUser($teacher);
+
+        $result = day_scheduler::apply_to_activities([$assign->cmid], 0);
+
+        $this->assertSame(0, $result->updated);
+        $this->assertSame(0, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assign->cmid]));
+    }
+
+    /**
+     * Apply skips activities moved out of the previewed section before apply.
+     */
+    public function test_apply_shift_snapshot_skips_moved_section(): void {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $original = strtotime('2026-06-01 09:00:00');
+        $shifted = strtotime('2026-06-08 09:00:00');
+
+        [$teacher, $course, $assign] = $this->create_teacher_assign_with_reminder($original);
+        $this->setUser($teacher);
+
+        $sectiontwo = $DB->get_record('course_sections', ['course' => $course->id, 'section' => 2], '*', MUST_EXIST);
+        $cm = get_coursemodule_from_id('assign', $assign->cmid, 0, false, MUST_EXIST);
+        moveto_module($cm, $sectiontwo);
+
+        $snapshot = [
+            (object) [
+                'cmid' => $assign->cmid,
+                'sectionnum' => 1,
+                'oldtimestamp' => $original,
+                'newtimestamp' => $shifted,
+            ],
+        ];
+
+        $result = day_scheduler::apply_shift_snapshot($snapshot);
+
+        $this->assertSame(0, $result->updated);
+        $this->assertSame(1, $result->skipped);
+        $this->assertSame($original, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assign->cmid]));
     }
 
     /**
@@ -330,5 +383,6 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
         $items = $cache->get($token);
         $this->assertIsArray($items);
         $this->assertNotEmpty($items);
+        $this->assertSame(1, (int) $items[0]->sectionnum);
     }
 }

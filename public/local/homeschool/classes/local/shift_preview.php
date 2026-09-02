@@ -21,8 +21,8 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Shift preview snapshots keyed by unpredictable tokens.
  *
- * Preview metadata is indexed in the session; item snapshots live in a TTL session
- * cache so large course sets do not bloat every session read/write.
+ * Preview metadata is indexed in the session; item snapshots live in a TTL application
+ * cache so large course sets do not bloat session storage.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -181,6 +181,7 @@ class shift_preview {
         foreach ($preview->items as $item) {
             $items[] = (object) [
                 'cmid' => (int) $item->cmid,
+                'sectionnum' => (int) ($item->sectionnum ?? 0),
                 'oldtimestamp' => (int) $item->oldtimestamp,
                 'newtimestamp' => (int) $item->newtimestamp,
             ];
@@ -200,9 +201,9 @@ class shift_preview {
     }
 
     /**
-     * @return \cache_application|\cache_session
+     * @return \cache_application
      */
-    protected static function get_items_cache(): \cache {
+    protected static function get_items_cache(): \cache_application {
         return \cache::make('local_homeschool', self::CACHE_AREA);
     }
 

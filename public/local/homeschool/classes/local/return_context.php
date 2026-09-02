@@ -302,6 +302,16 @@ class return_context {
     }
 
     /**
+     * Whether a flow token is currently armed and not expired.
+     *
+     * @param string $token
+     * @return bool
+     */
+    public static function flow_is_active(string $token): bool {
+        return self::get_valid_flow($token) !== null;
+    }
+
+    /**
      * @param string $token
      * @return array|null
      */

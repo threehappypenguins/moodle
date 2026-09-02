@@ -143,6 +143,10 @@ class day_scheduler {
                     continue;
                 }
             } else {
+                $currentexpected = (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $cm->id]);
+                if ($currentexpected === $expected) {
+                    continue;
+                }
                 $DB->set_field('course_modules', 'completionexpected', $expected, ['id' => $cm->id]);
             }
 
@@ -401,7 +405,7 @@ class day_scheduler {
     /**
      * Apply a stored preview snapshot, shifting only rows whose reminder still matches preview.
      *
-     * Each item must include cmid, oldtimestamp, and newtimestamp from preview_shift().
+     * Each item must include cmid, sectionnum, oldtimestamp, and newtimestamp from preview_shift().
      * Rows whose completionexpected differs from oldtimestamp at write time are skipped as changed.
      *
      * @param \stdClass[] $items Preview snapshot rows
@@ -424,10 +428,11 @@ class day_scheduler {
 
         foreach ($items as $item) {
             $cmid = (int) ($item->cmid ?? 0);
+            $sectionnum = (int) ($item->sectionnum ?? 0);
             $oldexpected = (int) ($item->oldtimestamp ?? 0);
             $newexpected = (int) ($item->newtimestamp ?? 0);
 
-            if ($cmid < 1 || $oldexpected < 1 || $newexpected < 1) {
+            if ($cmid < 1 || $sectionnum < 1 || $oldexpected < 1 || $newexpected < 1) {
                 $result->skipped++;
                 continue;
             }
@@ -448,6 +453,11 @@ class day_scheduler {
             $cminfo = $modinfo->get_cm($cm->id);
 
             if (!$cminfo->uservisible) {
+                $result->skipped++;
+                continue;
+            }
+
+            if ((int) $cminfo->sectionnum !== $sectionnum) {
                 $result->skipped++;
                 continue;
             }

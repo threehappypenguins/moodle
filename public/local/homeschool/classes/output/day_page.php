@@ -126,7 +126,7 @@ class day_page implements renderable, templatable {
         }
 
         $dayoptions = [];
-        $optionmax = max($this->maxday, $this->daynumber, 1);
+        $optionmax = max($this->maxday, 1);
         for ($i = 1; $i <= $optionmax; $i++) {
             $dayoptions[] = (object) [
                 'value' => $i,

@@ -262,6 +262,47 @@ final class return_context_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * Concurrent update flows for the same activity keep distinct return targets.
+     */
+    public function test_concurrent_same_cmid_returns_use_tab_flow_tokens(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+        $label = $generator->create_module('label', ['course' => $course->id]);
+
+        $tokenone = return_context::arm(1, $course->id);
+        $tokentwo = return_context::arm(2, $course->id);
+
+        $dataone = (object) [
+            return_context::FLOW_PARAM => $tokenone,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $label->cmid,
+            'modulename' => 'label',
+        ];
+        $datatwo = (object) [
+            return_context::FLOW_PARAM => $tokentwo,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $label->cmid,
+            'modulename' => 'label',
+        ];
+
+        $urlone = $this->simulate_modedit_save_return($dataone, $course);
+        $urltwo = $this->simulate_modedit_save_return($datatwo, $course);
+
+        $this->assertSame($tokenone, $urlone->get_param(return_context::FLOW_PARAM));
+        $this->assertSame($tokentwo, $urltwo->get_param(return_context::FLOW_PARAM));
+
+        $dayone = $this->simulate_course_landing($urlone, (int) $course->id);
+        $daytwo = $this->simulate_course_landing($urltwo, (int) $course->id);
+
+        $this->assertNotNull($dayone);
+        $this->assertNotNull($daytwo);
+        $this->assertSame(1, (int) $dayone->get_param('day'));
+        $this->assertSame(2, (int) $daytwo->get_param('day'));
+    }
+
+    /**
      * Build the URL core modedit redirects to after save, with client token attachment applied.
      *
      * @param \stdClass $fromform
@@ -276,20 +317,28 @@ final class return_context_test extends \local_homeschool\base_testcase {
             $url->set_anchor('module-' . $fromform->coursemodule);
         }
 
-        return $this->simulate_client_token_attach($url, (int) $course->id, (int) $fromform->coursemodule);
+        return $this->simulate_client_token_attach(
+            $url,
+            (int) $course->id,
+            (string) ($fromform->{return_context::FLOW_PARAM} ?? ''),
+        );
     }
 
     /**
-     * Simulate the course_return AMD module appending a flow token from the module hash.
+     * Simulate the course_return AMD module appending this tab's flow token from session storage.
      *
      * @param \moodle_url $url
      * @param int $courseid
-     * @param int $cmid
+     * @param string $token
      * @return \moodle_url
      */
-    private function simulate_client_token_attach(\moodle_url $url, int $courseid, int $cmid): \moodle_url {
+    private function simulate_client_token_attach(\moodle_url $url, int $courseid, string $token): \moodle_url {
+        if ($token === '') {
+            return $url;
+        }
+
         foreach (return_context::get_client_landing_flows($courseid) as $landing) {
-            if ($landing['cmid'] === $cmid) {
+            if ($landing['token'] === $token) {
                 $url->param(return_context::FLOW_PARAM, $landing['token']);
                 break;
             }

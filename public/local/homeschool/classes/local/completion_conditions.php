@@ -578,6 +578,7 @@ class completion_conditions {
             'completionposts',
             'completiondiscussions',
             'completionreplies',
+            'completionattendance',
         ], true);
     }
 
