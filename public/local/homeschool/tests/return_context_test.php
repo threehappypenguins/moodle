@@ -20,6 +20,7 @@ defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
+require_once($CFG->dirroot . '/course/modlib.php');
 require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
 
 /**
@@ -117,45 +118,16 @@ final class return_context_test extends \local_homeschool\base_testcase {
     }
 
     /**
-     * prepare_modedit_course_return defers update redirects instead of exiting early.
+     * Save and display discards the flow and leaves core's activity URL unchanged.
      */
-    public function test_prepare_modedit_course_return_defers_update_redirect(): void {
-        $generator = $this->getDataGenerator();
-        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
-        $label = $generator->create_module('label', ['course' => $course->id]);
-
-        $token = return_context::arm(2, $course->id);
-        $data = (object) [
-            return_context::FLOW_PARAM => $token,
-            'frontend' => true,
-            'section' => 1,
-            'coursemodule' => $label->cmid,
-            'modulename' => 'label',
-        ];
-
-        $result = return_context::prepare_modedit_course_return($data, $course);
-
-        $this->assertSame($data, $result);
-        $this->assertTrue(return_context::has_pending_update_redirect($label->cmid));
-        $this->assertFalse(return_context::has_pending_update_redirect($label->cmid + 1));
-
-        global $SESSION;
-        $this->assertSame(
-            $token,
-            $SESSION->{return_context::SESSION_KEY}['pendingupdateredirects'][$label->cmid]['token'],
-        );
-    }
-
-    /**
-     * Save and display does not queue a deferred redirect.
-     */
-    public function test_prepare_modedit_course_return_discards_save_and_display(): void {
+    public function test_extend_modedit_return_url_discards_save_and_display(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
         $label = $generator->create_module('label', ['course' => $course->id]);
 
         $token = return_context::arm(1, $course->id);
-        $data = (object) [
+        $coreurl = new \moodle_url('/mod/label/view.php', ['id' => $label->cmid]);
+        $fromform = (object) [
             return_context::FLOW_PARAM => $token,
             'frontend' => true,
             'section' => 1,
@@ -164,22 +136,24 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'submitbutton' => 'Save and display',
         ];
 
-        return_context::prepare_modedit_course_return($data, $course);
+        $url = return_context::extend_modedit_return_url($coreurl, $fromform, $course);
 
-        $this->assertFalse(return_context::has_pending_update_redirect($label->cmid));
+        $this->assertNull($url->get_param(return_context::FLOW_PARAM));
         $this->assertFalse(return_context::has_pending());
     }
 
     /**
-     * Update redirects are marked ready by the observer and issued on course landing.
+     * Core's post-save redirect carries the flow token through plugin_extend_modedit_return_url.
      */
-    public function test_mark_update_redirect_ready_defers_navigation_to_course_landing(): void {
+    public function test_plugin_extend_modedit_return_url_attaches_homeschool_token(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
         $label = $generator->create_module('label', ['course' => $course->id]);
 
         $token = return_context::arm(2, $course->id);
-        $data = (object) [
+        $coreurl = course_get_url($course, 1);
+        $coreurl->set_anchor('module-' . $label->cmid);
+        $fromform = (object) [
             return_context::FLOW_PARAM => $token,
             'frontend' => true,
             'section' => 1,
@@ -187,25 +161,46 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'modulename' => 'label',
         ];
 
-        return_context::prepare_modedit_course_return($data, $course);
-        $this->assertTrue(return_context::has_pending_update_redirect($label->cmid));
-        $this->assertFalse(return_context::has_ready_update_redirect($label->cmid));
+        $landing = plugin_extend_modedit_return_url($coreurl, $fromform, $course);
 
-        return_context::mark_update_redirect_ready($label->cmid);
-
-        $this->assertFalse(return_context::has_pending_update_redirect($label->cmid));
-        $this->assertTrue(return_context::has_ready_update_redirect($label->cmid));
+        $this->assertSame($token, $landing->get_param(return_context::FLOW_PARAM));
     }
 
     /**
-     * prepare_modedit_course_return defers create redirects instead of exiting early.
+     * Update save: modedit redirect URL -> course landing -> Homeschool day page.
      */
-    public function test_prepare_modedit_course_return_defers_create_redirect(): void {
+    public function test_modedit_update_save_return_chain_reaches_day_page(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+        $label = $generator->create_module('label', ['course' => $course->id]);
+
+        $token = return_context::arm(2, $course->id);
+        $fromform = (object) [
+            return_context::FLOW_PARAM => $token,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $label->cmid,
+            'modulename' => 'label',
+        ];
+
+        $landing = $this->simulate_modedit_save_return($fromform, $course);
+        $this->assertSame($token, $landing->get_param(return_context::FLOW_PARAM));
+
+        $dayurl = $this->simulate_course_landing($landing, (int) $course->id);
+        $this->assertNotNull($dayurl);
+        $this->assertSame(2, (int) $dayurl->get_param('day'));
+        $this->assertFalse(return_context::has_pending());
+    }
+
+    /**
+     * Create save: modedit redirect URL -> course landing -> Homeschool day page.
+     */
+    public function test_modedit_create_save_return_chain_reaches_day_page(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
 
-        $token = return_context::arm(1, $course->id);
-        $data = (object) [
+        $token = return_context::arm(3, $course->id, true, true);
+        $fromform = (object) [
             return_context::FLOW_PARAM => $token,
             'add' => 'label',
             'frontend' => true,
@@ -214,39 +209,14 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'coursemodule' => 12345,
         ];
 
-        $result = return_context::prepare_modedit_course_return($data, $course);
+        $landing = $this->simulate_modedit_save_return($fromform, $course);
+        $this->assertSame($token, $landing->get_param(return_context::FLOW_PARAM));
 
-        $this->assertSame($data, $result);
-        $this->assertTrue(return_context::has_ready_create_redirect(12345));
-        $this->assertFalse(return_context::has_ready_create_redirect(12346));
-
-        global $SESSION;
-        $this->assertSame(
-            $token,
-            $SESSION->{return_context::SESSION_KEY}['readycreateredirects'][12345]['token'],
-        );
-    }
-
-    /**
-     * New-activity saves redirect through the flow token on the course return URL.
-     */
-    public function test_create_return_url_carries_flow_token(): void {
-        $generator = $this->getDataGenerator();
-        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
-
-        $token = return_context::arm(1, $course->id);
-        $data = (object) [
-            return_context::FLOW_PARAM => $token,
-            'add' => 'label',
-            'frontend' => true,
-            'section' => 1,
-            'modulename' => 'label',
-        ];
-
-        $url = return_context::get_create_return_url($data, $course);
-
-        $this->assertNotNull($url);
-        $this->assertSame($token, $url->get_param(return_context::FLOW_PARAM));
+        $dayurl = $this->simulate_course_landing($landing, (int) $course->id);
+        $this->assertNotNull($dayurl);
+        $this->assertSame(3, (int) $dayurl->get_param('day'));
+        $this->assertSame('1', (string) $dayurl->get_param('showall'));
+        $this->assertSame('1', (string) $dayurl->get_param('showhidden'));
     }
 
     /**
@@ -265,6 +235,7 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'frontend' => true,
             'section' => 1,
             'modulename' => 'label',
+            'coursemodule' => 1001,
         ];
         $datatwo = (object) [
             return_context::FLOW_PARAM => $tokentwo,
@@ -272,18 +243,17 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'frontend' => true,
             'section' => 1,
             'modulename' => 'label',
+            'coursemodule' => 1002,
         ];
 
-        $urlone = return_context::get_create_return_url($dataone, $course);
-        $urltwo = return_context::get_create_return_url($datatwo, $course);
+        $urlone = $this->simulate_modedit_save_return($dataone, $course);
+        $urltwo = $this->simulate_modedit_save_return($datatwo, $course);
 
-        $this->assertNotNull($urlone);
-        $this->assertNotNull($urltwo);
         $this->assertSame($tokenone, $urlone->get_param(return_context::FLOW_PARAM));
         $this->assertSame($tokentwo, $urltwo->get_param(return_context::FLOW_PARAM));
 
-        $dayone = return_context::consume_for_token($tokenone, (int) $course->id);
-        $daytwo = return_context::consume_for_token($tokentwo, (int) $course->id);
+        $dayone = $this->simulate_course_landing($urlone, (int) $course->id);
+        $daytwo = $this->simulate_course_landing($urltwo, (int) $course->id);
 
         $this->assertNotNull($dayone);
         $this->assertNotNull($daytwo);
@@ -292,68 +262,34 @@ final class return_context_test extends \local_homeschool\base_testcase {
     }
 
     /**
-     * Concurrent update redirects for the same course keep distinct flow tokens.
+     * Build the URL core modedit redirects to after save, with plugin extensions applied.
+     *
+     * @param \stdClass $fromform
+     * @param \stdClass $course
+     * @return \moodle_url
      */
-    public function test_concurrent_update_redirects_keep_distinct_flow_tokens(): void {
-        global $SESSION;
+    private function simulate_modedit_save_return(\stdClass $fromform, \stdClass $course): \moodle_url {
+        $url = course_get_url($course, $fromform->section ?? 1);
+        if (!empty($fromform->coursemodule)) {
+            $url->set_anchor('module-' . $fromform->coursemodule);
+        }
 
-        $generator = $this->getDataGenerator();
-        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
-        $labelone = $generator->create_module('label', ['course' => $course->id]);
-        $labeltwo = $generator->create_module('label', ['course' => $course->id]);
-
-        $tokenone = return_context::arm(1, $course->id);
-        $tokentwo = return_context::arm(2, $course->id);
-
-        return_context::prepare_modedit_course_return((object) [
-            return_context::FLOW_PARAM => $tokenone,
-            'frontend' => true,
-            'section' => 1,
-            'coursemodule' => $labelone->cmid,
-            'modulename' => 'label',
-        ], $course);
-        return_context::prepare_modedit_course_return((object) [
-            return_context::FLOW_PARAM => $tokentwo,
-            'frontend' => true,
-            'section' => 1,
-            'coursemodule' => $labeltwo->cmid,
-            'modulename' => 'label',
-        ], $course);
-
-        return_context::mark_update_redirect_ready($labelone->cmid);
-        return_context::mark_update_redirect_ready($labeltwo->cmid);
-
-        $ready = $SESSION->{return_context::SESSION_KEY}['readyupdateredirects'];
-        $this->assertSame($tokenone, $ready[$labelone->cmid]['token']);
-        $this->assertSame($tokentwo, $ready[$labeltwo->cmid]['token']);
-        $this->assertStringContainsString($tokenone, $ready[$labelone->cmid]['url']);
-        $this->assertStringContainsString($tokentwo, $ready[$labeltwo->cmid]['url']);
-        $this->assertStringNotContainsString($tokenone, $ready[$labeltwo->cmid]['url']);
-        $this->assertStringNotContainsString($tokentwo, $ready[$labelone->cmid]['url']);
+        return plugin_extend_modedit_return_url($url, $fromform, $course);
     }
 
     /**
-     * Consuming a flow token clears any matching ready landing redirect.
+     * Simulate course/view.php landing and consumption of the Homeschool flow token.
+     *
+     * @param \moodle_url $landingurl
+     * @param int $courseid
+     * @return \moodle_url|null
      */
-    public function test_consume_for_token_clears_matching_ready_update_redirect(): void {
-        $generator = $this->getDataGenerator();
-        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
-        $label = $generator->create_module('label', ['course' => $course->id]);
+    private function simulate_course_landing(\moodle_url $landingurl, int $courseid): ?\moodle_url {
+        $token = $landingurl->get_param(return_context::FLOW_PARAM);
+        if ($token === null || $token === '') {
+            return null;
+        }
 
-        $token = return_context::arm(3, $course->id);
-        return_context::prepare_modedit_course_return((object) [
-            return_context::FLOW_PARAM => $token,
-            'frontend' => true,
-            'section' => 1,
-            'coursemodule' => $label->cmid,
-            'modulename' => 'label',
-        ], $course);
-        return_context::mark_update_redirect_ready($label->cmid);
-
-        $this->assertTrue(return_context::has_ready_update_redirect($label->cmid));
-
-        $url = return_context::consume_for_token($token, (int) $course->id);
-        $this->assertNotNull($url);
-        $this->assertFalse(return_context::has_ready_update_redirect($label->cmid));
+        return return_context::consume_for_token((string) $token, $courseid);
     }
 }

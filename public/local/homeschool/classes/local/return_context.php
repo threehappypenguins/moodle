@@ -40,9 +40,6 @@ class return_context {
     /** Maximum age of an armed return before it is ignored (seconds). */
     public const TTL = 7200;
 
-    /** Maximum age of a ready course landing redirect (seconds). */
-    private const LANDING_TTL = 60;
-
     /**
      * Remember which Homeschool day page to return to after modedit.
      *
@@ -97,29 +94,6 @@ class return_context {
                 self::remove_flow($token);
             }
         }
-
-        $now = time();
-        foreach (['readycreateredirects', 'readyupdateredirects'] as $key) {
-            if (empty($store[$key]) || !is_array($store[$key])) {
-                continue;
-            }
-            foreach (array_keys($store[$key]) as $id) {
-                $time = (int) ($store[$key][$id]['time'] ?? 0);
-                if ($time < 1 || ($now - $time) > self::LANDING_TTL) {
-                    unset($store[$key][$id]);
-                }
-            }
-        }
-
-        if (empty($store['pendingupdateredirects']) || !is_array($store['pendingupdateredirects'])) {
-            return;
-        }
-        foreach (array_keys($store['pendingupdateredirects']) as $cmid) {
-            $time = (int) ($store['pendingupdateredirects'][$cmid]['time'] ?? 0);
-            if ($time < 1 || ($now - $time) > self::LANDING_TTL) {
-                unset($store['pendingupdateredirects'][$cmid]);
-            }
-        }
     }
 
     /**
@@ -164,229 +138,42 @@ class return_context {
         }
 
         self::remove_flow($token);
-        self::remove_ready_redirects_for_token($token);
         return self::build_url($flow);
     }
 
     /**
-     * Carry the Homeschool flow token on the core course return URL after modedit save.
+     * Attach the Homeschool flow token to core's post-save modedit redirect URL.
      *
-     * Does not redirect from coursemodule_edit_post_actions; navigation is deferred until
-     * core has committed the module save and finished its post-save work.
-     *
-     * @param \stdClass $data Submitted module form data
+     * @param \moodle_url $url URL core built for the post-save redirect
+     * @param \stdClass $fromform Submitted module form data
      * @param \stdClass $course Target course
-     * @return \stdClass
+     * @return \moodle_url
      */
-    public static function prepare_modedit_course_return(\stdClass $data, \stdClass $course): \stdClass {
-        $url = self::build_modedit_course_return_url($data, $course);
-        if (!$url) {
-            return $data;
-        }
-
-        $token = (string) ($data->{self::FLOW_PARAM} ?? '');
+    public static function extend_modedit_return_url(\moodle_url $url, \stdClass $fromform, \stdClass $course): \moodle_url {
+        $token = (string) ($fromform->{self::FLOW_PARAM} ?? '');
         if ($token === '') {
-            return $data;
+            return $url;
         }
 
-        if (!empty($data->add)) {
-            $cmid = (int) ($data->coursemodule ?? 0);
-            if ($cmid > 0) {
-                $store = &self::get_store();
-                $store['readycreateredirects'][$cmid] = [
-                    'url' => $url->out(false),
-                    'courseid' => (int) $course->id,
-                    'token' => $token,
-                    'time' => time(),
-                ];
-            }
-        } else if (!empty($data->coursemodule)) {
-            $store = &self::get_store();
-            $store['pendingupdateredirects'][(int) $data->coursemodule] = [
-                'url' => $url->out(false),
-                'courseid' => (int) $course->id,
-                'token' => $token,
-                'time' => time(),
-            ];
-        }
-
-        return $data;
-    }
-
-    /**
-     * Mark a pending update redirect ready after update_moduleinfo has fully completed.
-     *
-     * Observers must not redirect; course landing handles navigation once core is done.
-     *
-     * @param int $cmid
-     * @return void
-     */
-    public static function mark_update_redirect_ready(int $cmid): void {
-        if ($cmid < 1) {
-            return;
-        }
-
-        $store = &self::get_store();
-        if (empty($store['pendingupdateredirects'][$cmid])) {
-            return;
-        }
-
-        $store['readyupdateredirects'][$cmid] = $store['pendingupdateredirects'][$cmid];
-        unset($store['pendingupdateredirects'][$cmid]);
-    }
-
-    /**
-     * Redirect a course landing after modedit update when a Homeschool flow is ready.
-     *
-     * @param int $courseid
-     * @param string $token Flow token from the landing URL
-     * @return bool True when a redirect was issued
-     */
-    public static function maybe_redirect_pending_update_landing(int $courseid, string $token): bool {
-        if ($courseid < 1 || $token === '') {
-            return false;
-        }
-
-        self::purge_expired();
-        $store = &self::get_store();
-        if (empty($store['readyupdateredirects']) || !is_array($store['readyupdateredirects'])) {
-            return false;
-        }
-
-        foreach ($store['readyupdateredirects'] as $cmid => $pending) {
-            if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
-                continue;
-            }
-            if (($pending['token'] ?? '') !== $token) {
-                continue;
-            }
-
-            unset($store['readyupdateredirects'][$cmid]);
-            redirect(new \moodle_url($pending['url']));
-        }
-
-        return false;
-    }
-
-    /**
-     * Redirect a course landing after modedit create when a Homeschool flow is ready.
-     *
-     * @param int $courseid
-     * @param string $token Flow token from the landing URL
-     * @return bool True when a redirect was issued
-     */
-    public static function maybe_redirect_pending_create_landing(int $courseid, string $token): bool {
-        if ($courseid < 1 || $token === '') {
-            return false;
-        }
-
-        self::purge_expired();
-        $store = &self::get_store();
-        if (empty($store['readycreateredirects']) || !is_array($store['readycreateredirects'])) {
-            return false;
-        }
-
-        foreach ($store['readycreateredirects'] as $cmid => $pending) {
-            if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
-                continue;
-            }
-            if (($pending['token'] ?? '') !== $token) {
-                continue;
-            }
-
-            unset($store['readycreateredirects'][$cmid]);
-            redirect(new \moodle_url($pending['url']));
-        }
-
-        return false;
-    }
-
-    /**
-     * Course return URL for a new activity save, with the flow token attached.
-     *
-     * @param \stdClass $data Submitted module form data
-     * @param \stdClass $course Target course
-     * @return \moodle_url|null
-     */
-    public static function get_create_return_url(\stdClass $data, \stdClass $course): ?\moodle_url {
-        if (empty($data->add)) {
-            return null;
-        }
-
-        return self::build_modedit_course_return_url($data, $course);
-    }
-
-    /**
-     * Whether a create redirect is ready for course landing after modedit save.
-     *
-     * @param int $cmid
-     * @return bool
-     */
-    public static function has_ready_create_redirect(int $cmid): bool {
-        $store = self::get_store();
-        return !empty($store['readycreateredirects'][$cmid]);
-    }
-
-    /**
-     * Whether an update redirect is queued for a course module.
-     *
-     * @param int $cmid
-     * @return bool
-     */
-    public static function has_pending_update_redirect(int $cmid): bool {
-        $store = self::get_store();
-        return !empty($store['pendingupdateredirects'][$cmid]);
-    }
-
-    /**
-     * Whether an update redirect is ready for course landing after modedit save.
-     *
-     * @param int $cmid
-     * @return bool
-     */
-    public static function has_ready_update_redirect(int $cmid): bool {
-        $store = self::get_store();
-        return !empty($store['readyupdateredirects'][$cmid]);
-    }
-
-    /**
-     * @param \stdClass $data Submitted module form data
-     * @param \stdClass $course Target course
-     * @return \moodle_url|null
-     */
-    protected static function build_modedit_course_return_url(\stdClass $data, \stdClass $course): ?\moodle_url {
-        $token = $data->{self::FLOW_PARAM} ?? '';
-        if ($token === '') {
-            return null;
-        }
-
-        if (!self::get_valid_flow($token)) {
-            return null;
-        }
-
-        if (!empty($data->submitbutton)) {
+        if (!empty($fromform->submitbutton)) {
             self::discard_flow($token);
-            return null;
+            return $url;
         }
 
-        if (empty($data->frontend)) {
-            return null;
+        if (empty($fromform->frontend)) {
+            return $url;
         }
 
-        if (!empty($data->modulename) && plugin_supports('mod', $data->modulename, FEATURE_PUBLISHES_QUESTIONS)) {
-            return null;
+        $flow = self::get_valid_flow($token);
+        if (!$flow || (int) $flow['courseid'] !== (int) $course->id) {
+            return $url;
         }
 
-        if (!isset($data->section)) {
-            return null;
+        if (!empty($fromform->modulename) && plugin_supports('mod', $fromform->modulename, FEATURE_PUBLISHES_QUESTIONS)) {
+            return $url;
         }
 
-        $url = course_get_url($course, $data->section, self::extract_return_options($data));
-        if (!empty($data->coursemodule)) {
-            $url->set_anchor('module-' . $data->coursemodule);
-        }
         $url->param(self::FLOW_PARAM, $token);
-
         return $url;
     }
 
@@ -459,20 +246,6 @@ class return_context {
     }
 
     /**
-     * @param \stdClass $data
-     * @return array
-     */
-    protected static function extract_return_options(\stdClass $data): array {
-        $returnoptions = [];
-        foreach ((array) $data as $key => $value) {
-            if (preg_match('/^returnoptions\[(.+)\]$/', (string) $key, $matches)) {
-                $returnoptions[$matches[1]] = (int) $value;
-            }
-        }
-        return $returnoptions;
-    }
-
-    /**
      * @param array $flow
      * @return \moodle_url
      */
@@ -530,30 +303,6 @@ class return_context {
     }
 
     /**
-     * Drop any ready create/update landing redirects for a consumed flow token.
-     *
-     * @param string $token
-     * @return void
-     */
-    protected static function remove_ready_redirects_for_token(string $token): void {
-        if ($token === '') {
-            return;
-        }
-
-        $store = &self::get_store();
-        foreach (['readycreateredirects', 'readyupdateredirects'] as $key) {
-            if (empty($store[$key]) || !is_array($store[$key])) {
-                continue;
-            }
-            foreach (array_keys($store[$key]) as $id) {
-                if (($store[$key][$id]['token'] ?? '') === $token) {
-                    unset($store[$key][$id]);
-                }
-            }
-        }
-    }
-
-    /**
      * @return array
      */
     protected static function &get_store(): array {
@@ -562,25 +311,11 @@ class return_context {
         if (empty($SESSION->{self::SESSION_KEY}) || !is_array($SESSION->{self::SESSION_KEY})) {
             $SESSION->{self::SESSION_KEY} = [
                 'flows' => [],
-                'readycreateredirects' => [],
-                'pendingupdateredirects' => [],
-                'readyupdateredirects' => [],
             ];
-        } else {
-            if (!isset($SESSION->{self::SESSION_KEY}['flows'])) {
-                $SESSION->{self::SESSION_KEY} = [
-                    'flows' => [],
-                    'readycreateredirects' => [],
-                    'pendingupdateredirects' => [],
-                    'readyupdateredirects' => [],
-                ];
-            } else {
-                $SESSION->{self::SESSION_KEY} += [
-                    'readycreateredirects' => [],
-                    'pendingupdateredirects' => [],
-                    'readyupdateredirects' => [],
-                ];
-            }
+        } else if (!isset($SESSION->{self::SESSION_KEY}['flows'])) {
+            $SESSION->{self::SESSION_KEY} = [
+                'flows' => [],
+            ];
         }
 
         return $SESSION->{self::SESSION_KEY};

@@ -24,9 +24,4 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$observers = [
-    [
-        'eventname' => \core\event\course_module_updated::class,
-        'callback' => [\local_homeschool\observer\module_edit::class, 'course_module_updated'],
-    ],
-];
+$observers = [];

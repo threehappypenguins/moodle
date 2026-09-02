@@ -72,12 +72,13 @@ function local_homeschool_coursemodule_definition_after_data($formwrapper, $mfor
 }
 
 /**
- * Carry the Homeschool flow token on the core course return URL after modedit save.
+ * Attach the Homeschool flow token to core's post-save modedit redirect URL.
  *
- * @param stdClass $data
+ * @param moodle_url $url
+ * @param stdClass $fromform
  * @param stdClass $course
- * @return stdClass
+ * @return moodle_url
  */
-function local_homeschool_coursemodule_edit_post_actions($data, $course) {
-    return \local_homeschool\local\return_context::prepare_modedit_course_return($data, $course);
+function local_homeschool_coursemodule_edit_modedit_return($url, $fromform, $course) {
+    return \local_homeschool\local\return_context::extend_modedit_return_url($url, $fromform, $course);
 }

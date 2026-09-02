@@ -214,6 +214,7 @@ if ($mform->is_cancelled()) {
             $url->set_anchor('module-' . $fromform->coursemodule);
         }
     }
+    $url = plugin_extend_modedit_return_url($url, $fromform, $course);
     redirect($url);
     exit;
 

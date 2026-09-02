@@ -76,13 +76,6 @@ class course_return {
                 return;
             }
 
-            if (return_context::maybe_redirect_pending_update_landing($courseid, $token)) {
-                return;
-            }
-            if (return_context::maybe_redirect_pending_create_landing($courseid, $token)) {
-                return;
-            }
-
             $url = return_context::consume_for_token($token, $courseid);
             if ($url) {
                 redirect($url);

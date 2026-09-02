@@ -236,6 +236,24 @@ function plugin_extend_coursemodule_edit_post_actions($moduleinfo, $course) {
 }
 
 /**
+ * Hook for plugins to extend the URL modedit redirects to after save.
+ *
+ * @param moodle_url $url URL core built for the post-save redirect
+ * @param stdClass $fromform submitted module form data
+ * @param stdClass $course the course of the module
+ * @return moodle_url
+ */
+function plugin_extend_modedit_return_url($url, $fromform, $course) {
+    $callbacks = get_plugins_with_function('coursemodule_edit_modedit_return', 'lib.php');
+    foreach ($callbacks as $type => $plugins) {
+        foreach ($plugins as $plugin => $pluginfunction) {
+            $url = $pluginfunction($url, $fromform, $course);
+        }
+    }
+    return $url;
+}
+
+/**
  * Common create/update module module actions that need to be processed as soon as a module is created/updaded.
  * For example:create grade parent category, add outcomes, rebuild caches, regrade, save plagiarism settings...
  * Please note this api does not trigger events as of MOODLE 2.6. Please trigger events before calling this api.
