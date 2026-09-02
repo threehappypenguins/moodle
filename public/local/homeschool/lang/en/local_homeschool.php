@@ -137,6 +137,7 @@ $string['shiftundo'] = 'Undo last shift';
 $string['shiftundoavailable'] = 'Last shift: {$a} (undo available for 30 minutes)';
 $string['shiftundone'] = 'Restored {$a} timeline reminder dates.';
 $string['shiftundofailed'] = 'Nothing to undo.';
+$string['shiftundoallskipped'] = 'No reminder dates were restored — {$a} could not be undone (no longer available).';
 $string['shiftinvalidparams'] = 'Invalid shift settings.';
 $string['shiftappliedsummary'] = 'Shifted {$a->count} timeline reminders {$a->direction} by {$a->days} days.';
 $string['shiftapplyfailed'] = 'No timeline reminders were shifted.';

@@ -192,6 +192,30 @@ final class return_context_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * prepare_modedit_course_return defers create redirects instead of exiting early.
+     */
+    public function test_prepare_modedit_course_return_defers_create_redirect(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+
+        $token = return_context::arm(1, $course->id);
+        $data = (object) [
+            return_context::FLOW_PARAM => $token,
+            'add' => 'label',
+            'frontend' => true,
+            'section' => 1,
+            'modulename' => 'label',
+            'coursemodule' => 12345,
+        ];
+
+        $result = return_context::prepare_modedit_course_return($data, $course);
+
+        $this->assertSame($data, $result);
+        $this->assertTrue(return_context::has_ready_create_redirect(12345));
+        $this->assertFalse(return_context::has_ready_create_redirect(12346));
+    }
+
+    /**
      * New-activity saves redirect through the flow token on the course return URL.
      */
     public function test_create_return_url_carries_flow_token(): void {

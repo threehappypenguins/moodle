@@ -73,7 +73,10 @@ class course_return {
 
             $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
             if ($token === '') {
-                return_context::maybe_redirect_pending_update_landing($courseid);
+                if (return_context::maybe_redirect_pending_update_landing($courseid)) {
+                    return;
+                }
+                return_context::maybe_redirect_pending_create_landing($courseid);
                 return;
             }
 

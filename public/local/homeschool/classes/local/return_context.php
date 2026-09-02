@@ -40,8 +40,8 @@ class return_context {
     /** Maximum age of an armed return before it is ignored (seconds). */
     public const TTL = 7200;
 
-    /** Maximum age of a pending update course landing redirect (seconds). */
-    private const UPDATE_LANDING_TTL = 60;
+    /** Maximum age of a ready course landing redirect (seconds). */
+    private const LANDING_TTL = 60;
 
     /**
      * Remember which Homeschool day page to return to after modedit.
@@ -99,11 +99,14 @@ class return_context {
         }
 
         $now = time();
-        if (!empty($store['readyupdateredirects']) && is_array($store['readyupdateredirects'])) {
-            foreach (array_keys($store['readyupdateredirects']) as $id) {
-                $time = (int) ($store['readyupdateredirects'][$id]['time'] ?? 0);
-                if ($time < 1 || ($now - $time) > self::UPDATE_LANDING_TTL) {
-                    unset($store['readyupdateredirects'][$id]);
+        foreach (['readycreateredirects', 'readyupdateredirects'] as $key) {
+            if (empty($store[$key]) || !is_array($store[$key])) {
+                continue;
+            }
+            foreach (array_keys($store[$key]) as $id) {
+                $time = (int) ($store[$key][$id]['time'] ?? 0);
+                if ($time < 1 || ($now - $time) > self::LANDING_TTL) {
+                    unset($store[$key][$id]);
                 }
             }
         }
@@ -113,7 +116,7 @@ class return_context {
         }
         foreach (array_keys($store['pendingupdateredirects']) as $cmid) {
             $time = (int) ($store['pendingupdateredirects'][$cmid]['time'] ?? 0);
-            if ($time < 1 || ($now - $time) > self::UPDATE_LANDING_TTL) {
+            if ($time < 1 || ($now - $time) > self::LANDING_TTL) {
                 unset($store['pendingupdateredirects'][$cmid]);
             }
         }
@@ -181,7 +184,15 @@ class return_context {
         }
 
         if (!empty($data->add)) {
-            redirect($url);
+            $cmid = (int) ($data->coursemodule ?? 0);
+            if ($cmid > 0) {
+                $store = &self::get_store();
+                $store['readycreateredirects'][$cmid] = [
+                    'url' => $url->out(false),
+                    'courseid' => (int) $course->id,
+                    'time' => time(),
+                ];
+            }
         } else if (!empty($data->coursemodule)) {
             $store = &self::get_store();
             $store['pendingupdateredirects'][(int) $data->coursemodule] = [
@@ -246,6 +257,35 @@ class return_context {
     }
 
     /**
+     * Redirect a course landing after modedit create when a Homeschool flow is ready.
+     *
+     * @param int $courseid
+     * @return bool True when a redirect was issued
+     */
+    public static function maybe_redirect_pending_create_landing(int $courseid): bool {
+        if ($courseid < 1) {
+            return false;
+        }
+
+        self::purge_expired();
+        $store = &self::get_store();
+        if (empty($store['readycreateredirects']) || !is_array($store['readycreateredirects'])) {
+            return false;
+        }
+
+        foreach ($store['readycreateredirects'] as $cmid => $pending) {
+            if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
+                continue;
+            }
+
+            unset($store['readycreateredirects'][$cmid]);
+            redirect(new \moodle_url($pending['url']));
+        }
+
+        return false;
+    }
+
+    /**
      * Course return URL for a new activity save, with the flow token attached.
      *
      * @param \stdClass $data Submitted module form data
@@ -258,6 +298,17 @@ class return_context {
         }
 
         return self::build_modedit_course_return_url($data, $course);
+    }
+
+    /**
+     * Whether a create redirect is ready for course landing after modedit save.
+     *
+     * @param int $cmid
+     * @return bool
+     */
+    public static function has_ready_create_redirect(int $cmid): bool {
+        $store = self::get_store();
+        return !empty($store['readycreateredirects'][$cmid]);
     }
 
     /**
@@ -471,6 +522,7 @@ class return_context {
         if (empty($SESSION->{self::SESSION_KEY}) || !is_array($SESSION->{self::SESSION_KEY})) {
             $SESSION->{self::SESSION_KEY} = [
                 'flows' => [],
+                'readycreateredirects' => [],
                 'pendingupdateredirects' => [],
                 'readyupdateredirects' => [],
             ];
@@ -478,11 +530,13 @@ class return_context {
             if (!isset($SESSION->{self::SESSION_KEY}['flows'])) {
                 $SESSION->{self::SESSION_KEY} = [
                     'flows' => [],
+                    'readycreateredirects' => [],
                     'pendingupdateredirects' => [],
                     'readyupdateredirects' => [],
                 ];
             } else {
                 $SESSION->{self::SESSION_KEY} += [
+                    'readycreateredirects' => [],
                     'pendingupdateredirects' => [],
                     'readyupdateredirects' => [],
                 ];

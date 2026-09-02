@@ -105,7 +105,13 @@ if ($action === 'undo') {
     require_sesskey();
     $result = \local_homeschool\local\shift_undo::apply();
     if ($result->updated > 0) {
-        \core\notification::success(get_string('shiftundone', 'local_homeschool', $result->updated));
+        $message = get_string('shiftundone', 'local_homeschool', $result->updated);
+        if ($result->skipped > 0) {
+            $message .= ' ' . get_string('shiftappliedskippedother', 'local_homeschool', $result->skipped);
+        }
+        \core\notification::success($message);
+    } else if ($result->skipped > 0) {
+        \core\notification::error(get_string('shiftundoallskipped', 'local_homeschool', $result->skipped));
     } else {
         \core\notification::error(get_string('shiftundofailed', 'local_homeschool'));
     }
