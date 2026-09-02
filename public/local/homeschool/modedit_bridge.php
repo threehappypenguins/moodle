@@ -46,18 +46,13 @@ if ($rawgoto === '' || $rawgoto[0] !== '/') {
 }
 
 $gotourl = new moodle_url($rawgoto);
-$modpath = (new moodle_url('/course/mod.php'))->get_path();
-$modeditpath = (new moodle_url('/course/modedit.php'))->get_path();
-$gotopath = $gotourl->get_path();
-if (!in_array($gotopath, [$modpath, $modeditpath], true)) {
+if (!\local_homeschool\local\modedit_launch::is_supported_launch_url($gotourl)) {
     throw new moodle_exception('invalidurl');
 }
 
+$gotourl = \local_homeschool\local\modedit_launch::normalize_url($gotourl);
+
 $courseid = (int) $gotourl->param('course');
-// Activity chooser new-module links use /course/mod.php?id=<course>&add=...
-if ($courseid < 1 && $gotopath === $modpath) {
-    $courseid = (int) $gotourl->param('id');
-}
 if ($courseid < 1) {
     $update = (int) $gotourl->param('update');
     if ($update > 0) {

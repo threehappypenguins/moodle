@@ -278,4 +278,57 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
         $this->assertArrayNotHasKey($tokens[0], $SESSION->{shift_preview::SESSION_KEY}['previews']);
         $this->assertArrayNotHasKey($tokens[1], $SESSION->{shift_preview::SESSION_KEY}['previews']);
     }
+
+    /**
+     * Empty previews are not stored, so repeated previews cannot grow the session.
+     */
+    public function test_empty_preview_is_not_stored(): void {
+        global $SESSION;
+
+        $this->enable_completion_globally();
+
+        $generator = $this->getDataGenerator();
+        $teacher = $generator->create_user();
+        $course = $generator->create_course([
+            'format' => 'daysections',
+            'enablecompletion' => 1,
+            'numsections' => 2,
+        ], ['createsections' => true]);
+
+        $this->setUser($teacher);
+
+        $preview = day_scheduler::preview_shift([$course], 1, 1, 7, false);
+        $params = (object) ['days' => 7, 'direction' => 'forward'];
+
+        for ($i = 0; $i < 15; $i++) {
+            $this->assertSame('', shift_preview::save($teacher->id, $preview, $params));
+        }
+
+        $this->assertEmpty($SESSION->{shift_preview::SESSION_KEY}['previews'] ?? []);
+    }
+
+    /**
+     * Item snapshots are stored in cache, not embedded in the session index.
+     */
+    public function test_snapshot_items_live_in_cache_not_session(): void {
+        global $SESSION;
+
+        $original = strtotime('2026-06-01 09:00:00');
+        [$teacher, $course, ] = $this->create_teacher_assign_with_reminder($original);
+        $this->setUser($teacher);
+
+        $preview = day_scheduler::preview_shift([$course], 1, 1, 7, false);
+        $token = shift_preview::save($teacher->id, $preview, (object) [
+            'days' => 7,
+            'direction' => 'forward',
+        ]);
+
+        $meta = $SESSION->{shift_preview::SESSION_KEY}['previews'][$token];
+        $this->assertObjectNotHasProperty('items', $meta);
+
+        $cache = \cache::make('local_homeschool', 'shiftpreviews');
+        $items = $cache->get($token);
+        $this->assertIsArray($items);
+        $this->assertNotEmpty($items);
+    }
 }

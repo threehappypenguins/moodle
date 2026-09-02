@@ -27,8 +27,7 @@ require_once($CFG->libdir . '/completionlib.php');
 
 require_login();
 
-// Visiting Homeschool clears any pending post-modedit return.
-\local_homeschool\local\return_context::clear();
+\local_homeschool\local\return_context::purge_expired();
 
 \local_homeschool\local\requirements::require_manage();
 

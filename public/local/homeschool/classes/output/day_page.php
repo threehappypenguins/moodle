@@ -18,6 +18,7 @@ namespace local_homeschool\output;
 
 use local_homeschool\local\activity_progress;
 use local_homeschool\local\activity_repository;
+use local_homeschool\local\modedit_launch;
 use local_homeschool\local\student_repository;
 use renderable;
 use renderer_base;
@@ -308,6 +309,12 @@ class day_page implements renderable, templatable {
             'requirementsopen' => ((int) $this->expandreqcmid === (int) $activity->cmid),
             'requirements' => self::export_requirements($activity),
             'activityurl' => $activity->activityurl,
+            'editurl' => modedit_launch::build_edit_launch_url(
+                (int) $activity->cmid,
+                $this->daynumber,
+                $this->showall,
+                $this->showhidden,
+            )->out(false),
             'progress' => [],
             'hasprogress' => false,
             'dayurl' => $this->day_url()->out(false),

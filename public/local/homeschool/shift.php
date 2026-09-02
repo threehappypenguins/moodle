@@ -26,7 +26,7 @@ require(__DIR__ . '/../../../config.php');
 
 require_login();
 
-\local_homeschool\local\return_context::clear();
+\local_homeschool\local\return_context::purge_expired();
 
 \local_homeschool\local\requirements::require_manage();
 

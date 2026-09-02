@@ -19,10 +19,10 @@ namespace local_homeschool\local;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Session-backed shift preview snapshots keyed by unpredictable tokens.
+ * Shift preview snapshots keyed by unpredictable tokens.
  *
- * Each preview stores its own snapshot so concurrent shift tabs cannot overwrite
- * one another before apply.
+ * Preview metadata is indexed in the session; item snapshots live in a TTL session
+ * cache so large course sets do not bloat every session read/write.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -30,7 +30,7 @@ defined('MOODLE_INTERNAL') || die();
  */
 class shift_preview {
 
-    /** @var string Session key for the preview store. */
+    /** @var string Session key for preview metadata index. */
     public const SESSION_KEY = 'local_homeschool_shift_previews';
 
     /** @var string Apply form parameter naming a preview token. */
@@ -38,6 +38,9 @@ class shift_preview {
 
     /** @var string Legacy single-preview session key. */
     private const LEGACY_SESSION_KEY = 'local_homeschool_shift_preview';
+
+    /** @var string Cache area storing preview item snapshots. */
+    private const CACHE_AREA = 'shiftpreviews';
 
     /** @var int Preview availability window in seconds. */
     public const TTL = HOURSECS;
@@ -51,31 +54,28 @@ class shift_preview {
      * @param int $userid
      * @param \stdClass $preview Result from day_scheduler::preview_shift()
      * @param \stdClass $params Parsed shift parameters (days, direction, etc.)
-     * @return string Preview token for the apply form
+     * @return string Preview token for the apply form, or empty when nothing to apply
      */
     public static function save(int $userid, \stdClass $preview, \stdClass $params): string {
         global $SESSION;
 
+        $items = self::build_snapshot_items($preview);
+        if ($items === []) {
+            return '';
+        }
+
         self::purge_expired();
         self::enforce_user_cap($userid);
 
-        $items = [];
-        foreach ($preview->items as $item) {
-            $items[] = (object) [
-                'cmid' => (int) $item->cmid,
-                'oldtimestamp' => (int) $item->oldtimestamp,
-                'newtimestamp' => (int) $item->newtimestamp,
-            ];
-        }
-
         $token = random_string(32);
+        self::get_items_cache()->set($token, $items);
+
         $store = &self::get_store();
         $store['previews'][$token] = (object) [
             'userid' => $userid,
             'time' => time(),
             'days' => (int) $params->days,
             'direction' => (string) $params->direction,
-            'items' => $items,
         ];
 
         unset($SESSION->{self::LEGACY_SESSION_KEY});
@@ -99,14 +99,21 @@ class shift_preview {
         self::purge_expired();
         $store = &self::get_store();
         $data = $store['previews'][$token] ?? null;
-        if (!$data || !self::is_valid($data, (int) $USER->id)) {
-            if ($data) {
-                unset($store['previews'][$token]);
-            }
+        if (!$data || !self::is_valid_metadata($data, (int) $USER->id)) {
+            self::delete_preview($token);
+            return null;
+        }
+
+        $items = self::get_items_cache()->get($token);
+        if (!is_array($items) || $items === []) {
+            self::delete_preview($token);
             return null;
         }
 
         unset($store['previews'][$token]);
+        self::get_items_cache()->delete($token);
+
+        $data->items = $items;
         return $data;
     }
 
@@ -117,6 +124,11 @@ class shift_preview {
      */
     public static function clear(): void {
         global $SESSION;
+
+        $store = self::get_store();
+        foreach (array_keys($store['previews']) as $token) {
+            self::get_items_cache()->delete($token);
+        }
 
         unset($SESSION->{self::SESSION_KEY}, $SESSION->{self::LEGACY_SESSION_KEY});
     }
@@ -130,7 +142,7 @@ class shift_preview {
         $store = &self::get_store();
         foreach (array_keys($store['previews']) as $token) {
             if (self::is_expired($store['previews'][$token])) {
-                unset($store['previews'][$token]);
+                self::delete_preview($token);
             }
         }
     }
@@ -146,7 +158,7 @@ class shift_preview {
         $usertokens = [];
 
         foreach ($store['previews'] as $token => $data) {
-            if ((int) $data->userid !== $userid || self::is_expired($data) || empty($data->items)) {
+            if ((int) $data->userid !== $userid || self::is_expired($data)) {
                 continue;
             }
             $usertokens[$token] = (int) $data->time;
@@ -155,8 +167,43 @@ class shift_preview {
         asort($usertokens);
         while (count($usertokens) >= self::MAX_PER_USER) {
             $oldesttoken = array_key_first($usertokens);
-            unset($store['previews'][$oldesttoken], $usertokens[$oldesttoken]);
+            self::delete_preview($oldesttoken);
+            unset($usertokens[$oldesttoken]);
         }
+    }
+
+    /**
+     * @param \stdClass $preview
+     * @return \stdClass[]
+     */
+    protected static function build_snapshot_items(\stdClass $preview): array {
+        $items = [];
+        foreach ($preview->items as $item) {
+            $items[] = (object) [
+                'cmid' => (int) $item->cmid,
+                'oldtimestamp' => (int) $item->oldtimestamp,
+                'newtimestamp' => (int) $item->newtimestamp,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param string $token
+     * @return void
+     */
+    protected static function delete_preview(string $token): void {
+        $store = &self::get_store();
+        unset($store['previews'][$token]);
+        self::get_items_cache()->delete($token);
+    }
+
+    /**
+     * @return \cache_application|\cache_session
+     */
+    protected static function get_items_cache(): \cache {
+        return \cache::make('local_homeschool', self::CACHE_AREA);
     }
 
     /**
@@ -172,16 +219,12 @@ class shift_preview {
      * @param int $userid
      * @return bool
      */
-    protected static function is_valid(\stdClass $data, int $userid): bool {
+    protected static function is_valid_metadata(\stdClass $data, int $userid): bool {
         if ((int) $data->userid !== $userid) {
             return false;
         }
 
-        if (self::is_expired($data)) {
-            return false;
-        }
-
-        return !empty($data->items);
+        return !self::is_expired($data);
     }
 
     /**
