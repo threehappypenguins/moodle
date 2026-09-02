@@ -42,15 +42,18 @@ if ($ADMIN->fulltree) {
         1,
     ));
 
-    $options = [
-        1 => get_string('yes'),
-        0 => get_string('no'),
-    ];
-    $settings->add(new admin_setting_configselect(
-        'format_daysections/enablelinearnav',
-        new lang_string('linearnavigationsettings', 'core_courseformat'),
-        new lang_string('linearnavigationsettings_help', 'core_courseformat'),
-        1,
-        $options,
-    ));
+    // Linear navigation settings exist in Moodle 5.3+ only.
+    if (class_exists(\core_courseformat\local\linearnavigationsettings::class)) {
+        $options = [
+            1 => get_string('yes'),
+            0 => get_string('no'),
+        ];
+        $settings->add(new admin_setting_configselect(
+            'format_daysections/enablelinearnav',
+            new lang_string('linearnavigationsettings', 'core_courseformat'),
+            new lang_string('linearnavigationsettings_help', 'core_courseformat'),
+            1,
+            $options,
+        ));
+    }
 }

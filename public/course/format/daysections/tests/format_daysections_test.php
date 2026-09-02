@@ -123,8 +123,14 @@ final class format_daysections_test extends \advanced_testcase {
 
     /**
      * Tests linear navigation defaults use format_daysections config, not format_topics.
+     *
+     * Skipped on Moodle versions without core linear navigation settings (pre-5.3).
      */
     public function test_course_format_options_use_daysections_linear_nav(): void {
+        if (!class_exists(\core_courseformat\local\linearnavigationsettings::class)) {
+            $this->markTestSkipped('Linear navigation settings require Moodle 5.3+');
+        }
+
         $this->resetAfterTest(true);
 
         set_config('enablelinearnav', 0, 'format_daysections');

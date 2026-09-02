@@ -24,11 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026090200;
+$plugin->version   = 2026090201;
 $plugin->requires  = 2026041000;
 $plugin->component = 'format_daysections';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0.0';
+$plugin->release   = '1.0.1';
 $plugin->dependencies = [
     'format_topics' => 2026042000,
 ];

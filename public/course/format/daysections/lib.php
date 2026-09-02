@@ -128,10 +128,14 @@ class format_daysections extends format_topics {
             ],
         ];
 
-        $courseformatoptions = array_merge(
-            linearnavigationsettings::get_course_format_options_default($this->get_format()),
-            $courseformatoptions,
-        );
+        // Linear navigation settings exist in Moodle 5.3+ only.
+        $haslinearnav = class_exists(linearnavigationsettings::class);
+        if ($haslinearnav) {
+            $courseformatoptions = array_merge(
+                linearnavigationsettings::get_course_format_options_default($this->get_format()),
+                $courseformatoptions,
+            );
+        }
 
         if ($foreditform && !isset($courseformatoptions['coursedisplay']['label'])) {
             $hiddensectionslist = new \core\output\choicelist();
@@ -182,10 +186,12 @@ class format_daysections extends format_topics {
                 ],
             ];
 
-            $courseformatoptions = array_merge_recursive(
-                $courseformatoptions,
-                linearnavigationsettings::get_course_format_options_edit_form($this->get_format()),
-            );
+            if ($haslinearnav) {
+                $courseformatoptions = array_merge_recursive(
+                    $courseformatoptions,
+                    linearnavigationsettings::get_course_format_options_edit_form($this->get_format()),
+                );
+            }
             $courseformatoptions = array_merge_recursive($courseformatoptions, $courseformatoptionsedit);
         }
 
