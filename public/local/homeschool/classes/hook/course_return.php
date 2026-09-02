@@ -23,8 +23,8 @@ use local_homeschool\local\return_context;
 /**
  * After modedit save/cancel, bounce course landing pages back to the Homeschool day page.
  *
- * Consumption requires the flow token on the landing URL so unrelated course visits and
- * concurrent editors cannot steal one another's return targets.
+ * Consumption requires the flow token on the landing URL. When core omits it from the
+ * post-modedit redirect, client JS appends the token by matching the module anchor hash.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -57,7 +57,7 @@ class course_return {
      * @return void
      */
     public static function before_http_headers(before_http_headers $hook): void {
-        global $SCRIPT;
+        global $PAGE, $SCRIPT;
 
         if (during_initial_install() || CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
             return;
@@ -72,13 +72,21 @@ class course_return {
             }
 
             $token = optional_param(return_context::FLOW_PARAM, '', PARAM_ALPHANUMEXT);
-            if ($token === '') {
+            if ($token !== '') {
+                $url = return_context::consume_for_token($token, $courseid);
+                if ($url) {
+                    redirect($url);
+                }
                 return;
             }
 
-            $url = return_context::consume_for_token($token, $courseid);
-            if ($url) {
-                redirect($url);
+            $landings = return_context::get_client_landing_flows($courseid);
+            if (!empty($landings)) {
+                $PAGE->requires->js_call_amd(
+                    'local_homeschool/course_return',
+                    'init',
+                    [$landings, return_context::FLOW_PARAM],
+                );
             }
             return;
         }

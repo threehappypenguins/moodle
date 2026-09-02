@@ -19,8 +19,8 @@ namespace local_homeschool\local;
 /**
  * Session stash so modedit "Save and return to course" can land on the Homeschool day page.
  *
- * Each modedit launch arms its own flow token. The token is carried through modedit and appended
- * to the core course return URL so only that exact flow is consumed on landing.
+ * Each modedit launch arms its own flow token. The token is carried through modedit, recorded at
+ * save time, and matched on the core course landing page so only that exact flow is consumed.
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -142,39 +142,77 @@ class return_context {
     }
 
     /**
-     * Attach the Homeschool flow token to core's post-save modedit redirect URL.
+     * Remember which course-module core will land on after a modedit save.
      *
-     * @param \moodle_url $url URL core built for the post-save redirect
      * @param \stdClass $fromform Submitted module form data
      * @param \stdClass $course Target course
-     * @return \moodle_url
+     * @return void
      */
-    public static function extend_modedit_return_url(\moodle_url $url, \stdClass $fromform, \stdClass $course): \moodle_url {
+    public static function record_modedit_save_landing(\stdClass $fromform, \stdClass $course): void {
         $token = (string) ($fromform->{self::FLOW_PARAM} ?? '');
         if ($token === '') {
-            return $url;
+            return;
         }
 
         if (!empty($fromform->submitbutton)) {
             self::discard_flow($token);
-            return $url;
+            return;
         }
 
         if (empty($fromform->frontend)) {
-            return $url;
+            return;
         }
 
         $flow = self::get_valid_flow($token);
         if (!$flow || (int) $flow['courseid'] !== (int) $course->id) {
-            return $url;
+            return;
         }
 
         if (!empty($fromform->modulename) && plugin_supports('mod', $fromform->modulename, FEATURE_PUBLISHES_QUESTIONS)) {
-            return $url;
+            return;
         }
 
-        $url->param(self::FLOW_PARAM, $token);
-        return $url;
+        if (empty($fromform->coursemodule)) {
+            return;
+        }
+
+        $store = &self::get_store();
+        $store['flows'][$token]['landcmid'] = (int) $fromform->coursemodule;
+    }
+
+    /**
+     * Pending modedit landings that need a client-side flow token on the course URL.
+     *
+     * @param int $courseid
+     * @return array<int, array{token: string, cmid: int}>
+     */
+    public static function get_client_landing_flows(int $courseid): array {
+        if ($courseid < 1) {
+            return [];
+        }
+
+        self::purge_expired();
+        $store = self::get_store();
+        $landings = [];
+
+        foreach ($store['flows'] as $token => $flow) {
+            if ((int) ($flow['courseid'] ?? 0) !== $courseid) {
+                continue;
+            }
+            if (empty($flow['landcmid'])) {
+                continue;
+            }
+            if (!self::is_flow_valid($flow)) {
+                continue;
+            }
+
+            $landings[] = [
+                'token' => (string) $token,
+                'cmid' => (int) $flow['landcmid'],
+            ];
+        }
+
+        return $landings;
     }
 
     /**
@@ -216,6 +254,9 @@ class return_context {
 
         $returnoptions = optional_param_array('returnoptions', [], PARAM_INT);
         $add = optional_param('add', '', PARAM_ALPHANUM);
+
+        global $CFG;
+        require_once($CFG->dirroot . '/course/lib.php');
 
         if ($update > 0) {
             $cm = get_coursemodule_from_id('', $update, 0, false, IGNORE_MISSING);

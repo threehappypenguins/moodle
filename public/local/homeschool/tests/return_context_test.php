@@ -118,15 +118,14 @@ final class return_context_test extends \local_homeschool\base_testcase {
     }
 
     /**
-     * Save and display discards the flow and leaves core's activity URL unchanged.
+     * Save and display discards the flow and does not record a landing cmid.
      */
-    public function test_extend_modedit_return_url_discards_save_and_display(): void {
+    public function test_record_modedit_save_landing_discards_save_and_display(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
         $label = $generator->create_module('label', ['course' => $course->id]);
 
         $token = return_context::arm(1, $course->id);
-        $coreurl = new \moodle_url('/mod/label/view.php', ['id' => $label->cmid]);
         $fromform = (object) [
             return_context::FLOW_PARAM => $token,
             'frontend' => true,
@@ -136,23 +135,21 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'submitbutton' => 'Save and display',
         ];
 
-        $url = return_context::extend_modedit_return_url($coreurl, $fromform, $course);
+        return_context::record_modedit_save_landing($fromform, $course);
 
-        $this->assertNull($url->get_param(return_context::FLOW_PARAM));
+        $this->assertSame([], return_context::get_client_landing_flows((int) $course->id));
         $this->assertFalse(return_context::has_pending());
     }
 
     /**
-     * Core's post-save redirect carries the flow token through plugin_extend_modedit_return_url.
+     * Save records the course-module id for client-side landing token attachment.
      */
-    public function test_plugin_extend_modedit_return_url_attaches_homeschool_token(): void {
+    public function test_record_modedit_save_landing_records_cmid(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
         $label = $generator->create_module('label', ['course' => $course->id]);
 
         $token = return_context::arm(2, $course->id);
-        $coreurl = course_get_url($course, 1);
-        $coreurl->set_anchor('module-' . $label->cmid);
         $fromform = (object) [
             return_context::FLOW_PARAM => $token,
             'frontend' => true,
@@ -161,9 +158,12 @@ final class return_context_test extends \local_homeschool\base_testcase {
             'modulename' => 'label',
         ];
 
-        $landing = plugin_extend_modedit_return_url($coreurl, $fromform, $course);
+        return_context::record_modedit_save_landing($fromform, $course);
 
-        $this->assertSame($token, $landing->get_param(return_context::FLOW_PARAM));
+        $landings = return_context::get_client_landing_flows((int) $course->id);
+        $this->assertCount(1, $landings);
+        $this->assertSame($token, $landings[0]['token']);
+        $this->assertSame((int) $label->cmid, $landings[0]['cmid']);
     }
 
     /**
@@ -262,19 +262,40 @@ final class return_context_test extends \local_homeschool\base_testcase {
     }
 
     /**
-     * Build the URL core modedit redirects to after save, with plugin extensions applied.
+     * Build the URL core modedit redirects to after save, with client token attachment applied.
      *
      * @param \stdClass $fromform
      * @param \stdClass $course
      * @return \moodle_url
      */
     private function simulate_modedit_save_return(\stdClass $fromform, \stdClass $course): \moodle_url {
+        return_context::record_modedit_save_landing($fromform, $course);
+
         $url = course_get_url($course, $fromform->section ?? 1);
         if (!empty($fromform->coursemodule)) {
             $url->set_anchor('module-' . $fromform->coursemodule);
         }
 
-        return plugin_extend_modedit_return_url($url, $fromform, $course);
+        return $this->simulate_client_token_attach($url, (int) $course->id, (int) $fromform->coursemodule);
+    }
+
+    /**
+     * Simulate the course_return AMD module appending a flow token from the module hash.
+     *
+     * @param \moodle_url $url
+     * @param int $courseid
+     * @param int $cmid
+     * @return \moodle_url
+     */
+    private function simulate_client_token_attach(\moodle_url $url, int $courseid, int $cmid): \moodle_url {
+        foreach (return_context::get_client_landing_flows($courseid) as $landing) {
+            if ($landing['cmid'] === $cmid) {
+                $url->param(return_context::FLOW_PARAM, $landing['token']);
+                break;
+            }
+        }
+
+        return $url;
     }
 
     /**

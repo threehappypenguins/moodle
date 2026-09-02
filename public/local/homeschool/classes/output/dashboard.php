@@ -60,7 +60,10 @@ class dashboard implements renderable, templatable {
     public function export_for_template(renderer_base $output): \stdClass {
         $hiddendaysectionscount = course_repository::count_hidden_viewable_daysections_courses($this->userid);
         $hiddenotherformatscount = course_repository::count_hidden_viewable_other_format_courses($this->userid);
-        $hiddencount = $hiddendaysectionscount + $hiddenotherformatscount;
+        $hiddencount = $hiddendaysectionscount;
+        if ($this->showotherformats) {
+            $hiddencount += $hiddenotherformatscount;
+        }
 
         $visibleotherformatscount = course_repository::count_viewable_other_format_courses($this->userid, false);
         $otherformatstotalcount = course_repository::count_viewable_other_format_courses($this->userid, true);

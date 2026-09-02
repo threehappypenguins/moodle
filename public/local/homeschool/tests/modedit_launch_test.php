@@ -125,11 +125,14 @@ final class modedit_launch_test extends \local_homeschool\base_testcase {
             'modulename' => 'label',
             'coursemodule' => 99999,
         ];
+        return_context::record_modedit_save_landing($fromform, $course);
+
         $landing = course_get_url($course, 1);
         $landing->set_anchor('module-99999');
-        $landing = plugin_extend_modedit_return_url($landing, $fromform, $course);
-
-        $this->assertSame($token, $landing->get_param(return_context::FLOW_PARAM));
+        $landings = return_context::get_client_landing_flows((int) $course->id);
+        $this->assertCount(1, $landings);
+        $this->assertSame($token, $landings[0]['token']);
+        $landing->param(return_context::FLOW_PARAM, $token);
 
         $dayurl = return_context::consume_for_token($token, (int) $course->id);
         $this->assertNotNull($dayurl);
