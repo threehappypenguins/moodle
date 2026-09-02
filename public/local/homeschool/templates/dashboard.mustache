@@ -1,0 +1,179 @@
+<div class="local-homeschool-dashboard">
+    <div class="mb-3 local-homeschool-dashboard-toolbar">
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            {{#hasdaypicker}}
+                <div class="local-homeschool-dashboard-day-picker">
+                    <label for="local-homeschool-dashboard-day" class="form-label mb-1">{{#str}} daynumber, local_homeschool {{/str}}</label>
+                    <select class="form-select"
+                            id="local-homeschool-dashboard-day"
+                            data-dayurl="{{dayurl}}">
+                        <option value="">{{#str}} chooseday, local_homeschool {{/str}}</option>
+                        {{#dayoptions}}
+                            <option value="{{value}}">{{label}}</option>
+                        {{/dayoptions}}
+                    </select>
+                </div>
+            {{/hasdaypicker}}
+
+            {{#showfilters}}
+                <form method="get" action="{{dashboardurl}}" class="mb-0 d-flex flex-wrap align-items-center gap-3">
+                    {{#hashiddencourses}}
+                        <div class="form-check mb-0">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="local-homeschool-showhidden"
+                                   name="showhidden"
+                                   value="1"
+                                   {{#showhidden}}checked{{/showhidden}}
+                                   onchange="this.form.submit()">
+                            <label class="form-check-label" for="local-homeschool-showhidden">
+                                {{#str}} showhiddencourses, local_homeschool, {{hiddencount}} {{/str}}
+                            </label>
+                        </div>
+                    {{/hashiddencourses}}
+                    {{#hasotherformats}}
+                        <div class="form-check mb-0">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="local-homeschool-showotherformats"
+                                   name="showotherformats"
+                                   value="1"
+                                   {{#showotherformats}}checked{{/showotherformats}}
+                                   onchange="this.form.submit()">
+                            <label class="form-check-label" for="local-homeschool-showotherformats">
+                                {{#str}} showotherformats, local_homeschool, {{otherformatscount}} {{/str}}
+                            </label>
+                        </div>
+                    {{/hasotherformats}}
+                </form>
+            {{/showfilters}}
+        </div>
+
+        {{#hasshiftlink}}
+            <div class="local-homeschool-dashboard-shift-link mt-2">
+                <a class="btn btn-secondary" href="{{shifturl}}">{{#str}} shiftschedulelink, local_homeschool {{/str}}</a>
+            </div>
+        {{/hasshiftlink}}
+    </div>
+
+    {{^hascourses}}
+        {{#hasotherformats}}
+            <div class="alert alert-info">{{otherformatshelp}}</div>
+        {{/hasotherformats}}
+        {{^hasotherformats}}
+            <div class="alert alert-info">{{nodatahelp}}</div>
+        {{/hasotherformats}}
+    {{/hascourses}}
+
+    {{#hascourses}}
+        <div class="mb-4">
+            <h3>{{#str}} children, local_homeschool {{/str}}</h3>
+            {{#hasstudents}}
+                <table class="table table-striped generaltable w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">{{#str}} name {{/str}}</th>
+                            <th scope="col">{{#str}} courses, local_homeschool {{/str}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#students}}
+                            <tr>
+                                <td>{{name}}</td>
+                                <td>
+                                    {{#courses}}
+                                        <div>
+                                            <a href="{{courseurl}}">{{name}}</a>
+                                            {{#hidden}}
+                                                <span class="badge bg-secondary">{{#str}} hidden, local_homeschool {{/str}}</span>
+                                            {{/hidden}}
+                                            {{#needsdaysections}}
+                                                <span class="badge bg-warning text-dark">{{formatname}}</span>
+                                            {{/needsdaysections}}
+                                        </div>
+                                    {{/courses}}
+                                </td>
+                            </tr>
+                        {{/students}}
+                    </tbody>
+                </table>
+            {{/hasstudents}}
+            {{^hasstudents}}
+                <p class="text-muted">{{#str}} nostudents, local_homeschool {{/str}}</p>
+            {{/hasstudents}}
+        </div>
+
+        <div class="mb-4">
+            <h3>{{#str}} courses, local_homeschool {{/str}}</h3>
+            <table class="table table-striped generaltable w-100">
+                <thead>
+                    <tr>
+                        <th scope="col">{{#str}} course {{/str}}</th>
+                        <th scope="col">{{#str}} children, local_homeschool {{/str}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#courses}}
+                        <tr{{#hidden}} class="text-muted"{{/hidden}}>
+                            <td>
+                                <a href="{{courseurl}}">{{name}}</a>
+                                {{#hidden}}
+                                    <span class="badge bg-secondary">{{#str}} hidden, local_homeschool {{/str}}</span>
+                                {{/hidden}}
+                                {{#needsdaysections}}
+                                    <span class="badge bg-warning text-dark">{{formatname}}</span>
+                                    <a class="small ms-1" href="{{editurl}}">{{#str}} convertformatlink, local_homeschool {{/str}}</a>
+                                {{/needsdaysections}}
+                            </td>
+                            <td>{{#childlist}}{{childlist}}{{/childlist}}{{^childlist}}<span class="text-muted">{{#str}} none {{/str}}</span>{{/childlist}}</td>
+                        </tr>
+                    {{/courses}}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mb-4">
+            <h3>{{#str}} upcoming, local_homeschool {{/str}}</h3>
+            {{#hasupcoming}}
+                <table class="table table-striped generaltable w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">{{#str}} date {{/str}}</th>
+                            <th scope="col">{{#str}} course {{/str}}</th>
+                            <th scope="col">{{#str}} section {{/str}}</th>
+                            <th scope="col">{{#str}} activity {{/str}}</th>
+                            {{#canmanage}}
+                                <th scope="col">{{#str}} actions {{/str}}</th>
+                            {{/canmanage}}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#upcoming}}
+                            <tr{{#overdue}} class="table-warning"{{/overdue}}>
+                                <td>{{dateformatted}}</td>
+                                <td>{{coursename}}</td>
+                                <td>{{sectionname}}</td>
+                                <td>
+                                    {{#url}}<a href="{{url}}">{{activityname}}</a>{{/url}}
+                                    {{^url}}{{activityname}}{{/url}}
+                                </td>
+                                {{#hasactioncell}}
+                                    <td>
+                                        {{#canopenday}}
+                                            {{#sectionname}}
+                                                <a href="{{dayurl}}">{{#str}} opendaylink, local_homeschool {{/str}}</a>
+                                            {{/sectionname}}
+                                        {{/canopenday}}
+                                    </td>
+                                {{/hasactioncell}}
+                            </tr>
+                        {{/upcoming}}
+                    </tbody>
+                </table>
+            {{/hasupcoming}}
+            {{^hasupcoming}}
+                <p class="text-muted">{{#str}} noupcoming, local_homeschool {{/str}}</p>
+            {{/hasupcoming}}
+        </div>
+    {{/hascourses}}
+</div>

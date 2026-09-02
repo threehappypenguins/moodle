@@ -1,0 +1,281 @@
+<ul class="local-homeschool-activity-list list-unstyled mb-0">
+    {{#activities}}
+        <li class="local-homeschool-activity">
+            <div class="local-homeschool-activity-select">
+                <input type="checkbox"
+                       class="form-check-input local-homeschool-select-cm"
+                       name="cmids[]"
+                       form="local-homeschool-bulk-date-form"
+                       value="{{cmid}}"
+                       aria-label="{{activityname}}">
+            </div>
+
+            <div class="local-homeschool-activity-info">
+                <a class="local-homeschool-activity-name" href="{{activityurl}}">{{activityname}}</a>
+                <a class="small ms-1" href="{{editurl}}">{{#str}} editsettings, moodle {{/str}}</a>
+                <div class="text-muted small local-homeschool-activity-meta">
+                    <span class="local-homeschool-activity-course">{{coursename}}</span>
+                    <span aria-hidden="true"> · </span>
+                    <span>{{modname}}</span>
+                </div>
+                {{#hasprogress}}
+                    <ul class="local-homeschool-activity-progress list-unstyled mb-0">
+                        {{#progress}}
+                            <li class="local-homeschool-progress-item {{stateclass}}">
+                                {{#showname}}
+                                    <span class="local-homeschool-progress-name">{{studentname}}</span>
+                                    <span class="local-homeschool-progress-sep" aria-hidden="true">·</span>
+                                {{/showname}}
+                                {{#hasurl}}
+                                    <a class="local-homeschool-progress-label" href="{{url}}">{{label}}</a>
+                                {{/hasurl}}
+                                {{^hasurl}}
+                                    <span class="local-homeschool-progress-label">{{label}}</span>
+                                {{/hasurl}}
+                            </li>
+                        {{/progress}}
+                    </ul>
+                {{/hasprogress}}
+            </div>
+
+            <button type="button"
+                    class="btn btn-link btn-sm text-danger p-0 local-homeschool-activity-delete"
+                    data-action="local-homeschool-delete-cm"
+                    data-cmid="{{cmid}}"
+                    data-activityname="{{activityname}}"
+                    data-modname="{{modname}}"
+                    data-day="{{daynumber}}"
+                    data-showall="{{#showall}}1{{/showall}}{{^showall}}0{{/showall}}"
+                    data-showhidden="{{#showhidden}}1{{/showhidden}}{{^showhidden}}0{{/showhidden}}"
+                    data-dayurl="{{dayurl}}"
+                    data-sesskey="{{sesskey}}"
+                    title="{{#str}} delete {{/str}}"
+                    aria-label="{{#str}} deleteactivity, local_homeschool, {{activityname}} {{/str}}">
+                {{#pix}} t/delete, core {{/pix}}
+            </button>
+
+            <form method="post" action="{{dayurl}}"
+                  class="local-homeschool-row-date local-homeschool-activity-date{{^dateeditable}} is-disabled{{/dateeditable}}"
+                  {{^dateeditable}}title="{{#str}} datenotavailable, local_homeschool {{/str}}"{{/dateeditable}}>
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <input type="hidden" name="action" value="updatedate">
+                <input type="hidden" name="cmid" value="{{cmid}}">
+                {{#showall}}
+                    <input type="hidden" name="showall" value="1">
+                {{/showall}}
+                {{#showhidden}}
+                    <input type="hidden" name="showhidden" value="1">
+                {{/showhidden}}
+                <span class="local-homeschool-date-value">{{completionexpectedformatted}}</span>
+                <span class="local-homeschool-calendar-wrap" title="{{#str}} changedate, local_homeschool {{/str}}">
+                    <span class="local-homeschool-calendar-btn" aria-hidden="true">
+                        {{#pix}} i/calendar, core {{/pix}}
+                    </span>
+                    <input type="date"
+                           class="local-homeschool-date-input"
+                           name="scheduledate"
+                           id="reminder-date-{{cmid}}"
+                           value="{{completionexpectediso}}"
+                           aria-label="{{#str}} changedate, local_homeschool {{/str}}"
+                           {{^dateeditable}}disabled{{/dateeditable}}>
+                </span>
+                {{#hasreminderdate}}
+                    <button type="submit"
+                            class="btn btn-link btn-sm p-0 local-homeschool-clear-date"
+                            name="clearreminder"
+                            value="1"
+                            title="{{#str}} cleardate, local_homeschool {{/str}}"
+                            aria-label="{{#str}} cleardate, local_homeschool {{/str}}"
+                            {{^dateeditable}}disabled{{/dateeditable}}>
+                        {{#pix}} e/cancel, core {{/pix}}
+                    </button>
+                {{/hasreminderdate}}
+            </form>
+
+            <details class="local-homeschool-activity-details" data-cmid="{{cmid}}">
+                <summary class="local-homeschool-activity-details-toggle">
+                    {{#str}} activitysettings, local_homeschool {{/str}}
+                </summary>
+                <form method="post" action="{{dayurl}}" class="local-homeschool-row-edit mt-2">
+                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="cmid" value="{{cmid}}">
+                    {{#showall}}
+                        <input type="hidden" name="showall" value="1">
+                    {{/showall}}
+                    {{#showhidden}}
+                        <input type="hidden" name="showhidden" value="1">
+                    {{/showhidden}}
+
+                    <div class="mb-2 local-homeschool-completion-field">
+                        {{#completionenabled}}
+                        <div class="form-label mb-1" id="completion-label-{{cmid}}">{{#str}} completion, local_homeschool {{/str}}</div>
+                        {{#completionlocked}}
+                            <input type="hidden" name="completion" value="{{completion}}">
+                            <div class="local-homeschool-completion-picker is-locked"
+                                 title="{{#str}} completionlockedhint, local_homeschool {{/str}}">
+                                <div class="local-homeschool-completion-summary form-select form-select-sm" aria-disabled="true">
+                                    <span class="local-homeschool-completion-summary-text">{{completionlabel}}</span>
+                                </div>
+                            </div>
+                            <div class="form-text text-muted">{{#str}} completionlockedhint, local_homeschool {{/str}}</div>
+                        {{/completionlocked}}
+                        {{^completionlocked}}
+                            <details class="local-homeschool-completion-picker">
+                                <summary class="local-homeschool-completion-summary form-select form-select-sm"
+                                         aria-labelledby="completion-label-{{cmid}}">
+                                    <span class="local-homeschool-completion-summary-text">{{completionlabel}}</span>
+                                </summary>
+                                <div class="local-homeschool-completion-options">
+                                    {{#completionoptions}}
+                                        <label class="local-homeschool-completion-option">
+                                            <input type="radio"
+                                                   class="local-homeschool-autosave local-homeschool-completion-radio"
+                                                   name="completion"
+                                                   value="{{value}}"
+                                                   {{#selected}}checked{{/selected}}>
+                                            <span>{{label}}</span>
+                                        </label>
+                                    {{/completionoptions}}
+                                </div>
+                            </details>
+                        {{/completionlocked}}
+
+                        {{#hasrequirements}}
+                            <details class="local-homeschool-requirements mt-2"
+                                     data-cmid="{{cmid}}"
+                                     {{#requirementsopen}}open{{/requirementsopen}}
+                                     {{^showrequirements}}hidden{{/showrequirements}}>
+                                <summary class="local-homeschool-requirements-toggle">
+                                    {{#str}} completion_automatic, completion {{/str}}
+                                </summary>
+                                <fieldset class="mt-2 mb-0" {{#completionlocked}}disabled{{/completionlocked}}>
+                                    <legend class="sr-only">{{#str}} completion_automatic, completion {{/str}}</legend>
+                                    {{#requirements}}
+                                        {{#isint}}
+                                            <div class="local-homeschool-requirement-int form-check d-flex flex-wrap align-items-center gap-2">
+                                                <input class="form-check-input local-homeschool-autosave local-homeschool-requirement"
+                                                       type="checkbox"
+                                                       name="{{fieldname}}_enabled"
+                                                       id="{{inputid}}-enabled"
+                                                       value="1"
+                                                       data-requirement="{{name}}"
+                                                       data-requirement-type="int"
+                                                       {{#enabled}}checked{{/enabled}}
+                                                       {{#locked}}disabled{{/locked}}>
+                                                <label class="form-check-label" for="{{inputid}}-enabled">{{label}}</label>
+                                                <input type="number"
+                                                       class="form-control form-control-sm local-homeschool-requirement-value local-homeschool-autosave"
+                                                       name="{{fieldname}}"
+                                                       id="{{inputid}}"
+                                                       value="{{value}}"
+                                                       min="{{min}}"
+                                                       {{#hasmax}}max="{{max}}"{{/hasmax}}
+                                                       data-requirement-value-for="{{name}}"
+                                                       aria-label="{{label}}"
+                                                       {{^enabled}}hidden{{/enabled}}
+                                                       {{#locked}}disabled{{/locked}}>
+                                            </div>
+                                        {{/isint}}
+                                        {{#isbool}}
+                                            <div class="form-check">
+                                                <input class="form-check-input local-homeschool-autosave local-homeschool-requirement"
+                                                       type="checkbox"
+                                                       name="{{fieldname}}"
+                                                       id="{{inputid}}"
+                                                       value="1"
+                                                       data-requirement="{{name}}"
+                                                       {{#enabled}}checked{{/enabled}}
+                                                       {{#locked}}disabled{{/locked}}>
+                                                <label class="form-check-label" for="{{inputid}}">{{label}}</label>
+                                            </div>
+                                            {{#haspassgrade}}
+                                                <div class="local-homeschool-passgrade ms-3 mb-2"
+                                                     data-passgrade-for="completionusegrade"
+                                                     {{^enabled}}hidden{{/enabled}}>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input local-homeschool-autosave local-homeschool-passgrade-radio"
+                                                               type="radio"
+                                                               name="requirement_completionpassgrade"
+                                                               id="{{inputid}}-any"
+                                                               value="0"
+                                                               data-passgrade-value="0"
+                                                               {{^passgrade}}checked{{/passgrade}}
+                                                               {{#locked}}disabled{{/locked}}>
+                                                        <label class="form-check-label" for="{{inputid}}-any">
+                                                            {{#str}} completionanygrade_desc, completion {{/str}}
+                                                        </label>
+                                                    </div>
+                                                    {{#canrequirepassgrade}}
+                                                    <div class="form-check">
+                                                        <input class="form-check-input local-homeschool-autosave local-homeschool-passgrade-radio"
+                                                               type="radio"
+                                                               name="requirement_completionpassgrade"
+                                                               id="{{inputid}}-pass"
+                                                               value="1"
+                                                               data-passgrade-value="1"
+                                                               {{#passgrade}}checked{{/passgrade}}
+                                                               {{#locked}}disabled{{/locked}}>
+                                                        <label class="form-check-label" for="{{inputid}}-pass">
+                                                            {{#str}} completionpassgrade_desc, completion {{/str}}
+                                                        </label>
+                                                    </div>
+                                                    {{/canrequirepassgrade}}
+                                                    {{#hasexhausted}}
+                                                        <div class="form-check ms-3 local-homeschool-exhausted"
+                                                             data-exhausted-for="completionusegrade"
+                                                             {{^passgrade}}hidden{{/passgrade}}>
+                                                            <input class="form-check-input local-homeschool-autosave"
+                                                                   type="checkbox"
+                                                                   name="requirement_completionattemptsexhausted"
+                                                                   id="{{exhaustedinputid}}"
+                                                                   value="1"
+                                                                   {{#exhausted}}checked{{/exhausted}}
+                                                                   {{#locked}}disabled{{/locked}}>
+                                                            <label class="form-check-label" for="{{exhaustedinputid}}">
+                                                                {{exhaustedlabel}}
+                                                            </label>
+                                                        </div>
+                                                    {{/hasexhausted}}
+                                                </div>
+                                            {{/haspassgrade}}
+                                        {{/isbool}}
+                                    {{/requirements}}
+                                </fieldset>
+                                <div class="alert alert-warning local-homeschool-requirements-error mt-2 mb-0" hidden>
+                                    {{#str}} badautocompletion, completion {{/str}}
+                                </div>
+                            </details>
+                        {{/hasrequirements}}
+                        {{/completionenabled}}
+                        {{^completionenabled}}
+                            <div class="form-text text-muted">{{#str}} completionnotenabledforcourse, completion {{/str}}</div>
+                        {{/completionenabled}}
+                    </div>
+
+                    {{#hassubmissions}}
+                        <details class="local-homeschool-submissions" data-cmid="{{cmid}}">
+                            <summary class="local-homeschool-submissions-toggle">
+                                {{#str}} submissions, local_homeschool {{/str}}
+                            </summary>
+                            <fieldset class="mt-2 mb-0">
+                                <legend class="sr-only">{{#str}} submissions, local_homeschool {{/str}}</legend>
+                                {{#submissions}}
+                                    <div class="form-check">
+                                        <input class="form-check-input local-homeschool-autosave"
+                                               type="checkbox"
+                                               name="submission_{{type}}"
+                                               id="{{fieldname}}"
+                                               value="1"
+                                               {{#enabled}}checked{{/enabled}}>
+                                        <label class="form-check-label" for="{{fieldname}}">{{name}}</label>
+                                    </div>
+                                {{/submissions}}
+                            </fieldset>
+                        </details>
+                    {{/hassubmissions}}
+                </form>
+            </details>
+        </li>
+    {{/activities}}
+</ul>

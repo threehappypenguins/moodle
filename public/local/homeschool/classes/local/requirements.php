@@ -1,0 +1,157 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace local_homeschool\local;
+
+use core_component;
+use core_plugin_manager;
+use required_capability_exception;
+
+/**
+ * Plugin dependency and access checks.
+ *
+ * @package   local_homeschool
+ * @copyright 2026 Sarah
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class requirements {
+
+    /** @var string Course format frankenstyle component required by this plugin. */
+    public const REQUIRED_FORMAT = 'format_daysections';
+
+    /**
+     * Whether the Day sections course format is installed and upgraded.
+     *
+     * Course format classes are not autoloaded, so we must not use class_exists().
+     *
+     * @return bool
+     */
+    public static function daysections_available(): bool {
+        $plugin = core_plugin_manager::instance()->get_plugin_info(self::REQUIRED_FORMAT);
+        return $plugin !== null && $plugin->is_installed_and_upgraded();
+    }
+
+    /**
+     * Whether the Day sections format plugin exists on disk.
+     *
+     * @return bool
+     */
+    public static function daysections_present_on_disk(): bool {
+        return core_component::get_plugin_directory('format', 'daysections') !== null;
+    }
+
+    /**
+     * Whether the current user may open the homeschool dashboard.
+     *
+     * Grants at system context (site-wide roles) or in any course context.
+     *
+     * @return bool
+     */
+    public static function user_can_view(): bool {
+        return self::user_has_capability_somewhere('local/homeschool:view');
+    }
+
+    /**
+     * Whether the current user may manage homeschool scheduling.
+     *
+     * Grants at system context (site-wide roles) or in any course context.
+     *
+     * @return bool
+     */
+    public static function user_can_manage(): bool {
+        return self::user_has_capability_somewhere('local/homeschool:manage');
+    }
+
+    /**
+     * Require dashboard view access or throw.
+     *
+     * @return void
+     * @throws required_capability_exception
+     */
+    public static function require_view(): void {
+        if (!self::user_can_view()) {
+            throw new required_capability_exception(
+                \context_system::instance(),
+                'local/homeschool:view',
+                'nopermissions',
+                '',
+            );
+        }
+    }
+
+    /**
+     * Require manage access or throw.
+     *
+     * @return void
+     * @throws required_capability_exception
+     */
+    public static function require_manage(): void {
+        if (!self::user_can_manage()) {
+            throw new required_capability_exception(
+                \context_system::instance(),
+                'local/homeschool:manage',
+                'nopermissions',
+                '',
+            );
+        }
+    }
+
+    /**
+     * True if the user has the capability at system context or in at least one course
+     * with an active (non-suspended) enrolment.
+     *
+     * @param string $capability
+     * @return bool
+     */
+    protected static function user_has_capability_somewhere(string $capability): bool {
+        global $USER;
+
+        if (has_capability($capability, \context_system::instance())) {
+            return true;
+        }
+
+        $courses = get_user_capability_course($capability, $USER->id, true, 'id', '', 0);
+        if (empty($courses)) {
+            return false;
+        }
+
+        foreach ($courses as $course) {
+            if (self::user_has_active_enrolment_in_course((int) $USER->id, (int) $course->id, $capability)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * True when the user may use a course-scoped capability via system grant or active enrolment.
+     *
+     * Suspended or inactive enrolments are excluded unless the capability is held at system context.
+     *
+     * @param int $userid
+     * @param int $courseid
+     * @param string $capability
+     * @return bool
+     */
+    public static function user_has_active_enrolment_in_course(int $userid, int $courseid, string $capability): bool {
+        if (has_capability($capability, \context_system::instance(), $userid)) {
+            return true;
+        }
+
+        return is_enrolled(\context_course::instance($courseid), $userid, $capability, true);
+    }
+}
