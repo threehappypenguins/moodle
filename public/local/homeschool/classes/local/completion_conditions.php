@@ -313,9 +313,8 @@ class completion_conditions {
         }
 
         if ($changed) {
-            $now = \core\di::get(\core\clock::class)->time();
-            $DB->set_field('course_modules', 'timemodified', $now, ['id' => $cm->id]);
             if ($instancechanged) {
+                $now = \core\di::get(\core\clock::class)->time();
                 $DB->set_field($cm->modname, 'timemodified', $now, ['id' => $cm->instance]);
             }
         }

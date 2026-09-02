@@ -143,11 +143,7 @@ class day_scheduler {
                     continue;
                 }
             } else {
-                $DB->update_record('course_modules', (object) [
-                    'id' => $cm->id,
-                    'completionexpected' => $expected,
-                    'timemodified' => time(),
-                ]);
+                $DB->set_field('course_modules', 'completionexpected', $expected, ['id' => $cm->id]);
             }
 
             $calendartime = $expected ?: null;
@@ -505,27 +501,46 @@ class day_scheduler {
     /**
      * Atomically replace completionexpected when the stored value still matches the preview.
      *
-     * Must be called inside an open delegated transaction.
+     * Uses a per-activity lock and a conditional DML update so the check-and-set is portable
+     * across Moodle-supported databases (including SQL Server).
      *
      * @param int $cmid
      * @param int $oldexpected Value that must still be stored
      * @param int $expected Value to write
-     * @return bool True only when the row was locked with $oldexpected and updated
+     * @return bool True only when the row still had $oldexpected and was updated
      */
     protected static function compare_and_swap_completionexpected(int $cmid, int $oldexpected, int $expected): bool {
         global $DB;
 
-        $locked = $DB->get_record_sql(
-            'SELECT id, completionexpected FROM {course_modules} WHERE id = ? FOR UPDATE',
-            [$cmid],
-            IGNORE_MISSING,
-        );
-        if (!$locked || (int) $locked->completionexpected !== $oldexpected) {
+        $lockfactory = \core\lock\lock_config::get_lock_factory('local_homeschool_completionexpected');
+        $lock = $lockfactory->get_lock('cm_' . $cmid, 10);
+        if (!$lock) {
             return false;
         }
 
-        $DB->set_field('course_modules', 'completionexpected', $expected, ['id' => $cmid]);
-        return true;
+        try {
+            if (!$DB->record_exists('course_modules', [
+                'id' => $cmid,
+                'completionexpected' => $oldexpected,
+            ])) {
+                return false;
+            }
+
+            $DB->set_field_select(
+                'course_modules',
+                'completionexpected',
+                $expected,
+                'id = ? AND completionexpected = ?',
+                [$cmid, $oldexpected],
+            );
+
+            return $DB->record_exists('course_modules', [
+                'id' => $cmid,
+                'completionexpected' => $expected,
+            ]);
+        } finally {
+            $lock->release();
+        }
     }
 
     /**

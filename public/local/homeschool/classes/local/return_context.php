@@ -164,6 +164,7 @@ class return_context {
         }
 
         self::remove_flow($token);
+        self::remove_ready_redirects_for_token($token);
         return self::build_url($flow);
     }
 
@@ -183,6 +184,11 @@ class return_context {
             return $data;
         }
 
+        $token = (string) ($data->{self::FLOW_PARAM} ?? '');
+        if ($token === '') {
+            return $data;
+        }
+
         if (!empty($data->add)) {
             $cmid = (int) ($data->coursemodule ?? 0);
             if ($cmid > 0) {
@@ -190,6 +196,7 @@ class return_context {
                 $store['readycreateredirects'][$cmid] = [
                     'url' => $url->out(false),
                     'courseid' => (int) $course->id,
+                    'token' => $token,
                     'time' => time(),
                 ];
             }
@@ -198,6 +205,7 @@ class return_context {
             $store['pendingupdateredirects'][(int) $data->coursemodule] = [
                 'url' => $url->out(false),
                 'courseid' => (int) $course->id,
+                'token' => $token,
                 'time' => time(),
             ];
         }
@@ -231,10 +239,11 @@ class return_context {
      * Redirect a course landing after modedit update when a Homeschool flow is ready.
      *
      * @param int $courseid
+     * @param string $token Flow token from the landing URL
      * @return bool True when a redirect was issued
      */
-    public static function maybe_redirect_pending_update_landing(int $courseid): bool {
-        if ($courseid < 1) {
+    public static function maybe_redirect_pending_update_landing(int $courseid, string $token): bool {
+        if ($courseid < 1 || $token === '') {
             return false;
         }
 
@@ -246,6 +255,9 @@ class return_context {
 
         foreach ($store['readyupdateredirects'] as $cmid => $pending) {
             if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
+                continue;
+            }
+            if (($pending['token'] ?? '') !== $token) {
                 continue;
             }
 
@@ -260,10 +272,11 @@ class return_context {
      * Redirect a course landing after modedit create when a Homeschool flow is ready.
      *
      * @param int $courseid
+     * @param string $token Flow token from the landing URL
      * @return bool True when a redirect was issued
      */
-    public static function maybe_redirect_pending_create_landing(int $courseid): bool {
-        if ($courseid < 1) {
+    public static function maybe_redirect_pending_create_landing(int $courseid, string $token): bool {
+        if ($courseid < 1 || $token === '') {
             return false;
         }
 
@@ -275,6 +288,9 @@ class return_context {
 
         foreach ($store['readycreateredirects'] as $cmid => $pending) {
             if ((int) ($pending['courseid'] ?? 0) !== $courseid) {
+                continue;
+            }
+            if (($pending['token'] ?? '') !== $token) {
                 continue;
             }
 
@@ -511,6 +527,30 @@ class return_context {
     protected static function remove_flow(string $token): void {
         $store = &self::get_store();
         unset($store['flows'][$token]);
+    }
+
+    /**
+     * Drop any ready create/update landing redirects for a consumed flow token.
+     *
+     * @param string $token
+     * @return void
+     */
+    protected static function remove_ready_redirects_for_token(string $token): void {
+        if ($token === '') {
+            return;
+        }
+
+        $store = &self::get_store();
+        foreach (['readycreateredirects', 'readyupdateredirects'] as $key) {
+            if (empty($store[$key]) || !is_array($store[$key])) {
+                continue;
+            }
+            foreach (array_keys($store[$key]) as $id) {
+                if (($store[$key][$id]['token'] ?? '') === $token) {
+                    unset($store[$key][$id]);
+                }
+            }
+        }
     }
 
     /**

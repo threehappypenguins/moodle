@@ -138,6 +138,12 @@ final class return_context_test extends \local_homeschool\base_testcase {
         $this->assertSame($data, $result);
         $this->assertTrue(return_context::has_pending_update_redirect($label->cmid));
         $this->assertFalse(return_context::has_pending_update_redirect($label->cmid + 1));
+
+        global $SESSION;
+        $this->assertSame(
+            $token,
+            $SESSION->{return_context::SESSION_KEY}['pendingupdateredirects'][$label->cmid]['token'],
+        );
     }
 
     /**
@@ -213,6 +219,12 @@ final class return_context_test extends \local_homeschool\base_testcase {
         $this->assertSame($data, $result);
         $this->assertTrue(return_context::has_ready_create_redirect(12345));
         $this->assertFalse(return_context::has_ready_create_redirect(12346));
+
+        global $SESSION;
+        $this->assertSame(
+            $token,
+            $SESSION->{return_context::SESSION_KEY}['readycreateredirects'][12345]['token'],
+        );
     }
 
     /**
@@ -277,5 +289,71 @@ final class return_context_test extends \local_homeschool\base_testcase {
         $this->assertNotNull($daytwo);
         $this->assertSame(1, (int) $dayone->get_param('day'));
         $this->assertSame(2, (int) $daytwo->get_param('day'));
+    }
+
+    /**
+     * Concurrent update redirects for the same course keep distinct flow tokens.
+     */
+    public function test_concurrent_update_redirects_keep_distinct_flow_tokens(): void {
+        global $SESSION;
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+        $labelone = $generator->create_module('label', ['course' => $course->id]);
+        $labeltwo = $generator->create_module('label', ['course' => $course->id]);
+
+        $tokenone = return_context::arm(1, $course->id);
+        $tokentwo = return_context::arm(2, $course->id);
+
+        return_context::prepare_modedit_course_return((object) [
+            return_context::FLOW_PARAM => $tokenone,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $labelone->cmid,
+            'modulename' => 'label',
+        ], $course);
+        return_context::prepare_modedit_course_return((object) [
+            return_context::FLOW_PARAM => $tokentwo,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $labeltwo->cmid,
+            'modulename' => 'label',
+        ], $course);
+
+        return_context::mark_update_redirect_ready($labelone->cmid);
+        return_context::mark_update_redirect_ready($labeltwo->cmid);
+
+        $ready = $SESSION->{return_context::SESSION_KEY}['readyupdateredirects'];
+        $this->assertSame($tokenone, $ready[$labelone->cmid]['token']);
+        $this->assertSame($tokentwo, $ready[$labeltwo->cmid]['token']);
+        $this->assertStringContainsString($tokenone, $ready[$labelone->cmid]['url']);
+        $this->assertStringContainsString($tokentwo, $ready[$labeltwo->cmid]['url']);
+        $this->assertStringNotContainsString($tokenone, $ready[$labeltwo->cmid]['url']);
+        $this->assertStringNotContainsString($tokentwo, $ready[$labelone->cmid]['url']);
+    }
+
+    /**
+     * Consuming a flow token clears any matching ready landing redirect.
+     */
+    public function test_consume_for_token_clears_matching_ready_update_redirect(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'daysections', 'numsections' => 2], ['createsections' => true]);
+        $label = $generator->create_module('label', ['course' => $course->id]);
+
+        $token = return_context::arm(3, $course->id);
+        return_context::prepare_modedit_course_return((object) [
+            return_context::FLOW_PARAM => $token,
+            'frontend' => true,
+            'section' => 1,
+            'coursemodule' => $label->cmid,
+            'modulename' => 'label',
+        ], $course);
+        return_context::mark_update_redirect_ready($label->cmid);
+
+        $this->assertTrue(return_context::has_ready_update_redirect($label->cmid));
+
+        $url = return_context::consume_for_token($token, (int) $course->id);
+        $this->assertNotNull($url);
+        $this->assertFalse(return_context::has_ready_update_redirect($label->cmid));
     }
 }

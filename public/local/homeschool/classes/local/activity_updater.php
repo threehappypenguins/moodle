@@ -123,9 +123,6 @@ class activity_updater {
             return false;
         }
 
-        $now = \core\di::get(\core\clock::class)->time();
-        $DB->set_field('course_modules', 'timemodified', $now, ['id' => $cm->id]);
-
         \core_completion\api::update_completion_date_event(
             $cm->id,
             $cm->modname,

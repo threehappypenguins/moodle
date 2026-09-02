@@ -191,13 +191,14 @@
     font-weight: 500;
 }
 
-.local-homeschool-activity-progress a.local-homeschool-progress-label,
-.local-homeschool-activity-progress a.local-homeschool-progress-label:link,
-.local-homeschool-activity-progress a.local-homeschool-progress-label:visited,
+.local-homeschool-activity-progress a.local-homeschool-progress-label {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
 .local-homeschool-activity-progress a.local-homeschool-progress-label:hover,
-.local-homeschool-activity-progress a.local-homeschool-progress-label:focus,
-.local-homeschool-activity-progress a.local-homeschool-progress-label:active {
-    text-decoration: none !important;
+.local-homeschool-activity-progress a.local-homeschool-progress-label:focus {
+    text-decoration: underline;
 }
 
 .local-homeschool-progress-item.is-complete .local-homeschool-progress-label {
