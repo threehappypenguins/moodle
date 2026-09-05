@@ -7,8 +7,8 @@ $drawer-right-width: 315px !default;
 $drawer-padding-x: 20px !default;
 $drawer-padding-y: 20px !default;
 $drawer-offscreen-gutter: 20px !default;
-$drawer-left-bg-color: $gray-200 !default;
-$drawer-right-bg-color: $gray-100 !default;
+$drawer-left-bg-color: var(--#{$prefix}gray-200) !default;
+$drawer-right-bg-color: var(--#{$prefix}gray-100) !default;
 $drawer-shadow-color: rgba(0, 0, 0, .25) !default;
 
 $drawer-main-gap: calc(0.5rem + 20px);
@@ -39,6 +39,10 @@ $drawer-anchor-both-right: Min(#{$drawer-both-right-anchor}, calc(100% - #{$draw
 // xxl: single drawer open — drawer anchored to main-inner edge, accounting for one margin.
 $drawer-anchor-xxl-left-open: calc(50% + #{$course-content-maxwidth} / 2 - #{$drawer-left-width} / 2 + #{$drawer-main-gap});
 $drawer-anchor-xxl-right-open: calc(50% + #{$course-content-maxwidth} / 2 - #{$drawer-right-width} / 2 + #{$drawer-main-gap});
+// lg+: single drawer open, clamped so the drawer doesn't clip the viewport at narrower lg widths.
+// Min() picks the smaller: anchor (gap from main) OR flush to viewport edge.
+$drawer-anchor-solo-left-open: Min(#{$drawer-anchor-xxl-left-open}, #{$drawer-anchor-left-open});
+$drawer-anchor-solo-right-open: Min(#{$drawer-anchor-xxl-right-open}, #{$drawer-right-anchor-right-open});
 
 :target,
 :focus {
@@ -206,10 +210,10 @@ $right-drawer-width: 320px;
             .btn {
                 width: $icon-medium-width;
                 height: $icon-medium-width; // Using the same value for width and height to make the button square.
-                background-color: $gray-200;
+                background-color: var(--#{$prefix}gray-200);
 
                 &:hover {
-                    background-color: $gray-400;
+                    background-color: var(--#{$prefix}gray-400);
                 }
             }
         }
@@ -367,6 +371,15 @@ $right-drawer-width: 320px;
                 left: $drawer-anchor-none;
                 width: $drawer-right-width;
                 clip-path: inset(0 0 0 0);
+
+                // A focused skip link (.visually-hidden-focusable in core.scss) jumps to the top left of the screen,
+                // outside this box. clip-path hides anything outside the box, even a child that has escaped to `position: fixed`.
+                // Disable it so skip links within the block drawer will show up.
+                // Match the skip link rather than :focus-within, so the clip stays in place for the
+                // close button and the drawer keeps its closing animation.
+                &:has(.visually-hidden-focusable:focus) {
+                    clip-path: none;
+                }
             }
 
             &:not(.show) .drawercontent {
@@ -376,10 +389,10 @@ $right-drawer-width: 320px;
 
         &:has(#page.drawers.show-drawer-left):not(:has(#page.drawers.show-drawer-right)) {
             .drawer.drawer-left {
-                right: $drawer-anchor-left-open;
+                right: $drawer-anchor-solo-left-open;
 
                 &.show {
-                    right: $drawer-anchor-left-open;
+                    right: $drawer-anchor-solo-left-open;
                 }
             }
             .drawer.drawer-right {
@@ -400,10 +413,10 @@ $right-drawer-width: 320px;
                 }
             }
             .drawer.drawer-right {
-                left: $drawer-right-anchor-right-open;
+                left: $drawer-anchor-solo-right-open;
 
                 &.show {
-                    left: $drawer-right-anchor-right-open;
+                    left: $drawer-anchor-solo-right-open;
                 }
             }
         }
@@ -418,51 +431,6 @@ $right-drawer-width: 320px;
                 }
             }
 
-            .drawer.drawer-right {
-                left: $drawer-anchor-both-right;
-
-                &.show {
-                    left: $drawer-anchor-both-right;
-                }
-            }
-        }
-    }
-}
-
-@include media-breakpoint-up(xxl) {
-    .pagelayout-standard,
-    body.limitedwidth {
-        // Single right drawer open: anchor to main-inner edge (shifted by right margin).
-        &:has(#page.drawers.show-drawer-right):not(:has(#page.drawers.show-drawer-left)) {
-            .drawer.drawer-right {
-                left: $drawer-anchor-xxl-right-open;
-
-                &.show {
-                    left: $drawer-anchor-xxl-right-open;
-                }
-            }
-        }
-
-        // Single left drawer open: anchor to main-inner edge (shifted by left margin).
-        &:has(#page.drawers.show-drawer-left):not(:has(#page.drawers.show-drawer-right)) {
-            .drawer.drawer-left {
-                right: $drawer-anchor-xxl-left-open;
-
-                &.show {
-                    right: $drawer-anchor-xxl-left-open;
-                }
-            }
-        }
-
-        // Both drawers open: anchor each drawer to the main-inner edge (shifted by both margins).
-        &:has(#page.drawers.show-drawer-left.show-drawer-right) {
-            .drawer.drawer-left {
-                right: $drawer-anchor-both-left;
-
-                &.show {
-                    right: $drawer-anchor-both-left;
-                }
-            }
             .drawer.drawer-right {
                 left: $drawer-anchor-both-right;
 
@@ -496,7 +464,7 @@ $right-drawer-width: 320px;
     .draweractions {
         margin-left: map-get($spacers, 2);
         .btn {
-            --#{$prefix}btn-color: #{$gray-700};
+            --#{$prefix}btn-color: var(--#{$prefix}gray-700);
         }
     }
 }

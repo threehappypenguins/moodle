@@ -5,9 +5,8 @@
 // Variables.
 $activity-item-padding: 1.25rem !default;
 $activity-border-radius: 1rem !default;
-$activity-border-width: 2px !default;
-$activity-hover-border-color: $primary !default;
-$divider-color: $gray-200 !default;
+$divider-color: var(--#{$prefix}gray-200) !default;
+$divider-stripe-color: var(--#{$prefix}gray-100) !default;
 $divider-width: 1px !default;
 $divider-hover-color: $primary !default;
 
@@ -57,7 +56,9 @@ $divider-hover-color: $primary !default;
 .section-collapsemenu {
     @include collapsemenu-toggle;
     padding: map-get($spacers, 2) .75rem;
-    color: $gray-600;
+    // The custom property, not the SCSS variable: this toggle sits on the page rather than in a card, and gray 600
+    // only reaches 3.35:1 there once the page is dark. The light value is unchanged.
+    color: var(--#{$prefix}gray-600);
     line-height: 1;
     background: none;
     border: 0;
@@ -70,7 +71,7 @@ $divider-hover-color: $primary !default;
 // Expand all/Collapse all toggle in the course index drawer.
 .courseindex-collapsemenu {
     @include collapsemenu-toggle;
-    color: $gray-700;
+    color: var(--#{$prefix}gray-700);
 }
 
 // Max sections reached alert.
@@ -78,7 +79,7 @@ $divider-hover-color: $primary !default;
     border-top: $divider-width solid $border-color;
     font-size: $font-size-sm;
     font-weight: normal;
-    color: $gray-600;
+    color: var(--#{$prefix}gray-600);
 }
 
 /* Sections */
@@ -92,16 +93,16 @@ $divider-hover-color: $primary !default;
     }
 
     .section-item {
-        border: $border-width solid $gray-200;
+        border: $border-width solid var(--#{$prefix}gray-200);
         @include border-radius($activity-border-radius);
-        background-color: $white;
+        background-color: var(--#{$prefix}white);
 
         .course-section-header {
             padding: map-get($spacers, 3);
             @include border-radius($activity-border-radius);
 
             .section-restrictionlock .icon {
-                color: $gray-600;
+                color: var(--#{$prefix}gray-600);
             }
         }
 
@@ -113,19 +114,10 @@ $divider-hover-color: $primary !default;
             }
 
             .section-content-inner {
-                padding: map-get($spacers, 2);
-                border-top: $border-width solid $gray-200;
-                background-color: $gray-100;
+                padding: $mds-spacing-md;
+                border-top: $border-width solid var(--#{$prefix}gray-200);
+                background-color: var(--#{$prefix}gray-100);
                 @include border-bottom-radius($activity-border-radius);
-            }
-        }
-    }
-
-    &.hidden,
-    &.orphaned {
-        .section-item {
-            .course-section-header {
-                background-color: $gray-100;
             }
         }
     }
@@ -146,7 +138,7 @@ $divider-hover-color: $primary !default;
     }
 
     .sectionname a {
-        color: $gray-900;
+        color: var(--#{$prefix}gray-900);
         font-size: $h5-font-size;
         &:hover {
             text-decoration: none;
@@ -174,7 +166,7 @@ $divider-hover-color: $primary !default;
     }
 
     .summarytext {
-        color: $gray-600;
+        color: var(--#{$prefix}gray-600);
         // Add rounded borders to images.
         img {
             @include border-radius($activity-border-radius);
@@ -185,20 +177,20 @@ $divider-hover-color: $primary !default;
     .availabilityinfo {
         margin-top: map-get($spacers, 2);
         padding: map-get($spacers, 3);
-        background-color: $gray-200;
-        border: $border-width solid $gray-300;
-        color: $gray-700;
+        background-color: var(--#{$prefix}gray-200);
+        border: $border-width solid var(--#{$prefix}gray-300);
+        color: var(--#{$prefix}gray-700);
         @include font-size($small-font-size);
         @include border-radius($activity-border-radius);
         .icon {
-            color: $gray-600;
+            color: var(--#{$prefix}gray-600);
         }
         .editavailability {
             a {
                 @include border-radius();
                 font-weight: bold;
                 &:hover {
-                    background-color: $gray-400;
+                    background-color: var(--#{$prefix}gray-400);
                 }
                 .icon {
                     font-size: inherit;
@@ -249,13 +241,14 @@ $divider-hover-color: $primary !default;
     display: block;
     width: 100%;
     height: 2rem;
-    border: 2px dashed $gray-800;
+    border: 2px dashed var(--#{$prefix}gray-800);
 }
 
 /* Activities */
 
 .activity {
     list-style: none;
+    margin-top: $mds-spacing-md;
     &.indented {
         .activity-item {
             margin-left: map-get($spacers, 3);
@@ -273,18 +266,42 @@ $divider-hover-color: $primary !default;
 .activity-item {
     padding: $activity-item-padding;
     @include border-radius($activity-border-radius);
+
+    border: $mds-stroke-weight-sm solid var(--mds-border-subtle);
+
+    background-color: var(--mds-bg-surface-subtle);
+
+    &:hover:not(:has(.delegated-section)) {
+        background-color: var(--mds-bg-surface-default);
+    }
+
+    &:focus-within:not(:has(.delegated-section)) {
+        outline: $mds-stroke-weight-md solid var(--mds-border-interactive-primary-default);
+    }
+
     &.hiddenactivity {
-        background-color: $gray-200;
         .activityiconcontainer {
             mix-blend-mode: multiply;
+
+            // Multiplying with a dark surface takes everything to black. Screen is the counterpart which blends
+            // into a dark surface the way multiply blends into a light one.
+            @include dark-mode {
+                mix-blend-mode: screen;
+            }
+        }
+        .activity-name-area .activityname {
+            color: var(--mds-text-muted);
+            .aalink {
+                color: var(--mds-text-muted);
+            }
         }
         .badge {
             background-color: transparent;
-            color: $gray-700;
-            border: $border-width solid $gray-300;
+            color: var(--#{$prefix}gray-700);
+            border: $border-width solid var(--#{$prefix}gray-300);
         }
         .activity-altcontent.activity-description {
-            color: $gray-700;
+            color: var(--mds-text-muted);
         }
     }
     // Custom styles for activity cards while editing.
@@ -296,16 +313,19 @@ $divider-hover-color: $primary !default;
         // Add a border on hover to the activity card (avoiding hover effect in inner activities).
         &:hover:not(:has(.activity:hover)),
         &.selected {
-            // We use outline here to avoid changing the layout everytime we hover.
-            outline: $activity-border-width solid $activity-hover-border-color;
             .activityiconcontainer,
             .badge {
                 mix-blend-mode: multiply;
+
+                // See the hidden activity icon above: multiply hides an icon on a dark card.
+                @include dark-mode {
+                    mix-blend-mode: screen;
+                }
             }
         }
     }
     .activity.dragging & {
-        border: $activity-border-width solid $activity-hover-border-color;
+        border: $mds-stroke-weight-md solid var(--mds-border-interactive-primary-default);
         .editing &:hover {
             // We cancel the outline when dragging because it is not taken into account
             // in the element/image representing the drag and drop and it cuts out part of the
@@ -375,7 +395,7 @@ $divider-hover-color: $primary !default;
     .activity-dates {
         grid-area: dates;
         @include font-size($small-font-size);
-        color: $gray-700;
+        color: var(--#{$prefix}gray-700);
         display: flex;
         flex-wrap: wrap;
         column-gap: 0.75rem;
@@ -391,10 +411,10 @@ $divider-hover-color: $primary !default;
         grid-area: name;
         // Prevent bootstrap strech-link from covering the inplace editable button using z-index.
         .activityname {
-            color: $gray-700;
+            color: var(--#{$prefix}gray-700);
             font-weight: $font-weight-medium;
             .aalink {
-                color: $gray-900;
+                color: var(--#{$prefix}gray-900);
             }
             .afterlink {
                 margin-left: map-get($spacers, 2);
@@ -408,9 +428,9 @@ $divider-hover-color: $primary !default;
         .activitybadge {
             &.badge-none {
                 font-weight: normal;
-                background-color: $white;
-                color: $gray-600;
-                border: $border-width solid $gray-200;
+                background-color: var(--#{$prefix}white);
+                color: var(--#{$prefix}gray-600);
+                border: $border-width solid var(--#{$prefix}gray-200);
                 font-size: 12px;
                 // Override the 'rounded-pill' class from the markup, which is shared with other badge styles.
                 border-radius: $border-radius-sm !important; // stylelint-disable-line declaration-no-important
@@ -434,7 +454,7 @@ $divider-hover-color: $primary !default;
             }
         }
         .completion-dialog {
-            color: $gray-700;
+            color: var(--#{$prefix}gray-700);
             font-size: $font-size-sm;
             min-width: 12rem;
             .icon {
@@ -445,11 +465,11 @@ $divider-hover-color: $primary !default;
             }
             .editcompletion a {
                 @include border-radius();
-                color: $gray-700;
+                color: var(--#{$prefix}gray-700);
                 font-weight: bold;
                 text-decoration: none;
                 &:hover {
-                    background-color: $gray-200;
+                    background-color: var(--#{$prefix}gray-200);
                 }
             }
         }
@@ -507,7 +527,7 @@ $divider-hover-color: $primary !default;
         grid-area: altcontent;
         margin-top: map-get($spacers, 1);
         &.activity-description {
-            color: $gray-600;
+            color: var(--#{$prefix}gray-600);
             @include font-size($small-font-size);
             // Fix activity description bottom margin for first level-lists.
             ul:not(.activity-description ul ul) {
@@ -558,9 +578,9 @@ $divider-hover-color: $primary !default;
         visibility: hidden;
         transition: visibility 0.1s;
         position: absolute;
-        background: linear-gradient(transparent 40%, $gray-100 40%, $gray-100 60%, transparent 60%);
+        background: linear-gradient(transparent 40%, $divider-stripe-color 40%, $divider-stripe-color 60%, transparent 60%);
         .section.hidden & {
-            background: linear-gradient(transparent 40%, $gray-100 40%, $gray-100 60%, transparent 60%);
+            background: linear-gradient(transparent 40%, $divider-stripe-color 40%, $divider-stripe-color 60%, transparent 60%);
         }
     }
     &.always-visible {
@@ -592,7 +612,7 @@ $divider-hover-color: $primary !default;
         hr {
             border-color: $divider-hover-color;
             .changenumsections.disabled & {
-                border-color: $gray-200;
+                border-color: var(--#{$prefix}gray-200);
             }
         }
     }
@@ -617,8 +637,8 @@ $divider-hover-color: $primary !default;
     position: relative;
     z-index: 1;
     @include border-radius($border-radius-lg);
-    color: $gray-700;
-    background-color: $gray-300;
+    color: var(--#{$prefix}gray-700);
+    background-color: var(--#{$prefix}gray-300);
     padding: map-get($spacers, 2) ($spacer * 0.75);
     line-height: 1;
     &:hover,
@@ -632,14 +652,14 @@ $divider-hover-color: $primary !default;
         font-size: 14px;
     }
     .changenumsections.disabled & {
-        color: $gray-500;
-        background-color: $gray-200;
+        color: var(--#{$prefix}gray-500);
+        background-color: var(--#{$prefix}gray-200);
         outline: none;
         box-shadow: none;
         &:hover,
         &:focus {
-            color: $gray-500;
-            background-color: $gray-200;
+            color: var(--#{$prefix}gray-500);
+            background-color: var(--#{$prefix}gray-200);
             outline: none;
             box-shadow: none;
         }
@@ -659,19 +679,23 @@ $divider-hover-color: $primary !default;
             margin-top: map-get($spacers, 4);
         }
     }
+    .activity.subsection .section {
+        margin-left: $mds-spacing-none;
+    }
     .activity {
         margin-top: map-get($spacers, 2);
         margin-left: 2rem;
         padding-top: map-get($spacers, 2);
         border-top: $divider-width solid $divider-color;
         &:first-child {
-            margin-top: map-get($spacers, 4);
+            margin-top: $mds-spacing-xs;
+            padding-top: $mds-spacing-xs;
         }
     }
     .activity-item {
         .bulkselect {
             float: left;
-            margin-left: -2rem;
+            margin-left: calc(-#{$activity-item-padding} - 1.75rem);
         }
         // Delegated sections are not available for bulk editing.
         &:has(.delegated-section):hover {
@@ -733,16 +757,57 @@ $divider-hover-color: $primary !default;
             border: none;
             // No rounded borders
             border-radius: 0;
-            // Add bottom border back to last activity in section in non editing mode.
-            body:not(.editing) & .activity:last-child {
-                border-bottom: $border-width solid $border-color;
-            }
+            background-color: transparent;
 
+            .course-section-header {
+                padding: 0;
+            }
+        }
+
+        .delegated-section .section-item {
+            border: $mds-stroke-weight-sm solid var(--mds-border-subtle);
+            @include border-radius($mds-border-radius-xl);
+            background-color: var(--mds-bg-surface-default);
+
+            .course-section-header {
+                padding: $mds-spacing-md;
+                @include border-radius($mds-border-radius-xl);
+            }
+        }
+
+        .section_availability .availabilityinfo {
+            body:not(.editing) & {
+                margin-bottom: $mds-spacing-md;
+            }
+        }
+
+        .sectionbadges .badge {
+            margin-left: 0;
+            margin-bottom: $mds-spacing-md;
+        }
+
+        .delegated-section .sectionbadges .badge {
+            margin-left: map-get($spacers, 2);
+            margin-bottom: 0;
         }
     }
 }
 
 .single-section-page {
+    #page.drawers #topofscroll {
+        background-color: var(--#{$prefix}body-bg);
+        @include border-radius($mds-border-radius-xl);
+        padding: $mds-spacing-md;
+    }
+
+    #page-header {
+        padding: 0;
+    }
+
+    #page.drawers div[role="main"] {
+        padding: 0;
+    }
+
     .header-action {
         display: inline-block;
     }
@@ -756,7 +821,7 @@ $divider-hover-color: $primary !default;
 
 .defaultactivitycompletion-item {
     a {
-        color: $black;
+        color: var(--#{$prefix}black);
         text-decoration: none;
     }
     .activityicon {
@@ -840,19 +905,18 @@ $divider-hover-color: $primary !default;
 
 .activity.subsection {
     > .activity-item {
-        padding: $activity-item-padding map-get($spacers, 2);
+        padding: 0;
+        border: 0;
 
         > .activity-grid > .activity-altcontent {
             margin-top: 0;
         }
     }
+    &.dragging > .activity-item {
+        border: $mds-stroke-weight-md solid var(--mds-border-interactive-primary-default);
+    }
     .section {
         margin-top: 0;
-        .icons-collapse-expand:has(+ h4) {
-            height: map-get($iconsizes, 4);
-            width: map-get($iconsizes, 4);
-            font-size: $font-size-sm;
-        }
         h4 {
             font-size: $h5-font-size;
         }
@@ -917,7 +981,7 @@ $divider-hover-color: $primary !default;
             font: var(--fa-font-solid);
             position: absolute;
             font-size: 20px;
-            color: $gray-600;
+            color: var(--#{$prefix}gray-600);
             content: fa-content($fa-var-spinner);
             display: flex;
             justify-content: center;
@@ -1041,15 +1105,15 @@ $highlight-style: highlight-fade 2s ease-in-out;
 @keyframes highlight-fade {
     0% {
         @include border-radius($activity-border-radius);
-        outline: $activity-border-width solid $activity-hover-border-color;
+        outline: $mds-stroke-weight-md solid var(--mds-border-interactive-primary-default);
     }
     70% {
         @include border-radius($activity-border-radius);
-        outline: $activity-border-width solid $activity-hover-border-color;
+        outline: $mds-stroke-weight-md solid var(--mds-border-interactive-primary-default);
     }
     100% {
         @include border-radius($activity-border-radius);
-        outline: $activity-border-width solid transparent;
+        outline: $mds-stroke-weight-md solid transparent;
     }
 }
 
@@ -1064,3 +1128,14 @@ $highlight-style: highlight-fade 2s ease-in-out;
     }
 }
 
+/* Learning outcomes page */
+
+// This page reuses the activity item markup in a read-only context,
+// so suppress the editing-mode hover cursor/outline styles.
+body.editing#page-course-learningoutcomes .activity-item {
+    cursor: auto;
+    &:hover:not(:has(.activity:hover)),
+    &.selected {
+        outline: none;
+    }
+}

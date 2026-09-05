@@ -2178,5 +2178,153 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2026080700.01);
     }
 
+    if ($oldversion < 2026081800.01) {
+        // Define table ai_action_register.
+        $table = new xmldb_table('ai_action_register');
+
+        // Conditionally launch add field prompttokens.
+        $field = new xmldb_field('prompttokens', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'model');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Conditionally launch add field completiontokens.
+        $field = new xmldb_field('completiontokens', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'prompttokens');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Move the token counts from the action child tables to ai_action_register.
+        foreach (['generate_text', 'summarise_text', 'explain_text'] as $actionname) {
+            $actiontable = new xmldb_table("ai_action_{$actionname}");
+
+            $tokenfields = ['prompttokens' => 'prompttokens', 'completiontoken' => 'completiontokens'];
+            foreach ($tokenfields as $childfieldname => $registerfieldname) {
+                $field = new xmldb_field($childfieldname);
+
+                if ($dbman->field_exists($actiontable, $field)) {
+                    $sql = "UPDATE {ai_action_register}
+                            SET {$registerfieldname} = (
+                                SELECT child.{$childfieldname}
+                                    FROM {{$actiontable->getName()}} child
+                                    WHERE child.id = {ai_action_register}.actionid
+                            )
+                            WHERE actionname = :actionname";
+                    $DB->execute($sql, ['actionname' => $actionname]);
+
+                    $dbman->drop_field($actiontable, $field);
+                }
+            }
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2026081800.01);
+    }
+
+    if ($oldversion < 2026081800.02) {
+        // Define field granttypes to be added to oauth2_server_clients.
+        $table = new xmldb_table('oauth2_server_clients');
+        $field = new xmldb_field('granttypes', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'isconfidential');
+
+        // Conditionally launch add field granttypes.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field ispkceenabled to be added to oauth2_server_clients.
+        $table = new xmldb_table('oauth2_server_clients');
+        $field = new xmldb_field('ispkceenabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'granttypes');
+
+        // Conditionally launch add field ispkceenabled.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2026081800.02);
+    }
+
+    if ($oldversion < 2026081800.03) {
+        // Define field lastaccessip to be added to rest_api_tokens.
+        $table = new xmldb_table('rest_api_tokens');
+        $field = new xmldb_field('lastaccessip', XMLDB_TYPE_CHAR, '45', null, null, null, null, 'lastaccessed');
+
+        // Conditionally launch add field lastaccessip.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2026081800.03);
+    }
+
+    if ($oldversion < 2026081800.04) {
+        // Define field courseid to be added to ai_action_register.
+        $table = new xmldb_table('ai_action_register');
+        $field = new xmldb_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'model');
+
+        // Conditionally launch add field courseid, with its foreign key to course.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+
+            $key = new xmldb_key('courseid', XMLDB_KEY_FOREIGN, ['courseid'], 'course', ['id']);
+            $dbman->add_key($table, $key);
+        }
+
+        // Existing rows are left with courseid = 0. Queue an adhoc task to backfill them from their
+        // contextid in the background, so the upgrade step itself stays fast on large sites.
+        $task = new \core_ai\task\backfill_action_courseid();
+        \core\task\manager::queue_adhoc_task($task);
+        upgrade_log(UPGRADE_LOG_NORMAL, null, 'Queueing courseid backfill task for ai_action_register.');
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2026081800.04);
+    }
+
+    if ($oldversion < 2026081800.05) {
+        // Create grade_outcomes_modules table to track usage of scale-less outcomes
+        // by course modules. Scale-based outcomes continue to be tracked via
+        // grade_items; this table covers outcomes that have no scaleid (informational outcomes).
+
+        $table = new xmldb_table('grade_outcomes_modules');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
+        $table->add_field('outcomecourseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'id');
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'outcomecourseid');
+        $table->add_field('usercreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'cmid');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'usercreated');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('outcomecourseid', XMLDB_KEY_FOREIGN, ['outcomecourseid'], 'grade_outcomes_courses', ['id']);
+        $table->add_key('cmid', XMLDB_KEY_FOREIGN, ['cmid'], 'course_modules', ['id']);
+        $table->add_key('usercreated', XMLDB_KEY_FOREIGN, ['usercreated'], 'user', ['id']);
+
+        $table->add_index('outcomecourseid-cmid', XMLDB_INDEX_UNIQUE, ['outcomecourseid', 'cmid']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+        upgrade_main_savepoint(true, 2026081800.05);
+    }
+
+    if ($oldversion < 2026081800.06) {
+        // Define field identityhash to be added to task_adhoc.
+        $table = new xmldb_table('task_adhoc');
+        $field = new xmldb_field('identityhash', XMLDB_TYPE_CHAR, '40', null, null, null, null, 'firststartingtime');
+
+        // Conditionally launch add field identityhash.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Add a unique index on identityhash to enforce one row per non-null key.
+        $index = new xmldb_index('identityhash_uix', XMLDB_INDEX_UNIQUE, ['identityhash']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_main_savepoint(true, 2026081800.06);
+    }
+
     return true;
 }

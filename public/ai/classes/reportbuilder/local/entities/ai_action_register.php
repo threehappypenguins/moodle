@@ -60,9 +60,6 @@ class ai_action_register extends base {
      */
     protected function get_available_columns(): array {
         $mainalias = $this->get_table_alias('ai_action_register');
-        $generatetextalias = 'aagt';
-        $summarisetextalias = 'aast';
-        $explaintextalias = 'aaet';
 
         // Action name column.
         $columns[] = (new column(
@@ -72,7 +69,6 @@ class ai_action_register extends base {
         ))
             ->set_type(column::TYPE_TEXT)
             ->add_field("{$mainalias}.actionname")
-            ->set_is_sortable(true)
             ->add_callback(static function(string $actionname): string {
                 return get_string("action_{$actionname}", 'core_ai');
             });
@@ -85,7 +81,6 @@ class ai_action_register extends base {
         ))
             ->set_type(column::TYPE_TEXT)
             ->add_field("{$mainalias}.provider")
-            ->set_is_sortable(true)
             ->add_callback(static function(string $provider): string {
                 if (get_string_manager()->string_exists('pluginname', $provider)) {
                     return get_string('pluginname', $provider);
@@ -103,7 +98,6 @@ class ai_action_register extends base {
         ))
             ->set_type(column::TYPE_BOOLEAN)
             ->add_field("{$mainalias}.success")
-            ->set_is_sortable(true)
             ->set_callback([format::class, 'boolean_as_text']);
 
         // Time created column.
@@ -114,63 +108,54 @@ class ai_action_register extends base {
         ))
             ->set_type(column::TYPE_TIMESTAMP)
             ->add_field("{$mainalias}.timecreated")
-            ->set_is_sortable(true)
             ->add_callback([format::class, 'userdate']);
 
         // Prompt tokens column.
-        // Only available for summarise_text, generate_text actions and explain_text actions.
         $columns[] = (new column(
             'prompttokens',
             new lang_string('prompttokens', 'core_ai'),
             $this->get_entity_name(),
         ))
-            ->add_join("
-                LEFT JOIN {ai_action_generate_text} {$generatetextalias}
-                       ON {$mainalias}.actionid = {$generatetextalias}.id
-                      AND {$mainalias}.actionname = 'generate_text'")
-            ->add_join("
-                LEFT JOIN {ai_action_summarise_text} {$summarisetextalias}
-                       ON {$mainalias}.actionid = {$summarisetextalias}.id
-                      AND {$mainalias}.actionname = 'summarise_text'")
-            ->add_join("
-                LEFT JOIN {ai_action_explain_text} {$explaintextalias}
-                       ON {$mainalias}.actionid = {$explaintextalias}.id
-                      AND {$mainalias}.actionname = 'explain_text'")
             ->set_type(column::TYPE_INTEGER)
-            ->add_field("COALESCE({$generatetextalias}.prompttokens, {$summarisetextalias}.prompttokens,
-                    {$explaintextalias}.prompttokens)", 'prompttokens')
-            ->set_is_sortable(true)
+            ->add_field("{$mainalias}.prompttokens")
             ->set_help_icon(new help_icon('prompttokens', 'core_ai'))
             ->add_callback(static function(?int $value): string {
                 return $value ?? get_string('unknownvalue', 'core_ai');
             });
 
         // Completion tokens column.
-        // Only available for summarise_text, generate_text actions and explain_text actions.
         $columns[] = (new column(
             'completiontokens',
             new lang_string('completiontokens', 'core_ai'),
             $this->get_entity_name(),
         ))
-            ->add_join("
-                LEFT JOIN {ai_action_generate_text} {$generatetextalias}
-                       ON {$mainalias}.actionid = {$generatetextalias}.id
-                      AND {$mainalias}.actionname = 'generate_text'")
-            ->add_join("
-                LEFT JOIN {ai_action_summarise_text} {$summarisetextalias}
-                       ON {$mainalias}.actionid = {$summarisetextalias}.id
-                      AND {$mainalias}.actionname = 'summarise_text'")
-            ->add_join("
-                LEFT JOIN {ai_action_explain_text} {$explaintextalias}
-                       ON {$mainalias}.actionid = {$explaintextalias}.id
-                      AND {$mainalias}.actionname = 'explain_text'")
             ->set_type(column::TYPE_INTEGER)
-            ->add_field("COALESCE({$generatetextalias}.completiontoken, {$summarisetextalias}.completiontoken,
-                    {$explaintextalias}.completiontoken)", 'completiontokens')
-            ->set_is_sortable(true)
+            ->add_field("{$mainalias}.completiontokens")
             ->set_help_icon(new help_icon('completiontokens', 'core_ai'))
             ->add_callback(static function(?int $value): string {
                 return $value ?? get_string('unknownvalue', 'core_ai');
+            });
+
+        // Detail column - links to the full detail of this logged action (prompt, generated content, etc).
+        $columns[] = (new column(
+            'detail',
+            new lang_string('detailcolumn', 'core_ai'),
+            $this->get_entity_name(),
+        ))
+            ->set_type(column::TYPE_INTEGER)
+            ->add_field("{$mainalias}.id")
+            ->set_is_sortable(false)
+            ->set_help_icon(new help_icon('detailcolumn', 'core_ai'))
+            ->add_callback(static function (?int $value): string {
+                global $PAGE;
+
+                if (empty($value)) {
+                    return '';
+                }
+                return \html_writer::link(
+                    new \moodle_url('/ai/detail.php', ['id' => $value, 'returnurl' => $PAGE->url->out(false)]),
+                    get_string('viewdetail', 'core_ai'),
+                );
             });
 
         return $columns;
@@ -183,9 +168,6 @@ class ai_action_register extends base {
      */
     protected function get_available_filters(): array {
         $mainalias = $this->get_table_alias('ai_action_register');
-        $generatetextalias = 'aagt';
-        $summarisetextalias = 'aast';
-        $explaintextalias = 'aaet';
 
         // Action name filter.
         $filters[] = (new filter(
@@ -243,8 +225,7 @@ class ai_action_register extends base {
             'prompttokens',
             new lang_string('prompttokens', 'core_ai'),
             $this->get_entity_name(),
-            "COALESCE({$generatetextalias}.prompttokens, {$summarisetextalias}.prompttokens,
-                    {$explaintextalias}.prompttokens)",
+            "{$mainalias}.prompttokens",
         ));
 
         // Completion tokens filter.
@@ -253,8 +234,7 @@ class ai_action_register extends base {
             'completiontokens',
             new lang_string('completiontokens', 'core_ai'),
             $this->get_entity_name(),
-            "COALESCE({$generatetextalias}.completiontoken, {$summarisetextalias}.completiontoken,
-                    {$explaintextalias}.completiontoken)",
+            "{$mainalias}.completiontokens",
         ));
 
         // Success filter.
