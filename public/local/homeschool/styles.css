@@ -35,6 +35,14 @@
     max-width: 100%;
 }
 
+.local-homeschool-current-days {
+    font-size: 0.95rem;
+}
+
+.local-homeschool-current-day-child {
+    margin-top: 0.15rem;
+}
+
 .local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-row-edit,
 .local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-activity-details {
     opacity: 0.5;

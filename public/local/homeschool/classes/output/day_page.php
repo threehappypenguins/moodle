@@ -18,6 +18,7 @@ namespace local_homeschool\output;
 
 use local_homeschool\local\activity_progress;
 use local_homeschool\local\activity_repository;
+use local_homeschool\local\current_day;
 use local_homeschool\local\modedit_launch;
 use local_homeschool\local\student_repository;
 use renderable;
@@ -89,10 +90,14 @@ class day_page implements renderable, templatable {
         $hasday = $this->daynumber > 0;
         $rows = [];
         $groups = [];
+        $students = [];
+        if (!empty($this->courses)) {
+            $students = student_repository::get_students_for_courses($this->courses);
+        }
+        $currentdays = $this->export_current_days($students);
 
         if ($hasday) {
             $activities = activity_repository::get_activities_for_day($this->courses, $this->daynumber);
-            $students = student_repository::get_students_for_courses($this->courses);
 
             $coursestudents = [];
             foreach ($this->courses as $course) {
@@ -164,7 +169,101 @@ class day_page implements renderable, templatable {
             'addcoursegroups' => $addcourseexport->groups,
             'addcourseflat' => !empty($addcourseexport->flat),
             'hasaddcourses' => $hasday && !empty($this->courses),
+            'hascurrentdays' => !empty($currentdays->show),
+            'currentnone' => !empty($currentdays->none),
+            'currentsameday' => !empty($currentdays->sameday),
+            'samedayurl' => $currentdays->samedayurl,
+            'samedaylabel' => $currentdays->samedaylabel,
+            'currentchildren' => $currentdays->children,
         ];
+    }
+
+    /**
+     * Per-child furthest day with qualifying work, for the day picker.
+     *
+     * @param \stdClass[] $students
+     * @return \stdClass
+     */
+    protected function export_current_days(array $students): \stdClass {
+        $empty = (object) [
+            'show' => false,
+            'none' => false,
+            'sameday' => false,
+            'samedayurl' => '',
+            'samedaylabel' => '',
+            'children' => [],
+        ];
+        if ($students === []) {
+            return $empty;
+        }
+
+        $days = current_day::get_furthest_days($students);
+        $children = [];
+        $workdays = [];
+        foreach ($students as $student) {
+            $daynumber = (int) ($days[(int) $student->id] ?? 0);
+            $haswork = $daynumber > 0;
+            if ($haswork) {
+                $workdays[$daynumber] = $daynumber;
+            }
+            $children[] = (object) [
+                'name' => student_repository::format_child_name($student),
+                'haswork' => $haswork,
+                'daylabel' => $haswork ? get_string('daytitle', 'local_homeschool', $daynumber) : '',
+                'url' => $haswork ? $this->day_url_for($daynumber)->out(false) : '',
+            ];
+        }
+
+        if ($workdays === []) {
+            return (object) [
+                'show' => true,
+                'none' => true,
+                'sameday' => false,
+                'samedayurl' => '',
+                'samedaylabel' => '',
+                'children' => [],
+            ];
+        }
+
+        $allhavework = count($children) === count(array_filter($children, static fn($child) => $child->haswork));
+        if ($allhavework && count($students) > 1 && count($workdays) === 1) {
+            $daynumber = (int) reset($workdays);
+            return (object) [
+                'show' => true,
+                'none' => false,
+                'sameday' => true,
+                'samedayurl' => $this->day_url_for($daynumber)->out(false),
+                'samedaylabel' => get_string('daytitle', 'local_homeschool', $daynumber),
+                'children' => [],
+            ];
+        }
+
+        return (object) [
+            'show' => true,
+            'none' => false,
+            'sameday' => false,
+            'samedayurl' => '',
+            'samedaylabel' => '',
+            'children' => $children,
+        ];
+    }
+
+    /**
+     * @param int $daynumber
+     * @return \moodle_url
+     */
+    protected function day_url_for(int $daynumber): \moodle_url {
+        $url = new \moodle_url('/local/homeschool/day.php');
+        if ($daynumber > 0) {
+            $url->param('day', $daynumber);
+        }
+        if ($this->showall) {
+            $url->param('showall', 1);
+        }
+        if ($this->showhidden) {
+            $url->param('showhidden', 1);
+        }
+        return $url;
     }
 
     /**
@@ -257,17 +356,7 @@ class day_page implements renderable, templatable {
      * @return \moodle_url
      */
     protected function day_url(): \moodle_url {
-        $url = new \moodle_url('/local/homeschool/day.php');
-        if ($this->daynumber > 0) {
-            $url->param('day', $this->daynumber);
-        }
-        if ($this->showall) {
-            $url->param('showall', 1);
-        }
-        if ($this->showhidden) {
-            $url->param('showhidden', 1);
-        }
-        return $url;
+        return $this->day_url_for($this->daynumber);
     }
 
     /**

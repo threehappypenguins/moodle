@@ -35,6 +35,32 @@
         {{/hasday}}
     </form>
 
+    {{#hascurrentdays}}
+        <div class="local-homeschool-current-days mb-3">
+            <div class="form-label">{{#str}} currentlyonheading, local_homeschool {{/str}}</div>
+            {{#currentnone}}
+                <p class="mb-0">{{#str}} currentdaynone, local_homeschool {{/str}}</p>
+            {{/currentnone}}
+            {{#currentsameday}}
+                <p class="mb-0">
+                    <a href="{{samedayurl}}">{{samedaylabel}}</a>
+                </p>
+            {{/currentsameday}}
+            {{#currentchildren}}
+                {{#haswork}}
+                    <div class="local-homeschool-current-day-child">
+                        {{name}} — <a href="{{url}}">{{daylabel}}</a>
+                    </div>
+                {{/haswork}}
+                {{^haswork}}
+                    <div class="local-homeschool-current-day-child">
+                        {{name}} — {{#str}} currentdaynone, local_homeschool {{/str}}
+                    </div>
+                {{/haswork}}
+            {{/currentchildren}}
+        </div>
+    {{/hascurrentdays}}
+
     {{#hasday}}
         {{#hasaddcourses}}
             <div class="local-homeschool-add-activity mb-3"
