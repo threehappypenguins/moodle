@@ -126,6 +126,24 @@ class student_repository {
             }
         }
 
+        // Merge insertion order follows whichever course first contains each child.
+        // Sort by the same display name the UI uses so the list stays stable as enrolments change.
+        uasort($students, static function(\stdClass $a, \stdClass $b): int {
+            $bydisplay = strcasecmp(self::format_child_name($a), self::format_child_name($b));
+            if ($bydisplay !== 0) {
+                return $bydisplay;
+            }
+            $bylast = strcasecmp($a->lastname ?? '', $b->lastname ?? '');
+            if ($bylast !== 0) {
+                return $bylast;
+            }
+            $byfirst = strcasecmp($a->firstname ?? '', $b->firstname ?? '');
+            if ($byfirst !== 0) {
+                return $byfirst;
+            }
+            return ((int) $a->id) <=> ((int) $b->id);
+        });
+
         return $students;
     }
 }
