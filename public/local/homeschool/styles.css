@@ -433,6 +433,15 @@
     border: 0;
 }
 
+.local-homeschool-clear-reminders-select {
+    width: 2.5rem;
+}
+
+.local-homeschool-clear-reminders-table th,
+.local-homeschool-clear-reminders-table td {
+    vertical-align: middle;
+}
+
 .local-homeschool-shift-form .mform {
     max-width: 48rem;
 }

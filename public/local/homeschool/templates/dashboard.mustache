@@ -50,8 +50,11 @@
         </div>
 
         {{#hasshiftlink}}
-            <div class="local-homeschool-dashboard-shift-link mt-2">
+            <div class="local-homeschool-dashboard-shift-link mt-2 d-flex flex-wrap gap-2">
                 <a class="btn btn-secondary" href="{{shifturl}}">{{#str}} shiftschedulelink, local_homeschool {{/str}}</a>
+                {{#hasclearreminderslink}}
+                    <a class="btn btn-secondary" href="{{clearremindersurl}}">{{#str}} clearreminderslink, local_homeschool {{/str}}</a>
+                {{/hasclearreminderslink}}
             </div>
         {{/hasshiftlink}}
     </div>

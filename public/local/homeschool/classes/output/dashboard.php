@@ -169,11 +169,15 @@ class dashboard implements renderable, templatable {
         }
 
         $shifturl = new \moodle_url('/local/homeschool/shift.php');
+        $clearremindersurl = new \moodle_url('/local/homeschool/clearreminders.php');
         $dayurl = new \moodle_url('/local/homeschool/day.php');
         if ($this->showhidden) {
             $shifturl->param('showhidden', 1);
+            $clearremindersurl->param('showhidden', 1);
             $dayurl->param('showhidden', 1);
         }
+
+        $canmanagecourses = requirements::user_can_manage() && !empty($manageddaysectionscourses);
 
         return (object) [
             'canmanage' => $pagecanmanage,
@@ -191,9 +195,11 @@ class dashboard implements renderable, templatable {
             'upcoming' => $upcomingrows,
             'hasupcoming' => !empty($upcomingrows),
             'dayurl' => $dayurl->out(false),
-            'hasdaypicker' => requirements::user_can_manage() && !empty($manageddaysectionscourses),
+            'hasdaypicker' => $canmanagecourses,
             'shifturl' => $shifturl->out(false),
-            'hasshiftlink' => requirements::user_can_manage() && !empty($manageddaysectionscourses),
+            'hasshiftlink' => $canmanagecourses,
+            'clearremindersurl' => $clearremindersurl->out(false),
+            'hasclearreminderslink' => $canmanagecourses,
             'dayoptions' => $dayoptions,
             'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
             'nodatahelp' => get_string('nodatahelp', 'local_homeschool'),
