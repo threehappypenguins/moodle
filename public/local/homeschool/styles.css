@@ -35,6 +35,10 @@
     max-width: 100%;
 }
 
+.local-homeschool-dashboard .local-homeschool-current-days {
+    margin-top: 0.75rem;
+}
+
 .local-homeschool-current-days,
 .local-homeschool-incomplete-days {
     font-size: 0.95rem;

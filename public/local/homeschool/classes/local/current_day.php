@@ -33,6 +33,7 @@ class current_day {
      * Highest day number with complete/pass, submitted assignment, or finished quiz.
      *
      * Section 0 is ignored. Only work in courses attached to each student is counted.
+     * Assignment work uses the current individual or group submission (latest = 1).
      *
      * @param \stdClass[] $students userid-keyed records with courseids
      * @return int[] userid => day number (0 if none)
@@ -83,23 +84,8 @@ class current_day {
             $params,
         ];
 
-        if ($DB->record_exists('modules', ['name' => 'assign'])) {
-            $queries[] = [
-                "SELECT sub.userid, a.course AS courseid, cs.section AS daynumber
-                   FROM {assign_submission} sub
-                   JOIN {assign} a ON a.id = sub.assignment
-                   JOIN {modules} m ON m.name = 'assign'
-                   JOIN {course_modules} cm ON cm.instance = a.id
-                        AND cm.module = m.id AND cm.course = a.course
-                   JOIN {course_sections} cs ON cs.id = cm.section
-                  WHERE a.course {$courseinsql}
-                    AND sub.userid {$userinsql}
-                    AND sub.userid <> 0
-                    AND sub.status = :assignsubmitted
-                    AND cs.section > 0
-                    AND cm.deletioninprogress = 0",
-                $params + ['assignsubmitted' => 'submitted'],
-            ];
+        foreach (assign_work::submitted_queries($courseinsql, $userinsql, $params, true) as $query) {
+            $queries[] = $query;
         }
 
         if ($DB->record_exists('modules', ['name' => 'quiz'])) {
@@ -140,5 +126,106 @@ class current_day {
         }
 
         return $days;
+    }
+
+    /**
+     * Per-child furthest day with qualifying work, for the day picker.
+     *
+     * @param \stdClass[] $students userid-keyed records with courseids
+     * @param \moodle_url $daypageurl Base day.php URL (showhidden/showall already set)
+     * @return \stdClass
+     */
+    public static function export_for_picker(array $students, \moodle_url $daypageurl): \stdClass {
+        $empty = (object) [
+            'show' => false,
+            'none' => false,
+            'sameday' => false,
+            'samedayurl' => '',
+            'samedaylabel' => '',
+            'children' => [],
+        ];
+        if ($students === []) {
+            return $empty;
+        }
+
+        $days = self::get_furthest_days($students);
+        $children = [];
+        $workdays = [];
+        foreach ($students as $student) {
+            $daynumber = (int) ($days[(int) $student->id] ?? 0);
+            $haswork = $daynumber > 0;
+            if ($haswork) {
+                $workdays[$daynumber] = $daynumber;
+            }
+            $children[] = (object) [
+                'name' => student_repository::format_child_name($student),
+                'haswork' => $haswork,
+                'daylabel' => $haswork ? get_string('daytitle', 'local_homeschool', $daynumber) : '',
+                'url' => $haswork ? self::day_link($daypageurl, $daynumber) : '',
+            ];
+        }
+
+        if ($workdays === []) {
+            return (object) [
+                'show' => true,
+                'none' => true,
+                'sameday' => false,
+                'samedayurl' => '',
+                'samedaylabel' => '',
+                'children' => [],
+            ];
+        }
+
+        $allhavework = count($children) === count(array_filter($children, static fn($child) => $child->haswork));
+        if ($allhavework && count($students) > 1 && count($workdays) === 1) {
+            $daynumber = (int) reset($workdays);
+            return (object) [
+                'show' => true,
+                'none' => false,
+                'sameday' => true,
+                'samedayurl' => self::day_link($daypageurl, $daynumber),
+                'samedaylabel' => get_string('daytitle', 'local_homeschool', $daynumber),
+                'children' => [],
+            ];
+        }
+
+        return (object) [
+            'show' => true,
+            'none' => false,
+            'sameday' => false,
+            'samedayurl' => '',
+            'samedaylabel' => '',
+            'children' => $children,
+        ];
+    }
+
+    /**
+     * Mustache keys for the shared Currently on picker block.
+     *
+     * @param \stdClass[] $students
+     * @param \moodle_url $daypageurl
+     * @return array
+     */
+    public static function picker_template_data(array $students, \moodle_url $daypageurl): array {
+        $currentdays = self::export_for_picker($students, $daypageurl);
+        return [
+            'hascurrentdays' => !empty($currentdays->show),
+            'currentnone' => !empty($currentdays->none),
+            'currentsameday' => !empty($currentdays->sameday),
+            'samedayurl' => $currentdays->samedayurl,
+            'samedaylabel' => $currentdays->samedaylabel,
+            'currentchildren' => $currentdays->children,
+        ];
+    }
+
+    /**
+     * @param \moodle_url $daypageurl
+     * @param int $daynumber
+     * @return string
+     */
+    protected static function day_link(\moodle_url $daypageurl, int $daynumber): string {
+        $url = new \moodle_url($daypageurl);
+        $url->param('day', $daynumber);
+        return $url->out(false);
     }
 }

@@ -31,6 +31,7 @@ require_once($CFG->dirroot . '/mod/assign/locallib.php');
  * @copyright 2026 Sarah
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \local_homeschool\local\incomplete_days
+ * @covers \local_homeschool\local\assign_work
  * @covers \local_homeschool\output\day_page
  */
 final class incomplete_days_test extends \local_homeschool\base_testcase {
@@ -69,24 +70,48 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * Local timestamp at 01:00 on a calendar day relative to today.
+     *
+     * @param int $dayoffset Signed calendar day count (0 = today)
+     * @param int $hour Hour of day (0-23)
+     * @return int
+     */
+    protected function local_day_at_hour(int $dayoffset, int $hour = 1): int {
+        $today = usergetdate(time());
+
+        return make_timestamp($today['year'], $today['mon'], $today['mday'] + $dayoffset, $hour, 0, 0);
+    }
+
+    /**
      * @return int
      */
     protected function yesterday(): int {
-        return usergetmidnight(time()) - DAYSECS + HOURSECS;
+        return $this->local_day_at_hour(-1);
     }
 
     /**
      * @return int
      */
     protected function today(): int {
-        return usergetmidnight(time()) + HOURSECS;
+        return $this->local_day_at_hour(0);
     }
 
     /**
      * @return int
      */
     protected function tomorrow(): int {
-        return usergetmidnight(time()) + DAYSECS + HOURSECS;
+        return $this->local_day_at_hour(1);
+    }
+
+    /**
+     * Invoke the protected next-midnight helper.
+     *
+     * @param int $now
+     * @return int
+     */
+    protected function tomorrow_midnight(int $now): int {
+        $method = new \ReflectionMethod(incomplete_days::class, 'get_tomorrow_midnight');
+        return $method->invoke(null, $now);
     }
 
     /**
@@ -295,6 +320,48 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * An older submitted attempt is leftover once a later attempt is the current draft.
+     */
+    public function test_reopened_draft_assignment_is_leftover(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 2,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $DB->set_field('course_modules', 'completionexpected', $this->yesterday(), ['id' => $assign->cmid]);
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => $student->id,
+            'timecreated' => time() - 120,
+            'timemodified' => time() - 120,
+            'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+            'groupid' => 0,
+            'attemptnumber' => 0,
+            'latest' => 0,
+        ]);
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => $student->id,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'status' => ASSIGN_SUBMISSION_STATUS_DRAFT,
+            'groupid' => 0,
+            'attemptnumber' => 1,
+            'latest' => 1,
+        ]);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertCount(1, incomplete_days::get_leftovers($students)[$student->id]);
+    }
+
+    /**
      * A submitted assignment is done even without completion tracking.
      */
     public function test_submitted_assignment_is_not_leftover(): void {
@@ -324,6 +391,52 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
 
         $students = [$student->id => $this->student_with_course($student, $course)];
         $this->assertSame([], incomplete_days::get_leftovers($students)[$student->id]);
+    }
+
+    /**
+     * A team submission is done for every group member, not only the submitting user.
+     */
+    public function test_team_submission_is_not_leftover_for_every_member(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $alice = $this->getDataGenerator()->create_user();
+        $bob = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($alice->id, $course->id, $studentrole->id);
+        $this->getDataGenerator()->enrol_user($bob->id, $course->id, $studentrole->id);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 3,
+            'teamsubmission' => 1,
+            'requireallteammemberssubmit' => 0,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $DB->set_field('course_modules', 'completionexpected', $this->yesterday(), ['id' => $assign->cmid]);
+        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $group->id, 'userid' => $alice->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $group->id, 'userid' => $bob->id]);
+
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => 0,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+            'groupid' => $group->id,
+            'attemptnumber' => 0,
+            'latest' => 1,
+        ]);
+
+        $students = [
+            $alice->id => $this->student_with_course($alice, $course),
+            $bob->id => $this->student_with_course($bob, $course),
+        ];
+        $leftovers = incomplete_days::get_leftovers($students);
+
+        $this->assertSame([], $leftovers[$alice->id]);
+        $this->assertSame([], $leftovers[$bob->id]);
     }
 
     /**
@@ -457,7 +570,7 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
         $student = $this->getDataGenerator()->create_user();
         $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
 
-        $older = usergetmidnight(time()) - (7 * DAYSECS) + HOURSECS;
+        $older = $this->local_day_at_hour(-7);
         $newer = $this->yesterday();
 
         $this->getDataGenerator()->create_module('assign', [
@@ -585,5 +698,39 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
         $this->assertTrue($export->hasincompletedays);
         $this->assertTrue($export->incompletenone);
         $this->assertSame([], $export->incompletechildren);
+    }
+
+    /**
+     * Spring-forward days are 23 hours; next midnight is not today + 86400.
+     */
+    public function test_tomorrow_midnight_uses_calendar_day_across_spring_forward(): void {
+        $user = $this->getDataGenerator()->create_user(['timezone' => 'America/New_York']);
+        $this->setUser($user);
+
+        $tz = \core_date::get_user_timezone_object();
+        $now = (new \DateTime('2026-03-08 15:00:00', $tz))->getTimestamp();
+        $expected = (new \DateTime('2026-03-09 00:00:00', $tz))->getTimestamp();
+        $naive = usergetmidnight($now) + DAYSECS;
+
+        $this->assertSame($expected, $this->tomorrow_midnight($now));
+        $this->assertNotSame($expected, $naive);
+        $this->assertLessThan($naive, $expected);
+    }
+
+    /**
+     * Fall-back days are 25 hours; next midnight is not today + 86400.
+     */
+    public function test_tomorrow_midnight_uses_calendar_day_across_fall_back(): void {
+        $user = $this->getDataGenerator()->create_user(['timezone' => 'America/New_York']);
+        $this->setUser($user);
+
+        $tz = \core_date::get_user_timezone_object();
+        $now = (new \DateTime('2026-11-01 15:00:00', $tz))->getTimestamp();
+        $expected = (new \DateTime('2026-11-02 00:00:00', $tz))->getTimestamp();
+        $naive = usergetmidnight($now) + DAYSECS;
+
+        $this->assertSame($expected, $this->tomorrow_midnight($now));
+        $this->assertNotSame($expected, $naive);
+        $this->assertGreaterThan($naive, $expected);
     }
 }

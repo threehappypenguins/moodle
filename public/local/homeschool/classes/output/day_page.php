@@ -95,7 +95,7 @@ class day_page implements renderable, templatable {
         if (!empty($this->courses)) {
             $students = student_repository::get_students_for_courses($this->courses);
         }
-        $currentdays = $this->export_current_days($students);
+        $currentdaysdata = current_day::picker_template_data($students, $this->day_url_for(0));
         $incompletedays = $this->export_incomplete_days($students);
 
         if ($hasday) {
@@ -147,7 +147,7 @@ class day_page implements renderable, templatable {
             $dashboardurl->param('showhidden', 1);
         }
 
-        return (object) [
+        return (object) ([
             'daynumber' => $this->daynumber,
             'hasday' => $hasday,
             'daytitle' => $hasday ? get_string('daytitle', 'local_homeschool', $this->daynumber) : '',
@@ -171,86 +171,10 @@ class day_page implements renderable, templatable {
             'addcoursegroups' => $addcourseexport->groups,
             'addcourseflat' => !empty($addcourseexport->flat),
             'hasaddcourses' => $hasday && !empty($this->courses),
-            'hascurrentdays' => !empty($currentdays->show),
-            'currentnone' => !empty($currentdays->none),
-            'currentsameday' => !empty($currentdays->sameday),
-            'samedayurl' => $currentdays->samedayurl,
-            'samedaylabel' => $currentdays->samedaylabel,
-            'currentchildren' => $currentdays->children,
             'hasincompletedays' => !empty($incompletedays->show),
             'incompletenone' => !empty($incompletedays->none),
             'incompletechildren' => $incompletedays->children,
-        ];
-    }
-
-    /**
-     * Per-child furthest day with qualifying work, for the day picker.
-     *
-     * @param \stdClass[] $students
-     * @return \stdClass
-     */
-    protected function export_current_days(array $students): \stdClass {
-        $empty = (object) [
-            'show' => false,
-            'none' => false,
-            'sameday' => false,
-            'samedayurl' => '',
-            'samedaylabel' => '',
-            'children' => [],
-        ];
-        if ($students === []) {
-            return $empty;
-        }
-
-        $days = current_day::get_furthest_days($students);
-        $children = [];
-        $workdays = [];
-        foreach ($students as $student) {
-            $daynumber = (int) ($days[(int) $student->id] ?? 0);
-            $haswork = $daynumber > 0;
-            if ($haswork) {
-                $workdays[$daynumber] = $daynumber;
-            }
-            $children[] = (object) [
-                'name' => student_repository::format_child_name($student),
-                'haswork' => $haswork,
-                'daylabel' => $haswork ? get_string('daytitle', 'local_homeschool', $daynumber) : '',
-                'url' => $haswork ? $this->day_url_for($daynumber)->out(false) : '',
-            ];
-        }
-
-        if ($workdays === []) {
-            return (object) [
-                'show' => true,
-                'none' => true,
-                'sameday' => false,
-                'samedayurl' => '',
-                'samedaylabel' => '',
-                'children' => [],
-            ];
-        }
-
-        $allhavework = count($children) === count(array_filter($children, static fn($child) => $child->haswork));
-        if ($allhavework && count($students) > 1 && count($workdays) === 1) {
-            $daynumber = (int) reset($workdays);
-            return (object) [
-                'show' => true,
-                'none' => false,
-                'sameday' => true,
-                'samedayurl' => $this->day_url_for($daynumber)->out(false),
-                'samedaylabel' => get_string('daytitle', 'local_homeschool', $daynumber),
-                'children' => [],
-            ];
-        }
-
-        return (object) [
-            'show' => true,
-            'none' => false,
-            'sameday' => false,
-            'samedayurl' => '',
-            'samedaylabel' => '',
-            'children' => $children,
-        ];
+        ] + $currentdaysdata);
     }
 
     /**

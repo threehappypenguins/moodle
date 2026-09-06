@@ -135,7 +135,7 @@ class incomplete_days {
         global $DB;
 
         [$courseinsql, $courseparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED, 'cid');
-        $tomorrow = usergetmidnight(time()) + DAYSECS;
+        $tomorrow = self::get_tomorrow_midnight();
         $sql = "SELECT cm.id AS cmid, cm.course AS courseid, cs.section AS daynumber,
                        cm.completionexpected
                   FROM {course_modules} cm
@@ -153,6 +153,25 @@ class incomplete_days {
             'assignname' => 'assign',
             'quizname' => 'quiz',
         ]);
+    }
+
+    /**
+     * Next local midnight in the current user's timezone.
+     *
+     * Uses calendar-day arithmetic so DST transitions stay a full local day
+     * (unlike adding DAYSECS to today's midnight).
+     *
+     * @param int $now Unix timestamp (0 = now)
+     * @return int
+     */
+    protected static function get_tomorrow_midnight(int $now = 0): int {
+        if ($now <= 0) {
+            $now = time();
+        }
+
+        $today = usergetdate($now);
+
+        return make_timestamp($today['year'], $today['mon'], $today['mday'] + 1, 0, 0, 0);
     }
 
     /**
@@ -183,21 +202,8 @@ class incomplete_days {
             $params,
         ];
 
-        if ($DB->record_exists('modules', ['name' => 'assign'])) {
-            $queries[] = [
-                "SELECT sub.userid, cm.id AS cmid, a.course AS courseid
-                   FROM {assign_submission} sub
-                   JOIN {assign} a ON a.id = sub.assignment
-                   JOIN {modules} m ON m.name = 'assign'
-                   JOIN {course_modules} cm ON cm.instance = a.id
-                        AND cm.module = m.id AND cm.course = a.course
-                  WHERE a.course {$courseinsql}
-                    AND sub.userid {$userinsql}
-                    AND sub.userid <> 0
-                    AND sub.status = :assignsubmitted
-                    AND cm.deletioninprogress = 0",
-                $params + ['assignsubmitted' => 'submitted'],
-            ];
+        foreach (assign_work::submitted_queries($courseinsql, $userinsql, $params, false) as $query) {
+            $queries[] = $query;
         }
 
         if ($DB->record_exists('modules', ['name' => 'quiz'])) {
