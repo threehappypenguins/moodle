@@ -20,7 +20,6 @@ use local_homeschool\local\course_repository;
 use local_homeschool\local\current_day;
 use local_homeschool\local\requirements;
 use local_homeschool\local\student_repository;
-use local_homeschool\local\upcoming_service;
 use renderable;
 use renderer_base;
 use templatable;
@@ -126,10 +125,6 @@ class dashboard implements renderable, templatable {
             ];
         }
 
-        // Upcoming reminders only from daysections courses (scheduling target).
-        $daysectionscourses = array_filter($courses, static function($course) {
-            return $course->format === 'daysections';
-        });
         $manageddaysectionscourses = course_repository::get_managed_daysections_courses($this->userid, $this->showhidden);
         $maxday = course_repository::get_max_day_number($manageddaysectionscourses);
         $dayoptions = [];
@@ -138,34 +133,6 @@ class dashboard implements renderable, templatable {
             $dayoptions[] = (object) [
                 'value' => $i,
                 'label' => get_string('daytitle', 'local_homeschool', $i),
-            ];
-        }
-
-        $now = time();
-        $upcoming = upcoming_service::get_upcoming(
-            $daysectionscourses,
-            $now - (7 * DAYSECS),
-            $now + (upcoming_service::DEFAULT_DAYS_AHEAD * DAYSECS),
-        );
-
-        $managedcourseids = array_fill_keys(array_keys($manageddaysectionscourses), true);
-        $pagecanmanage = requirements::user_can_manage();
-        $upcomingrows = [];
-        foreach ($upcoming as $item) {
-            $itemdayurl = new \moodle_url('/local/homeschool/day.php', ['day' => $item->sectionnum]);
-            if ($this->showhidden) {
-                $itemdayurl->param('showhidden', 1);
-            }
-            $upcomingrows[] = (object) [
-                'coursename' => $item->coursename,
-                'activityname' => $item->activityname,
-                'sectionname' => $item->sectionname,
-                'dateformatted' => $item->dateformatted,
-                'overdue' => $item->overdue,
-                'url' => $item->url,
-                'dayurl' => $itemdayurl->out(false),
-                'hasactioncell' => $pagecanmanage,
-                'canopenday' => isset($managedcourseids[$item->courseid]),
             ];
         }
 
@@ -204,7 +171,6 @@ class dashboard implements renderable, templatable {
         }
 
         return (object) ([
-            'canmanage' => $pagecanmanage,
             'showhidden' => $this->showhidden,
             'hashiddencourses' => $hiddencount > 0,
             'hiddencount' => $hiddencount,
@@ -216,8 +182,6 @@ class dashboard implements renderable, templatable {
             'hasstudents' => !empty($studentrows),
             'students' => array_values($studentrows),
             'courses' => array_values($courserows),
-            'upcoming' => $upcomingrows,
-            'hasupcoming' => !empty($upcomingrows),
             'dayurl' => $dayurl->out(false),
             'hasdaypicker' => $canmanagecourses,
             'shifturl' => $shifturl->out(false),

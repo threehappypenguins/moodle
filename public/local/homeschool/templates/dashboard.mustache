@@ -136,49 +136,5 @@
                 </tbody>
             </table>
         </div>
-
-        <div class="mb-4">
-            <h3>{{#str}} upcoming, local_homeschool {{/str}}</h3>
-            {{#hasupcoming}}
-                <table class="table table-striped generaltable w-100">
-                    <thead>
-                        <tr>
-                            <th scope="col">{{#str}} date {{/str}}</th>
-                            <th scope="col">{{#str}} course {{/str}}</th>
-                            <th scope="col">{{#str}} section {{/str}}</th>
-                            <th scope="col">{{#str}} activity {{/str}}</th>
-                            {{#canmanage}}
-                                <th scope="col">{{#str}} actions {{/str}}</th>
-                            {{/canmanage}}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{#upcoming}}
-                            <tr{{#overdue}} class="table-warning"{{/overdue}}>
-                                <td>{{dateformatted}}</td>
-                                <td>{{coursename}}</td>
-                                <td>{{sectionname}}</td>
-                                <td>
-                                    {{#url}}<a href="{{url}}">{{activityname}}</a>{{/url}}
-                                    {{^url}}{{activityname}}{{/url}}
-                                </td>
-                                {{#hasactioncell}}
-                                    <td>
-                                        {{#canopenday}}
-                                            {{#sectionname}}
-                                                <a href="{{dayurl}}">{{#str}} opendaylink, local_homeschool {{/str}}</a>
-                                            {{/sectionname}}
-                                        {{/canopenday}}
-                                    </td>
-                                {{/hasactioncell}}
-                            </tr>
-                        {{/upcoming}}
-                    </tbody>
-                </table>
-            {{/hasupcoming}}
-            {{^hasupcoming}}
-                <p class="text-muted">{{#str}} noupcoming, local_homeschool {{/str}}</p>
-            {{/hasupcoming}}
-        </div>
     {{/hascourses}}
 </div>

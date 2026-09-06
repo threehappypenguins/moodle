@@ -41,6 +41,36 @@ class activity_progress {
     /** Assign submission plugin types that count as student submissions. */
     protected const ASSIGN_CONTENT_TYPES = ['onlinetext', 'file'];
 
+    /** @var array */
+    protected static $sourceallowedcache = [];
+
+    /** @var array */
+    protected static $coursescapabilitycache = [];
+
+    /** @var array */
+    protected static $courseanycapabilitycache = [];
+
+    /** @var array */
+    protected static $groupsvisiblecache = [];
+
+    /** @var array */
+    protected static $cmgroupfieldscache = [];
+
+    /** @var array */
+    protected static $cmgroupfieldsloadedcourses = [];
+
+    /**
+     * Clear request-level caches (also used between PHPUnit tests).
+     */
+    public static function reset_caches(): void {
+        self::$sourceallowedcache = [];
+        self::$coursescapabilitycache = [];
+        self::$courseanycapabilitycache = [];
+        self::$groupsvisiblecache = [];
+        self::$cmgroupfieldscache = [];
+        self::$cmgroupfieldsloadedcourses = [];
+    }
+
     /**
      * Progress rows for one activity and one or more enrolled children.
      *
@@ -254,11 +284,9 @@ class activity_progress {
      * @return bool
      */
     public static function can_count_source_for_user(string $source, int $courseid, int $cmid, int $userid): bool {
-        static $results = [];
-
         $key = $source . ':' . $cmid . ':' . $userid;
-        if (array_key_exists($key, $results)) {
-            return $results[$key];
+        if (array_key_exists($key, self::$sourceallowedcache)) {
+            return self::$sourceallowedcache[$key];
         }
 
         $allowed = false;
@@ -274,7 +302,7 @@ class activity_progress {
                 break;
         }
 
-        $results[$key] = $allowed;
+        self::$sourceallowedcache[$key] = $allowed;
         return $allowed;
     }
 
@@ -362,13 +390,11 @@ class activity_progress {
      * @return bool
      */
     protected static function viewer_has_course_capability(int $courseid, string $capability): bool {
-        static $cache = [];
-
         $key = $courseid . ':' . $capability;
-        if (!array_key_exists($key, $cache)) {
-            $cache[$key] = has_capability($capability, \context_course::instance($courseid));
+        if (!array_key_exists($key, self::$coursescapabilitycache)) {
+            self::$coursescapabilitycache[$key] = has_capability($capability, \context_course::instance($courseid));
         }
-        return $cache[$key];
+        return self::$coursescapabilitycache[$key];
     }
 
     /**
@@ -377,13 +403,11 @@ class activity_progress {
      * @return bool
      */
     protected static function viewer_has_any_course_capability(int $courseid, array $capabilities): bool {
-        static $cache = [];
-
         $key = $courseid . ':' . implode(',', $capabilities);
-        if (!array_key_exists($key, $cache)) {
-            $cache[$key] = has_any_capability($capabilities, \context_course::instance($courseid));
+        if (!array_key_exists($key, self::$courseanycapabilitycache)) {
+            self::$courseanycapabilitycache[$key] = has_any_capability($capabilities, \context_course::instance($courseid));
         }
-        return $cache[$key];
+        return self::$courseanycapabilitycache[$key];
     }
 
     /**
@@ -395,22 +419,20 @@ class activity_progress {
      * @return bool
      */
     protected static function groups_visible_for_cmid(int $courseid, int $cmid, int $userid): bool {
-        static $cache = [];
-
         $key = $cmid . ':' . $userid;
-        if (array_key_exists($key, $cache)) {
-            return $cache[$key];
+        if (array_key_exists($key, self::$groupsvisiblecache)) {
+            return self::$groupsvisiblecache[$key];
         }
 
         $course = get_course($courseid);
         $cm = self::cm_group_fields($courseid, $cmid);
         if ($cm === null) {
-            $cache[$key] = false;
+            self::$groupsvisiblecache[$key] = false;
             return false;
         }
 
-        $cache[$key] = groups_user_groups_visible($course, $userid, $cm);
-        return $cache[$key];
+        self::$groupsvisiblecache[$key] = groups_user_groups_visible($course, $userid, $cm);
+        return self::$groupsvisiblecache[$key];
     }
 
     /**
@@ -421,10 +443,7 @@ class activity_progress {
      * @return \stdClass|null
      */
     protected static function cm_group_fields(int $courseid, int $cmid): ?\stdClass {
-        static $loadedcourses = [];
-        static $cms = [];
-
-        if (!isset($loadedcourses[$courseid])) {
+        if (!isset(self::$cmgroupfieldsloadedcourses[$courseid])) {
             global $DB;
             $records = $DB->get_records(
                 'course_modules',
@@ -433,12 +452,12 @@ class activity_progress {
                 'id, course, groupmode, groupingid',
             );
             foreach ($records as $id => $record) {
-                $cms[(int) $id] = $record;
+                self::$cmgroupfieldscache[(int) $id] = $record;
             }
-            $loadedcourses[$courseid] = true;
+            self::$cmgroupfieldsloadedcourses[$courseid] = true;
         }
 
-        return $cms[$cmid] ?? null;
+        return self::$cmgroupfieldscache[$cmid] ?? null;
     }
 
     /**

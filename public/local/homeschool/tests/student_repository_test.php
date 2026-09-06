@@ -58,11 +58,11 @@ final class student_repository_test extends \local_homeschool\base_testcase {
         $generator->enrol_user($adam->id, $math->id, $studentrole->id);
 
         $students = student_repository::get_students_for_courses([$art, $math]);
-        $this->assertSame([$adam->id, $zoe->id], array_keys($students));
+        $this->assertEquals([(int) $adam->id, (int) $zoe->id], array_map('intval', array_keys($students)));
 
         // Enrolling Zoe in Math used to move her later in the merged list.
         $generator->enrol_user($zoe->id, $math->id, $studentrole->id);
         $students = student_repository::get_students_for_courses([$art, $math]);
-        $this->assertSame([$adam->id, $zoe->id], array_keys($students));
+        $this->assertEquals([(int) $adam->id, (int) $zoe->id], array_map('intval', array_keys($students)));
     }
 }

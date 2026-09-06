@@ -35,11 +35,8 @@ $string['navigationlink'] = 'Homeschool';
 // Dashboard.
 $string['children'] = 'Children';
 $string['courses'] = 'Courses';
-$string['upcoming'] = 'Upcoming timeline reminders';
 $string['nodatahelp'] = 'No Day sections courses found that you can manage. Create courses using the Day sections format and ensure you have permission to manage activities.';
 $string['nostudents'] = 'No enrolled students found in your Day sections courses.';
-$string['noupcoming'] = 'No timeline reminders scheduled in the next two weeks.';
-$string['opendaylink'] = 'Open day';
 $string['showhiddencourses'] = 'Show hidden courses ({$a})';
 $string['showotherformats'] = 'Show courses not using Day sections ({$a})';
 $string['otherformatshelp'] = 'No Day sections courses are visible yet. Enable “Show courses not using Day sections” to find courses to convert under Course settings → Course format.';
