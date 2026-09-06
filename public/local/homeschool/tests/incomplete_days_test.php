@@ -32,6 +32,7 @@ require_once($CFG->dirroot . '/mod/assign/locallib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \local_homeschool\local\incomplete_days
  * @covers \local_homeschool\local\assign_work
+ * @covers \local_homeschool\local\activity_progress
  * @covers \local_homeschool\output\day_page
  */
 final class incomplete_days_test extends \local_homeschool\base_testcase {
@@ -67,6 +68,24 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
     protected function student_with_course(\stdClass $student, \stdClass $course): \stdClass {
         $student->courseids = [$course->id => $course->id];
         return $student;
+    }
+
+    /**
+     * Prevent capabilities for the editing teacher in a course, then reload access.
+     *
+     * @param \stdClass $course
+     * @param string[] $capabilities
+     */
+    protected function prevent_teacher_capabilities(\stdClass $course, array $capabilities): void {
+        global $DB, $USER;
+
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher'], '*', MUST_EXIST);
+        $context = \context_course::instance($course->id);
+        foreach ($capabilities as $capability) {
+            assign_capability($capability, CAP_PREVENT, $teacherrole->id, $context->id, true);
+        }
+        $context->mark_dirty();
+        $this->setUser($USER);
     }
 
     /**
@@ -440,6 +459,55 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * A child in more than one eligible group still has leftover team work.
+     */
+    public function test_team_submission_is_leftover_when_child_in_multiple_groups(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $alice = $this->getDataGenerator()->create_user();
+        $bob = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($alice->id, $course->id, $studentrole->id);
+        $this->getDataGenerator()->enrol_user($bob->id, $course->id, $studentrole->id);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 3,
+            'teamsubmission' => 1,
+            'requireallteammemberssubmit' => 0,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $DB->set_field('course_modules', 'completionexpected', $this->yesterday(), ['id' => $assign->cmid]);
+        $groupa = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $groupb = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupa->id, 'userid' => $alice->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupb->id, 'userid' => $alice->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupa->id, 'userid' => $bob->id]);
+
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => 0,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+            'groupid' => $groupa->id,
+            'attemptnumber' => 0,
+            'latest' => 1,
+        ]);
+
+        $students = [
+            $alice->id => $this->student_with_course($alice, $course),
+            $bob->id => $this->student_with_course($bob, $course),
+        ];
+        $leftovers = incomplete_days::get_leftovers($students);
+
+        $this->assertCount(1, $leftovers[$alice->id]);
+        $this->assertSame(3, $leftovers[$alice->id][0]->day);
+        $this->assertSame([], $leftovers[$bob->id]);
+    }
+
+    /**
      * Manual completion counts as done even when the assignment was never submitted.
      */
     public function test_complete_without_submission_is_not_leftover(): void {
@@ -468,6 +536,95 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
             'userid' => $student->id,
             'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
         ]));
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertSame([], incomplete_days::get_leftovers($students)[$student->id]);
+    }
+
+    /**
+     * Without progress:view, complete-without-submit is still leftover via assign access.
+     */
+    public function test_complete_without_progress_view_is_leftover_via_assign(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 3,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => $this->yesterday(),
+        ]);
+        $completion = new \completion_info($course);
+        $completion->update_state(
+            get_fast_modinfo($course->id)->get_cm($assign->cmid),
+            COMPLETION_COMPLETE,
+            $student->id,
+        );
+
+        $this->prevent_teacher_capabilities($course, ['report/progress:view']);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $items = incomplete_days::get_leftovers($students)[$student->id];
+        $this->assertCount(1, $items);
+        $this->assertSame(3, $items[0]->day);
+        $this->assertSame(1, $items[0]->leftovercount);
+    }
+
+    /**
+     * Leftovers are omitted when the viewer cannot inspect any source for the activity.
+     */
+    public function test_leftover_hidden_without_progress_or_assign_caps(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 2,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => $this->yesterday(),
+        ]);
+
+        $this->prevent_teacher_capabilities($course, [
+            'report/progress:view',
+            'mod/assign:viewgrades',
+            'mod/assign:grade',
+        ]);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertSame([], incomplete_days::get_leftovers($students)[$student->id]);
+    }
+
+    /**
+     * Activity-level separate groups hide leftovers the viewer cannot inspect.
+     */
+    public function test_separate_groups_activity_is_not_listed_as_leftover(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $group->id, 'userid' => $student->id]);
+
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'section' => 2,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'completionexpected' => $this->yesterday(),
+            'groupmode' => SEPARATEGROUPS,
+        ]);
+
+        $this->prevent_teacher_capabilities($course, ['moodle/site:accessallgroups']);
 
         $students = [$student->id => $this->student_with_course($student, $course)];
         $this->assertSame([], incomplete_days::get_leftovers($students)[$student->id]);

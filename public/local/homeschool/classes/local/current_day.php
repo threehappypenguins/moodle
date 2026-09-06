@@ -71,7 +71,8 @@ class current_day {
 
         $queries = [];
         $queries[] = [
-            "SELECT cmc.userid, cm.course AS courseid, cs.section AS daynumber
+            'completion',
+            "SELECT cmc.userid, cm.id AS cmid, cm.course AS courseid, cs.section AS daynumber
                FROM {course_modules_completion} cmc
                JOIN {course_modules} cm ON cm.id = cmc.coursemoduleid
                JOIN {course_sections} cs ON cs.id = cm.section
@@ -85,12 +86,13 @@ class current_day {
         ];
 
         foreach (assign_work::submitted_queries($courseinsql, $userinsql, $params, true) as $query) {
-            $queries[] = $query;
+            $queries[] = ['assign', $query[0], $query[1]];
         }
 
         if ($DB->record_exists('modules', ['name' => 'quiz'])) {
             $queries[] = [
-                "SELECT qa.userid, q.course AS courseid, cs.section AS daynumber
+                'quiz',
+                "SELECT qa.userid, cm.id AS cmid, q.course AS courseid, cs.section AS daynumber
                    FROM {quiz_attempts} qa
                    JOIN {quiz} q ON q.id = qa.quiz
                    JOIN {modules} m ON m.name = 'quiz'
@@ -109,12 +111,15 @@ class current_day {
         }
 
         foreach ($queries as $query) {
-            [$sql, $queryparams] = $query;
+            [$source, $sql, $queryparams] = $query;
             $rows = $DB->get_recordset_sql($sql, $queryparams);
             foreach ($rows as $row) {
                 $userid = (int) $row->userid;
                 $courseid = (int) $row->courseid;
                 if (!isset($students[$userid], $days[$userid], $students[$userid]->courseids[$courseid])) {
+                    continue;
+                }
+                if (!activity_progress::can_count_source_for_user($source, $courseid, (int) $row->cmid, $userid)) {
                     continue;
                 }
                 $daynumber = (int) $row->daynumber;

@@ -32,6 +32,7 @@ require_once($CFG->dirroot . '/mod/assign/locallib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \local_homeschool\local\current_day
  * @covers \local_homeschool\local\assign_work
+ * @covers \local_homeschool\local\activity_progress
  * @covers \local_homeschool\output\day_page
  * @covers \local_homeschool\output\dashboard
  */
@@ -68,6 +69,24 @@ final class current_day_test extends \local_homeschool\base_testcase {
     protected function student_with_course(\stdClass $student, \stdClass $course): \stdClass {
         $student->courseids = [$course->id => $course->id];
         return $student;
+    }
+
+    /**
+     * Prevent capabilities for the editing teacher in a course, then reload access.
+     *
+     * @param \stdClass $course
+     * @param string[] $capabilities
+     */
+    protected function prevent_teacher_capabilities(\stdClass $course, array $capabilities): void {
+        global $DB, $USER;
+
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher'], '*', MUST_EXIST);
+        $context = \context_course::instance($course->id);
+        foreach ($capabilities as $capability) {
+            assign_capability($capability, CAP_PREVENT, $teacherrole->id, $context->id, true);
+        }
+        $context->mark_dirty();
+        $this->setUser($USER);
     }
 
     /**
@@ -284,6 +303,94 @@ final class current_day_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * A child in more than one eligible group has no team submission group.
+     */
+    public function test_team_submission_ignored_when_child_in_multiple_groups(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $alice = $this->getDataGenerator()->create_user();
+        $bob = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($alice->id, $course->id, $studentrole->id);
+        $this->getDataGenerator()->enrol_user($bob->id, $course->id, $studentrole->id);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 3,
+            'teamsubmission' => 1,
+            'requireallteammemberssubmit' => 0,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $groupa = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $groupb = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupa->id, 'userid' => $alice->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupb->id, 'userid' => $alice->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupa->id, 'userid' => $bob->id]);
+
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => 0,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+            'groupid' => $groupa->id,
+            'attemptnumber' => 0,
+            'latest' => 1,
+        ]);
+
+        $students = [
+            $alice->id => $this->student_with_course($alice, $course),
+            $bob->id => $this->student_with_course($bob, $course),
+        ];
+        $days = current_day::get_furthest_days($students);
+
+        $this->assertSame(0, $days[$alice->id]);
+        $this->assertSame(3, $days[$bob->id]);
+    }
+
+    /**
+     * A grouping can reduce multiple course groups to a single eligible team.
+     */
+    public function test_team_submission_counts_when_grouping_leaves_one_group(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $alice = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($alice->id, $course->id, $studentrole->id);
+
+        $groupa = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $groupb = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $grouping = $this->getDataGenerator()->create_grouping(['courseid' => $course->id]);
+        $this->getDataGenerator()->create_grouping_group(['groupingid' => $grouping->id, 'groupid' => $groupa->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupa->id, 'userid' => $alice->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $groupb->id, 'userid' => $alice->id]);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 4,
+            'teamsubmission' => 1,
+            'teamsubmissiongroupingid' => $grouping->id,
+            'requireallteammemberssubmit' => 0,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => 0,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+            'groupid' => $groupa->id,
+            'attemptnumber' => 0,
+            'latest' => 1,
+        ]);
+
+        $students = [$alice->id => $this->student_with_course($alice, $course)];
+        $this->assertSame(4, current_day::get_furthest_days($students)[$alice->id]);
+    }
+
+    /**
      * A finished quiz attempt counts.
      */
     public function test_finished_quiz_attempt_counts(): void {
@@ -387,6 +494,180 @@ final class current_day_test extends \local_homeschool\base_testcase {
             'completionstate' => COMPLETION_COMPLETE_FAIL,
             'timemodified' => time(),
         ]);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertSame(0, current_day::get_furthest_days($students)[$student->id]);
+    }
+
+    /**
+     * Completion is ignored when the viewer lacks report/progress:view.
+     */
+    public function test_completion_without_progress_view_does_not_count(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $page = $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'section' => 2,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+        ]);
+        $completion = new \completion_info($course);
+        $completion->update_state(
+            get_fast_modinfo($course->id)->get_cm($page->cmid),
+            COMPLETION_COMPLETE,
+            $student->id,
+        );
+
+        $this->prevent_teacher_capabilities($course, ['report/progress:view']);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertSame(0, current_day::get_furthest_days($students)[$student->id]);
+    }
+
+    /**
+     * A submitted assignment still counts when completion reports are not allowed.
+     */
+    public function test_submitted_assignment_counts_without_progress_view(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 4,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => $student->id,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+            'groupid' => 0,
+            'attemptnumber' => 0,
+            'latest' => 1,
+        ]);
+
+        $this->prevent_teacher_capabilities($course, ['report/progress:view']);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertSame(4, current_day::get_furthest_days($students)[$student->id]);
+    }
+
+    /**
+     * A submitted assignment is ignored when the viewer cannot view grades.
+     */
+    public function test_submitted_assignment_without_grade_caps_does_not_count(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'section' => 4,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => $student->id,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'status' => ASSIGN_SUBMISSION_STATUS_SUBMITTED,
+            'groupid' => 0,
+            'attemptnumber' => 0,
+            'latest' => 1,
+        ]);
+
+        $this->prevent_teacher_capabilities($course, [
+            'mod/assign:viewgrades',
+            'mod/assign:grade',
+        ]);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertSame(0, current_day::get_furthest_days($students)[$student->id]);
+    }
+
+    /**
+     * A finished quiz is ignored when the viewer lacks mod/quiz:viewreports.
+     */
+    public function test_finished_quiz_without_viewreports_does_not_count(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'section' => 5,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $cm = get_fast_modinfo($course->id)->get_cm($quiz->cmid);
+        $usageid = $DB->insert_record('question_usages', [
+            'contextid' => \context_module::instance($cm->id)->id,
+            'component' => 'mod_quiz',
+            'preferredbehaviour' => 'deferredfeedback',
+        ]);
+        $DB->insert_record('quiz_attempts', [
+            'quiz' => $quiz->id,
+            'userid' => $student->id,
+            'attempt' => 1,
+            'uniqueid' => $usageid,
+            'layout' => '',
+            'currentpage' => 0,
+            'preview' => 0,
+            'state' => 'finished',
+            'timestart' => time() - 60,
+            'timefinish' => time(),
+            'timemodified' => time(),
+            'timemodifiedoffline' => 0,
+        ]);
+
+        $this->prevent_teacher_capabilities($course, ['mod/quiz:viewreports']);
+
+        $students = [$student->id => $this->student_with_course($student, $course)];
+        $this->assertSame(0, current_day::get_furthest_days($students)[$student->id]);
+    }
+
+    /**
+     * Activity-level separate groups hide completion the viewer cannot inspect.
+     */
+    public function test_separate_groups_completion_does_not_count(): void {
+        global $DB;
+
+        [, $course] = $this->create_teacher_course();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
+
+        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $this->getDataGenerator()->create_group_member(['groupid' => $group->id, 'userid' => $student->id]);
+
+        $page = $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'section' => 3,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+            'groupmode' => SEPARATEGROUPS,
+        ]);
+        $completion = new \completion_info($course);
+        $completion->update_state(
+            get_fast_modinfo($course->id)->get_cm($page->cmid),
+            COMPLETION_COMPLETE,
+            $student->id,
+        );
+
+        $this->prevent_teacher_capabilities($course, ['moodle/site:accessallgroups']);
 
         $students = [$student->id => $this->student_with_course($student, $course)];
         $this->assertSame(0, current_day::get_furthest_days($students)[$student->id]);

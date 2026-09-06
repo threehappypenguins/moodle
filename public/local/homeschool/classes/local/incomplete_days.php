@@ -88,6 +88,9 @@ class incomplete_days {
                 if (!isset($student->courseids[$courseid])) {
                     continue;
                 }
+                if (!activity_progress::can_track_activity_for_user($candidate, (int) $userid)) {
+                    continue;
+                }
                 if (isset($done[$userid . ':' . $cmid])) {
                     continue;
                 }
@@ -137,7 +140,7 @@ class incomplete_days {
         [$courseinsql, $courseparams] = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED, 'cid');
         $tomorrow = self::get_tomorrow_midnight();
         $sql = "SELECT cm.id AS cmid, cm.course AS courseid, cs.section AS daynumber,
-                       cm.completionexpected
+                       cm.completionexpected, cm.completion, m.name AS modname
                   FROM {course_modules} cm
                   JOIN {course_sections} cs ON cs.id = cm.section
                   JOIN {modules} m ON m.id = cm.module
@@ -191,6 +194,7 @@ class incomplete_days {
 
         $queries = [];
         $queries[] = [
+            'completion',
             "SELECT cmc.userid, cm.id AS cmid, cm.course AS courseid
                FROM {course_modules_completion} cmc
                JOIN {course_modules} cm ON cm.id = cmc.coursemoduleid
@@ -203,11 +207,12 @@ class incomplete_days {
         ];
 
         foreach (assign_work::submitted_queries($courseinsql, $userinsql, $params, false) as $query) {
-            $queries[] = $query;
+            $queries[] = ['assign', $query[0], $query[1]];
         }
 
         if ($DB->record_exists('modules', ['name' => 'quiz'])) {
             $queries[] = [
+                'quiz',
                 "SELECT qa.userid, cm.id AS cmid, q.course AS courseid
                    FROM {quiz_attempts} qa
                    JOIN {quiz} q ON q.id = qa.quiz
@@ -226,12 +231,15 @@ class incomplete_days {
 
         $done = [];
         foreach ($queries as $query) {
-            [$sql, $queryparams] = $query;
+            [$source, $sql, $queryparams] = $query;
             $rows = $DB->get_recordset_sql($sql, $queryparams);
             foreach ($rows as $row) {
                 $userid = (int) $row->userid;
                 $courseid = (int) $row->courseid;
                 if (!isset($students[$userid], $students[$userid]->courseids[$courseid])) {
+                    continue;
+                }
+                if (!activity_progress::can_count_source_for_user($source, $courseid, (int) $row->cmid, $userid)) {
                     continue;
                 }
                 $done[$userid . ':' . (int) $row->cmid] = true;

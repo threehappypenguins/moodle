@@ -238,6 +238,210 @@ class activity_progress {
     }
 
     /**
+     * Whether the current user may count this progress source for a child.
+     *
+     * Used by Currently on / incomplete days so bulk queries do not bypass
+     * report/progress:view, assign submission access, quiz reports, or
+     * activity-level separate groups.
+     *
+     * Avoids get_fast_modinfo and instantiating \assign per row: those hold
+     * entire courses in memory and exhaust the request on the dashboard.
+     *
+     * @param string $source completion, assign, or quiz
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    public static function can_count_source_for_user(string $source, int $courseid, int $cmid, int $userid): bool {
+        static $results = [];
+
+        $key = $source . ':' . $cmid . ':' . $userid;
+        if (array_key_exists($key, $results)) {
+            return $results[$key];
+        }
+
+        $allowed = false;
+        switch ($source) {
+            case 'completion':
+                $allowed = self::viewer_can_count_completion($courseid, $cmid, $userid);
+                break;
+            case 'assign':
+                $allowed = self::viewer_can_count_assign($courseid, $cmid, $userid);
+                break;
+            case 'quiz':
+                $allowed = self::viewer_can_count_quiz($courseid, $cmid, $userid);
+                break;
+        }
+
+        $results[$key] = $allowed;
+        return $allowed;
+    }
+
+    /**
+     * Whether leftovers for this activity may be listed for a child.
+     *
+     * @param \stdClass $candidate Row with courseid, cmid, completion, modname
+     * @param int $userid
+     * @return bool
+     */
+    public static function can_track_activity_for_user(\stdClass $candidate, int $userid): bool {
+        $courseid = (int) $candidate->courseid;
+        $cmid = (int) $candidate->cmid;
+        $modname = (string) ($candidate->modname ?? '');
+        if ((int) ($candidate->completion ?? 0) > 0
+                && self::can_count_source_for_user('completion', $courseid, $cmid, $userid)) {
+            return true;
+        }
+        if ($modname === 'assign' && self::can_count_source_for_user('assign', $courseid, $cmid, $userid)) {
+            return true;
+        }
+        if ($modname === 'quiz' && self::can_count_source_for_user('quiz', $courseid, $cmid, $userid)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function viewer_can_count_completion(int $courseid, int $cmid, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+        if (!self::viewer_has_course_capability($courseid, 'report/progress:view')) {
+            return false;
+        }
+        return self::groups_visible_for_cmid($courseid, $cmid, $userid);
+    }
+
+    /**
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function viewer_can_count_assign(int $courseid, int $cmid, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+        if (!self::viewer_has_any_course_capability($courseid, ['mod/assign:viewgrades', 'mod/assign:grade'])) {
+            return false;
+        }
+        return self::groups_visible_for_cmid($courseid, $cmid, $userid);
+    }
+
+    /**
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function viewer_can_count_quiz(int $courseid, int $cmid, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+        if (!self::viewer_has_course_capability($courseid, 'mod/quiz:viewreports')) {
+            return false;
+        }
+        return self::groups_visible_for_cmid($courseid, $cmid, $userid);
+    }
+
+    /**
+     * @param int $courseid
+     * @param string $capability
+     * @return bool
+     */
+    protected static function viewer_has_course_capability(int $courseid, string $capability): bool {
+        static $cache = [];
+
+        $key = $courseid . ':' . $capability;
+        if (!array_key_exists($key, $cache)) {
+            $cache[$key] = has_capability($capability, \context_course::instance($courseid));
+        }
+        return $cache[$key];
+    }
+
+    /**
+     * @param int $courseid
+     * @param string[] $capabilities
+     * @return bool
+     */
+    protected static function viewer_has_any_course_capability(int $courseid, array $capabilities): bool {
+        static $cache = [];
+
+        $key = $courseid . ':' . implode(',', $capabilities);
+        if (!array_key_exists($key, $cache)) {
+            $cache[$key] = has_any_capability($capabilities, \context_course::instance($courseid));
+        }
+        return $cache[$key];
+    }
+
+    /**
+     * Activity-level separate groups, without loading course modinfo.
+     *
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function groups_visible_for_cmid(int $courseid, int $cmid, int $userid): bool {
+        static $cache = [];
+
+        $key = $cmid . ':' . $userid;
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+
+        $course = get_course($courseid);
+        $cm = self::cm_group_fields($courseid, $cmid);
+        if ($cm === null) {
+            $cache[$key] = false;
+            return false;
+        }
+
+        $cache[$key] = groups_user_groups_visible($course, $userid, $cm);
+        return $cache[$key];
+    }
+
+    /**
+     * Lightweight course_modules fields needed for groups_user_groups_visible.
+     *
+     * @param int $courseid
+     * @param int $cmid
+     * @return \stdClass|null
+     */
+    protected static function cm_group_fields(int $courseid, int $cmid): ?\stdClass {
+        static $loadedcourses = [];
+        static $cms = [];
+
+        if (!isset($loadedcourses[$courseid])) {
+            global $DB;
+            $records = $DB->get_records(
+                'course_modules',
+                ['course' => $courseid],
+                '',
+                'id, course, groupmode, groupingid',
+            );
+            foreach ($records as $id => $record) {
+                $cms[(int) $id] = $record;
+            }
+            $loadedcourses[$courseid] = true;
+        }
+
+        return $cms[$cmid] ?? null;
+    }
+
+    /**
      * Primary status line (completion / attempts). Assign submission is a separate line.
      *
      * @param \cm_info $cm

@@ -22,8 +22,9 @@ defined('MOODLE_INTERNAL') || die();
  * Latest assignment submissions that count as qualifying work.
  *
  * Matches assign::get_user_submission() / get_group_submission(): only the
- * current attempt (latest = 1), and for team assignments the group row
- * (userid = 0) attributed to each member of that group.
+ * current attempt (latest = 1). Team rows (userid = 0) are attributed only to
+ * members whose single eligible group (via teamsubmissiongroupingid) is the
+ * submitting group, matching assign::get_submission_group().
  *
  * @package   local_homeschool
  * @copyright 2026 Sarah
@@ -66,10 +67,10 @@ class assign_work {
         $cmwhere = "AND cm.deletioninprogress = 0{$sectionwhere}";
 
         $individualselect = $withday
-            ? 'sub.userid, a.course AS courseid, cs.section AS daynumber'
+            ? 'sub.userid, cm.id AS cmid, a.course AS courseid, cs.section AS daynumber'
             : 'sub.userid, cm.id AS cmid, a.course AS courseid';
         $teamselect = $withday
-            ? 'gm.userid, a.course AS courseid, cs.section AS daynumber'
+            ? 'gm.userid, cm.id AS cmid, a.course AS courseid, cs.section AS daynumber'
             : 'gm.userid, cm.id AS cmid, a.course AS courseid';
 
         $submitted = ['assignsubmitted' => 'submitted'];
@@ -94,6 +95,7 @@ class assign_work {
                    FROM {assign_submission} sub
                    JOIN {assign} a ON a.id = sub.assignment AND a.teamsubmission = 1
                    JOIN {groups} g ON g.id = sub.groupid AND g.courseid = a.course
+                        AND g.participation = 1
                    JOIN {groups_members} gm ON gm.groupid = g.id
                    {$cmjoins}
                   WHERE a.course {$courseinsql}
@@ -108,6 +110,22 @@ class assign_work {
                               WHERE gg.groupingid = a.teamsubmissiongroupingid
                                 AND gg.groupid = g.id
                          ))
+                    AND NOT EXISTS (
+                        SELECT 1
+                          FROM {groups_members} gm2
+                          JOIN {groups} g2 ON g2.id = gm2.groupid
+                               AND g2.courseid = a.course
+                               AND g2.participation = 1
+                         WHERE gm2.userid = gm.userid
+                           AND g2.id <> g.id
+                           AND (a.teamsubmissiongroupingid = 0
+                                OR EXISTS (
+                                    SELECT 1
+                                      FROM {groupings_groups} gg2
+                                     WHERE gg2.groupingid = a.teamsubmissiongroupingid
+                                       AND gg2.groupid = g2.id
+                                ))
+                    )
                     {$cmwhere}",
                 $params + $submitted,
             ],
