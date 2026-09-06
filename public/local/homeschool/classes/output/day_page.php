@@ -19,6 +19,7 @@ namespace local_homeschool\output;
 use local_homeschool\local\activity_progress;
 use local_homeschool\local\activity_repository;
 use local_homeschool\local\current_day;
+use local_homeschool\local\incomplete_days;
 use local_homeschool\local\modedit_launch;
 use local_homeschool\local\student_repository;
 use renderable;
@@ -95,6 +96,7 @@ class day_page implements renderable, templatable {
             $students = student_repository::get_students_for_courses($this->courses);
         }
         $currentdays = $this->export_current_days($students);
+        $incompletedays = $this->export_incomplete_days($students);
 
         if ($hasday) {
             $activities = activity_repository::get_activities_for_day($this->courses, $this->daynumber);
@@ -175,6 +177,9 @@ class day_page implements renderable, templatable {
             'samedayurl' => $currentdays->samedayurl,
             'samedaylabel' => $currentdays->samedaylabel,
             'currentchildren' => $currentdays->children,
+            'hasincompletedays' => !empty($incompletedays->show),
+            'incompletenone' => !empty($incompletedays->none),
+            'incompletechildren' => $incompletedays->children,
         ];
     }
 
@@ -244,6 +249,66 @@ class day_page implements renderable, templatable {
             'sameday' => false,
             'samedayurl' => '',
             'samedaylabel' => '',
+            'children' => $children,
+        ];
+    }
+
+    /**
+     * Per-child leftover days with due, unfinished work, for the day picker.
+     *
+     * @param \stdClass[] $students
+     * @return \stdClass
+     */
+    protected function export_incomplete_days(array $students): \stdClass {
+        $empty = (object) [
+            'show' => false,
+            'none' => false,
+            'children' => [],
+        ];
+        if ($students === []) {
+            return $empty;
+        }
+
+        $leftovers = incomplete_days::get_leftovers($students);
+        $children = [];
+        $anyleftovers = false;
+        foreach ($students as $student) {
+            $days = $leftovers[(int) $student->id] ?? [];
+            $hasleftovers = $days !== [];
+            if ($hasleftovers) {
+                $anyleftovers = true;
+            }
+            $dayexport = [];
+            $first = true;
+            foreach ($days as $item) {
+                $dayexport[] = (object) [
+                    'separator' => !$first,
+                    'url' => $this->day_url_for((int) $item->day)->out(false),
+                    'label' => get_string('incompletedayitem', 'local_homeschool', (object) [
+                        'day' => get_string('daytitle', 'local_homeschool', (int) $item->day),
+                        'count' => (int) $item->leftovercount,
+                    ]),
+                ];
+                $first = false;
+            }
+            $children[] = (object) [
+                'name' => student_repository::format_child_name($student),
+                'hasleftovers' => $hasleftovers,
+                'days' => $dayexport,
+            ];
+        }
+
+        if (!$anyleftovers) {
+            return (object) [
+                'show' => true,
+                'none' => true,
+                'children' => [],
+            ];
+        }
+
+        return (object) [
+            'show' => true,
+            'none' => false,
             'children' => $children,
         ];
     }

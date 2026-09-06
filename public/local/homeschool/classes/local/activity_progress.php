@@ -107,10 +107,12 @@ class activity_progress {
                 $lines[] = self::assign_submission_line($assign, $userid);
             }
 
+            self::mark_optional_notsubmitted($lines);
+
             if ($lines === []) {
                 $lines[] = self::status_line(
                     self::STATE_NOTSTARTED,
-                    get_string('progressnotstarted', 'local_homeschool'),
+                    get_string('progressincomplete', 'local_homeschool'),
                 );
             }
 
@@ -266,7 +268,7 @@ class activity_progress {
             if (in_array($state, [COMPLETION_COMPLETE_FAIL, COMPLETION_COMPLETE_FAIL_HIDDEN], true)) {
                 return self::status_line(self::STATE_FAILED, get_string('progressfailed', 'local_homeschool'));
             }
-            // Assign with a separate submission line: show incomplete completion explicitly.
+            // Unfinished completion is incomplete; we cannot tell whether work was started.
             if ($hassubmissiontypes) {
                 return self::status_line(self::STATE_NOTSTARTED, get_string('progressincomplete', 'local_homeschool'));
             }
@@ -288,7 +290,7 @@ class activity_progress {
             return null;
         }
 
-        return self::status_line(self::STATE_NOTSTARTED, get_string('progressnotstarted', 'local_homeschool'));
+        return self::status_line(self::STATE_NOTSTARTED, get_string('progressincomplete', 'local_homeschool'));
     }
 
     /**
@@ -446,16 +448,52 @@ class activity_progress {
     }
 
     /**
+     * When work is already complete, an unsubmitted assignment is optional, not a problem.
+     *
+     * @param \stdClass[] $lines
+     * @return void
+     */
+    protected static function mark_optional_notsubmitted(array $lines): void {
+        $complete = false;
+        foreach ($lines as $line) {
+            if ($line->state === self::STATE_COMPLETE) {
+                $complete = true;
+                break;
+            }
+        }
+        if (!$complete) {
+            return;
+        }
+
+        foreach ($lines as $line) {
+            if ($line->state !== self::STATE_NOTSUBMITTED) {
+                continue;
+            }
+            $line->needsattention = false;
+            $line->stateclass = 'is-notsubmitted is-optional';
+            $line->labelclass = 'local-homeschool-progress-label badge text-bg-secondary';
+        }
+    }
+
+    /**
      * @param string $state
      * @param string $label
      * @param string|null $url Optional link target for the label
      * @return \stdClass
      */
     protected static function status_line(string $state, string $label, ?string $url = null): \stdClass {
+        $needsattention = in_array($state, [self::STATE_NOTSTARTED, self::STATE_NOTSUBMITTED], true);
+        $labelclass = 'local-homeschool-progress-label';
+        if ($needsattention) {
+            $labelclass .= ' badge text-bg-danger';
+        }
+
         return (object) [
             'state' => $state,
             'label' => $label,
+            'labelclass' => $labelclass,
             'stateclass' => 'is-' . $state,
+            'needsattention' => $needsattention,
             'studentname' => '',
             'showname' => false,
             'url' => $url ?? '',
