@@ -20,7 +20,7 @@ namespace tiny_transparent\privacy;
  * Privacy Subsystem for tiny_transparent implementing null_provider.
  *
  * @package    tiny_transparent
- * @copyright  2026
+ * @copyright  2026 Sarah
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements \core_privacy\local\metadata\null_provider {

@@ -18,7 +18,7 @@
  * Strings for component 'tiny_transparent', language 'en'.
  *
  * @package    tiny_transparent
- * @copyright  2026
+ * @copyright  2026 Sarah
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
