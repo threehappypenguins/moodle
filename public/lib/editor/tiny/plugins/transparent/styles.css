@@ -1,3 +1,20 @@
-.tiny-transparent-text {
-    opacity: 0;
+.tiny-transparent-text,
+.tiny-transparent-text * {
+    /* Hide glyphs without opacity, so ::selection can still reveal the text. */
+    color: transparent !important; /* stylelint-disable-line declaration-no-important */
+    -webkit-text-fill-color: transparent !important; /* stylelint-disable-line declaration-no-important */
+    text-shadow: none !important; /* stylelint-disable-line declaration-no-important */
+}
+
+.tiny-transparent-text::selection,
+.tiny-transparent-text *::selection {
+    color: HighlightText !important; /* stylelint-disable-line declaration-no-important */
+    -webkit-text-fill-color: HighlightText !important; /* stylelint-disable-line declaration-no-important */
+    background-color: Highlight !important; /* stylelint-disable-line declaration-no-important */
+}
+
+.tiny-transparent-text::-moz-selection,
+.tiny-transparent-text *::-moz-selection {
+    color: HighlightText !important; /* stylelint-disable-line declaration-no-important */
+    background-color: Highlight !important; /* stylelint-disable-line declaration-no-important */
 }

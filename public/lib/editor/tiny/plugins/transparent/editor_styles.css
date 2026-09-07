@@ -1,5 +1,6 @@
 .mce-content-body .tiny-transparent-text {
     color: currentColor;
+    -webkit-text-fill-color: currentColor;
     opacity: 0.45;
     border-bottom: 1px dotted currentColor;
 }
