@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+    <!-- Checkerboard to indicate transparency. -->
+    <path d="M3 16h3v3H3zm6 0h3v3H9zm6 0h3v3h-3zM3 19h3v2H3zm6 0h3v2H9zm6 0h3v2h-3z" opacity=".35"/>
+    <path d="M6 19h3v2H6zm6 0h3v2h-3zM6 16h3v3H6zm6 0h3v3h-3z"/>
+    <!-- Letter A, matching other TinyMCE text-format icons. -->
+    <path d="M9.4 4h5.2L20 18h-3.1l-1.2-3.5H8.3L7.1 18H4L9.4 4zm1.2 8.3h2.8L12 7.2l-1.4 5.1z"/>
+</svg>
