@@ -41,6 +41,36 @@ class activity_progress {
     /** Assign submission plugin types that count as student submissions. */
     protected const ASSIGN_CONTENT_TYPES = ['onlinetext', 'file'];
 
+    /** @var array */
+    protected static $sourceallowedcache = [];
+
+    /** @var array */
+    protected static $coursescapabilitycache = [];
+
+    /** @var array */
+    protected static $courseanycapabilitycache = [];
+
+    /** @var array */
+    protected static $groupsvisiblecache = [];
+
+    /** @var array */
+    protected static $cmgroupfieldscache = [];
+
+    /** @var array */
+    protected static $cmgroupfieldsloadedcourses = [];
+
+    /**
+     * Clear request-level caches (also used between PHPUnit tests).
+     */
+    public static function reset_caches(): void {
+        self::$sourceallowedcache = [];
+        self::$coursescapabilitycache = [];
+        self::$courseanycapabilitycache = [];
+        self::$groupsvisiblecache = [];
+        self::$cmgroupfieldscache = [];
+        self::$cmgroupfieldsloadedcourses = [];
+    }
+
     /**
      * Progress rows for one activity and one or more enrolled children.
      *
@@ -107,10 +137,12 @@ class activity_progress {
                 $lines[] = self::assign_submission_line($assign, $userid);
             }
 
+            self::mark_optional_notsubmitted($lines);
+
             if ($lines === []) {
                 $lines[] = self::status_line(
                     self::STATE_NOTSTARTED,
-                    get_string('progressnotstarted', 'local_homeschool'),
+                    get_string('progressincomplete', 'local_homeschool'),
                 );
             }
 
@@ -236,6 +268,199 @@ class activity_progress {
     }
 
     /**
+     * Whether the current user may count this progress source for a child.
+     *
+     * Used by Currently on / incomplete days so bulk queries do not bypass
+     * report/progress:view, assign submission access, quiz reports, or
+     * activity-level separate groups.
+     *
+     * Avoids get_fast_modinfo and instantiating \assign per row: those hold
+     * entire courses in memory and exhaust the request on the dashboard.
+     *
+     * @param string $source completion, assign, or quiz
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    public static function can_count_source_for_user(string $source, int $courseid, int $cmid, int $userid): bool {
+        $key = $source . ':' . $cmid . ':' . $userid;
+        if (array_key_exists($key, self::$sourceallowedcache)) {
+            return self::$sourceallowedcache[$key];
+        }
+
+        $allowed = false;
+        switch ($source) {
+            case 'completion':
+                $allowed = self::viewer_can_count_completion($courseid, $cmid, $userid);
+                break;
+            case 'assign':
+                $allowed = self::viewer_can_count_assign($courseid, $cmid, $userid);
+                break;
+            case 'quiz':
+                $allowed = self::viewer_can_count_quiz($courseid, $cmid, $userid);
+                break;
+        }
+
+        self::$sourceallowedcache[$key] = $allowed;
+        return $allowed;
+    }
+
+    /**
+     * Whether leftovers for this activity may be listed for a child.
+     *
+     * @param \stdClass $candidate Row with courseid, cmid, completion, modname
+     * @param int $userid
+     * @return bool
+     */
+    public static function can_track_activity_for_user(\stdClass $candidate, int $userid): bool {
+        $courseid = (int) $candidate->courseid;
+        $cmid = (int) $candidate->cmid;
+        $modname = (string) ($candidate->modname ?? '');
+        if ((int) ($candidate->completion ?? 0) > 0
+                && self::can_count_source_for_user('completion', $courseid, $cmid, $userid)) {
+            return true;
+        }
+        if ($modname === 'assign' && self::can_count_source_for_user('assign', $courseid, $cmid, $userid)) {
+            return true;
+        }
+        if ($modname === 'quiz' && self::can_count_source_for_user('quiz', $courseid, $cmid, $userid)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function viewer_can_count_completion(int $courseid, int $cmid, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+        if (!self::viewer_has_course_capability($courseid, 'report/progress:view')) {
+            return false;
+        }
+        return self::groups_visible_for_cmid($courseid, $cmid, $userid);
+    }
+
+    /**
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function viewer_can_count_assign(int $courseid, int $cmid, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+        if (!self::viewer_has_any_course_capability($courseid, ['mod/assign:viewgrades', 'mod/assign:grade'])) {
+            return false;
+        }
+        return self::groups_visible_for_cmid($courseid, $cmid, $userid);
+    }
+
+    /**
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function viewer_can_count_quiz(int $courseid, int $cmid, int $userid): bool {
+        global $USER;
+
+        if ($userid === (int) $USER->id) {
+            return true;
+        }
+        if (!self::viewer_has_course_capability($courseid, 'mod/quiz:viewreports')) {
+            return false;
+        }
+        return self::groups_visible_for_cmid($courseid, $cmid, $userid);
+    }
+
+    /**
+     * @param int $courseid
+     * @param string $capability
+     * @return bool
+     */
+    protected static function viewer_has_course_capability(int $courseid, string $capability): bool {
+        $key = $courseid . ':' . $capability;
+        if (!array_key_exists($key, self::$coursescapabilitycache)) {
+            self::$coursescapabilitycache[$key] = has_capability($capability, \context_course::instance($courseid));
+        }
+        return self::$coursescapabilitycache[$key];
+    }
+
+    /**
+     * @param int $courseid
+     * @param string[] $capabilities
+     * @return bool
+     */
+    protected static function viewer_has_any_course_capability(int $courseid, array $capabilities): bool {
+        $key = $courseid . ':' . implode(',', $capabilities);
+        if (!array_key_exists($key, self::$courseanycapabilitycache)) {
+            self::$courseanycapabilitycache[$key] = has_any_capability($capabilities, \context_course::instance($courseid));
+        }
+        return self::$courseanycapabilitycache[$key];
+    }
+
+    /**
+     * Activity-level separate groups, without loading course modinfo.
+     *
+     * @param int $courseid
+     * @param int $cmid
+     * @param int $userid
+     * @return bool
+     */
+    protected static function groups_visible_for_cmid(int $courseid, int $cmid, int $userid): bool {
+        $key = $cmid . ':' . $userid;
+        if (array_key_exists($key, self::$groupsvisiblecache)) {
+            return self::$groupsvisiblecache[$key];
+        }
+
+        $course = get_course($courseid);
+        $cm = self::cm_group_fields($courseid, $cmid);
+        if ($cm === null) {
+            self::$groupsvisiblecache[$key] = false;
+            return false;
+        }
+
+        self::$groupsvisiblecache[$key] = groups_user_groups_visible($course, $userid, $cm);
+        return self::$groupsvisiblecache[$key];
+    }
+
+    /**
+     * Lightweight course_modules fields needed for groups_user_groups_visible.
+     *
+     * @param int $courseid
+     * @param int $cmid
+     * @return \stdClass|null
+     */
+    protected static function cm_group_fields(int $courseid, int $cmid): ?\stdClass {
+        if (!isset(self::$cmgroupfieldsloadedcourses[$courseid])) {
+            global $DB;
+            $records = $DB->get_records(
+                'course_modules',
+                ['course' => $courseid],
+                '',
+                'id, course, groupmode, groupingid',
+            );
+            foreach ($records as $id => $record) {
+                self::$cmgroupfieldscache[(int) $id] = $record;
+            }
+            self::$cmgroupfieldsloadedcourses[$courseid] = true;
+        }
+
+        return self::$cmgroupfieldscache[$cmid] ?? null;
+    }
+
+    /**
      * Primary status line (completion / attempts). Assign submission is a separate line.
      *
      * @param \cm_info $cm
@@ -266,7 +491,7 @@ class activity_progress {
             if (in_array($state, [COMPLETION_COMPLETE_FAIL, COMPLETION_COMPLETE_FAIL_HIDDEN], true)) {
                 return self::status_line(self::STATE_FAILED, get_string('progressfailed', 'local_homeschool'));
             }
-            // Assign with a separate submission line: show incomplete completion explicitly.
+            // Unfinished completion is incomplete; we cannot tell whether work was started.
             if ($hassubmissiontypes) {
                 return self::status_line(self::STATE_NOTSTARTED, get_string('progressincomplete', 'local_homeschool'));
             }
@@ -288,7 +513,7 @@ class activity_progress {
             return null;
         }
 
-        return self::status_line(self::STATE_NOTSTARTED, get_string('progressnotstarted', 'local_homeschool'));
+        return self::status_line(self::STATE_NOTSTARTED, get_string('progressincomplete', 'local_homeschool'));
     }
 
     /**
@@ -446,16 +671,52 @@ class activity_progress {
     }
 
     /**
+     * When work is already complete, an unsubmitted assignment is optional, not a problem.
+     *
+     * @param \stdClass[] $lines
+     * @return void
+     */
+    protected static function mark_optional_notsubmitted(array $lines): void {
+        $complete = false;
+        foreach ($lines as $line) {
+            if ($line->state === self::STATE_COMPLETE) {
+                $complete = true;
+                break;
+            }
+        }
+        if (!$complete) {
+            return;
+        }
+
+        foreach ($lines as $line) {
+            if ($line->state !== self::STATE_NOTSUBMITTED) {
+                continue;
+            }
+            $line->needsattention = false;
+            $line->stateclass = 'is-notsubmitted is-optional';
+            $line->labelclass = 'local-homeschool-progress-label badge text-bg-secondary';
+        }
+    }
+
+    /**
      * @param string $state
      * @param string $label
      * @param string|null $url Optional link target for the label
      * @return \stdClass
      */
     protected static function status_line(string $state, string $label, ?string $url = null): \stdClass {
+        $needsattention = in_array($state, [self::STATE_NOTSTARTED, self::STATE_NOTSUBMITTED], true);
+        $labelclass = 'local-homeschool-progress-label';
+        if ($needsattention) {
+            $labelclass .= ' badge text-bg-danger';
+        }
+
         return (object) [
             'state' => $state,
             'label' => $label,
+            'labelclass' => $labelclass,
             'stateclass' => 'is-' . $state,
+            'needsattention' => $needsattention,
             'studentname' => '',
             'showname' => false,
             'url' => $url ?? '',

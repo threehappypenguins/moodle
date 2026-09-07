@@ -17,9 +17,9 @@
 namespace local_homeschool\output;
 
 use local_homeschool\local\course_repository;
+use local_homeschool\local\current_day;
 use local_homeschool\local\requirements;
 use local_homeschool\local\student_repository;
-use local_homeschool\local\upcoming_service;
 use renderable;
 use renderer_base;
 use templatable;
@@ -125,10 +125,6 @@ class dashboard implements renderable, templatable {
             ];
         }
 
-        // Upcoming reminders only from daysections courses (scheduling target).
-        $daysectionscourses = array_filter($courses, static function($course) {
-            return $course->format === 'daysections';
-        });
         $manageddaysectionscourses = course_repository::get_managed_daysections_courses($this->userid, $this->showhidden);
         $maxday = course_repository::get_max_day_number($manageddaysectionscourses);
         $dayoptions = [];
@@ -140,43 +136,41 @@ class dashboard implements renderable, templatable {
             ];
         }
 
-        $now = time();
-        $upcoming = upcoming_service::get_upcoming(
-            $daysectionscourses,
-            $now - (7 * DAYSECS),
-            $now + (upcoming_service::DEFAULT_DAYS_AHEAD * DAYSECS),
-        );
-
-        $managedcourseids = array_fill_keys(array_keys($manageddaysectionscourses), true);
-        $pagecanmanage = requirements::user_can_manage();
-        $upcomingrows = [];
-        foreach ($upcoming as $item) {
-            $itemdayurl = new \moodle_url('/local/homeschool/day.php', ['day' => $item->sectionnum]);
-            if ($this->showhidden) {
-                $itemdayurl->param('showhidden', 1);
-            }
-            $upcomingrows[] = (object) [
-                'coursename' => $item->coursename,
-                'activityname' => $item->activityname,
-                'sectionname' => $item->sectionname,
-                'dateformatted' => $item->dateformatted,
-                'overdue' => $item->overdue,
-                'url' => $item->url,
-                'dayurl' => $itemdayurl->out(false),
-                'hasactioncell' => $pagecanmanage,
-                'canopenday' => isset($managedcourseids[$item->courseid]),
-            ];
-        }
-
         $shifturl = new \moodle_url('/local/homeschool/shift.php');
+        $clearremindersurl = new \moodle_url('/local/homeschool/clearreminders.php');
         $dayurl = new \moodle_url('/local/homeschool/day.php');
         if ($this->showhidden) {
             $shifturl->param('showhidden', 1);
+            $clearremindersurl->param('showhidden', 1);
             $dayurl->param('showhidden', 1);
         }
 
-        return (object) [
-            'canmanage' => $pagecanmanage,
+        $canmanagecourses = requirements::user_can_manage() && !empty($manageddaysectionscourses);
+
+        $currentdaysdata = [
+            'hascurrentdays' => false,
+            'currentnone' => false,
+            'currentsameday' => false,
+            'samedayurl' => '',
+            'samedaylabel' => '',
+            'currentchildren' => [],
+        ];
+        if ($canmanagecourses) {
+            $managedids = array_fill_keys(array_keys($manageddaysectionscourses), true);
+            $managedstudents = [];
+            foreach ($students as $student) {
+                $courseids = array_intersect_key($student->courseids ?? [], $managedids);
+                if ($courseids === []) {
+                    continue;
+                }
+                $managedstudent = clone $student;
+                $managedstudent->courseids = $courseids;
+                $managedstudents[(int) $student->id] = $managedstudent;
+            }
+            $currentdaysdata = current_day::picker_template_data($managedstudents, $dayurl);
+        }
+
+        return (object) ([
             'showhidden' => $this->showhidden,
             'hashiddencourses' => $hiddencount > 0,
             'hiddencount' => $hiddencount,
@@ -188,16 +182,16 @@ class dashboard implements renderable, templatable {
             'hasstudents' => !empty($studentrows),
             'students' => array_values($studentrows),
             'courses' => array_values($courserows),
-            'upcoming' => $upcomingrows,
-            'hasupcoming' => !empty($upcomingrows),
             'dayurl' => $dayurl->out(false),
-            'hasdaypicker' => requirements::user_can_manage() && !empty($manageddaysectionscourses),
+            'hasdaypicker' => $canmanagecourses,
             'shifturl' => $shifturl->out(false),
-            'hasshiftlink' => requirements::user_can_manage() && !empty($manageddaysectionscourses),
+            'hasshiftlink' => $canmanagecourses,
+            'clearremindersurl' => $clearremindersurl->out(false),
+            'hasclearreminderslink' => $canmanagecourses,
             'dayoptions' => $dayoptions,
             'dashboardurl' => (new \moodle_url('/local/homeschool/index.php'))->out(false),
             'nodatahelp' => get_string('nodatahelp', 'local_homeschool'),
             'otherformatshelp' => get_string('otherformatshelp', 'local_homeschool'),
-        ];
+        ] + $currentdaysdata);
     }
 }

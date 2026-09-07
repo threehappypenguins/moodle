@@ -35,6 +35,20 @@
     max-width: 100%;
 }
 
+.local-homeschool-dashboard .local-homeschool-current-days {
+    margin-top: 0.75rem;
+}
+
+.local-homeschool-current-days,
+.local-homeschool-incomplete-days {
+    font-size: 0.95rem;
+}
+
+.local-homeschool-current-day-child,
+.local-homeschool-incomplete-day-child {
+    margin-top: 0.15rem;
+}
+
 .local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-row-edit,
 .local-homeschool-day.local-homeschool-multiselect .local-homeschool-activity.is-selected .local-homeschool-activity-details {
     opacity: 0.5;
@@ -219,9 +233,14 @@
 }
 
 .local-homeschool-progress-item.is-notstarted .local-homeschool-progress-label,
-.local-homeschool-progress-item.is-notsubmitted .local-homeschool-progress-label {
-    color: var(--bs-secondary-color, #6c757d);
-    font-weight: 400;
+.local-homeschool-progress-item.is-notsubmitted:not(.is-optional) .local-homeschool-progress-label {
+    font-weight: 700;
+}
+
+.local-homeschool-activity-progress a.local-homeschool-progress-label.badge.text-bg-danger:hover,
+.local-homeschool-activity-progress a.local-homeschool-progress-label.badge.text-bg-danger:focus {
+    color: #fff;
+    text-decoration: none;
 }
 
 .local-homeschool-activity-date {
@@ -431,6 +450,15 @@
     opacity: 0;
     cursor: pointer;
     border: 0;
+}
+
+.local-homeschool-clear-reminders-select {
+    width: 2.5rem;
+}
+
+.local-homeschool-clear-reminders-table th,
+.local-homeschool-clear-reminders-table td {
+    vertical-align: middle;
 }
 
 .local-homeschool-shift-form .mform {

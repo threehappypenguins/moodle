@@ -18,6 +18,8 @@ namespace local_homeschool\output;
 
 use local_homeschool\local\activity_progress;
 use local_homeschool\local\activity_repository;
+use local_homeschool\local\current_day;
+use local_homeschool\local\incomplete_days;
 use local_homeschool\local\modedit_launch;
 use local_homeschool\local\student_repository;
 use renderable;
@@ -89,10 +91,15 @@ class day_page implements renderable, templatable {
         $hasday = $this->daynumber > 0;
         $rows = [];
         $groups = [];
+        $students = [];
+        if (!empty($this->courses)) {
+            $students = student_repository::get_students_for_courses($this->courses);
+        }
+        $currentdaysdata = current_day::picker_template_data($students, $this->day_url_for(0));
+        $incompletedays = $this->export_incomplete_days($students);
 
         if ($hasday) {
             $activities = activity_repository::get_activities_for_day($this->courses, $this->daynumber);
-            $students = student_repository::get_students_for_courses($this->courses);
 
             $coursestudents = [];
             foreach ($this->courses as $course) {
@@ -140,7 +147,7 @@ class day_page implements renderable, templatable {
             $dashboardurl->param('showhidden', 1);
         }
 
-        return (object) [
+        return (object) ([
             'daynumber' => $this->daynumber,
             'hasday' => $hasday,
             'daytitle' => $hasday ? get_string('daytitle', 'local_homeschool', $this->daynumber) : '',
@@ -164,7 +171,88 @@ class day_page implements renderable, templatable {
             'addcoursegroups' => $addcourseexport->groups,
             'addcourseflat' => !empty($addcourseexport->flat),
             'hasaddcourses' => $hasday && !empty($this->courses),
+            'hasincompletedays' => !empty($incompletedays->show),
+            'incompletenone' => !empty($incompletedays->none),
+            'incompletechildren' => $incompletedays->children,
+        ] + $currentdaysdata);
+    }
+
+    /**
+     * Per-child leftover days with due, unfinished work, for the day picker.
+     *
+     * @param \stdClass[] $students
+     * @return \stdClass
+     */
+    protected function export_incomplete_days(array $students): \stdClass {
+        $empty = (object) [
+            'show' => false,
+            'none' => false,
+            'children' => [],
         ];
+        if ($students === []) {
+            return $empty;
+        }
+
+        $leftovers = incomplete_days::get_leftovers($students);
+        $children = [];
+        $anyleftovers = false;
+        foreach ($students as $student) {
+            $days = $leftovers[(int) $student->id] ?? [];
+            $hasleftovers = $days !== [];
+            if ($hasleftovers) {
+                $anyleftovers = true;
+            }
+            $dayexport = [];
+            $first = true;
+            foreach ($days as $item) {
+                $dayexport[] = (object) [
+                    'separator' => !$first,
+                    'url' => $this->day_url_for((int) $item->day)->out(false),
+                    'label' => get_string('incompletedayitem', 'local_homeschool', (object) [
+                        'day' => get_string('daytitle', 'local_homeschool', (int) $item->day),
+                        'count' => (int) $item->leftovercount,
+                    ]),
+                ];
+                $first = false;
+            }
+            $children[] = (object) [
+                'name' => student_repository::format_child_name($student),
+                'hasleftovers' => $hasleftovers,
+                'days' => $dayexport,
+            ];
+        }
+
+        if (!$anyleftovers) {
+            return (object) [
+                'show' => true,
+                'none' => true,
+                'children' => [],
+            ];
+        }
+
+        return (object) [
+            'show' => true,
+            'none' => false,
+            'children' => $children,
+        ];
+    }
+
+    /**
+     * @param int $daynumber
+     * @return \moodle_url
+     */
+    protected function day_url_for(int $daynumber): \moodle_url {
+        $url = new \moodle_url('/local/homeschool/day.php');
+        if ($daynumber > 0) {
+            $url->param('day', $daynumber);
+        }
+        if ($this->showall) {
+            $url->param('showall', 1);
+        }
+        if ($this->showhidden) {
+            $url->param('showhidden', 1);
+        }
+        return $url;
     }
 
     /**
@@ -257,17 +345,7 @@ class day_page implements renderable, templatable {
      * @return \moodle_url
      */
     protected function day_url(): \moodle_url {
-        $url = new \moodle_url('/local/homeschool/day.php');
-        if ($this->daynumber > 0) {
-            $url->param('day', $this->daynumber);
-        }
-        if ($this->showall) {
-            $url->param('showall', 1);
-        }
-        if ($this->showhidden) {
-            $url->param('showhidden', 1);
-        }
-        return $url;
+        return $this->day_url_for($this->daynumber);
     }
 
     /**

@@ -27,10 +27,10 @@
                                     <span class="local-homeschool-progress-sep" aria-hidden="true">·</span>
                                 {{/showname}}
                                 {{#hasurl}}
-                                    <a class="local-homeschool-progress-label" href="{{url}}">{{label}}</a>
+                                    <a class="{{labelclass}}" href="{{url}}">{{label}}</a>
                                 {{/hasurl}}
                                 {{^hasurl}}
-                                    <span class="local-homeschool-progress-label">{{label}}</span>
+                                    <span class="{{labelclass}}">{{label}}</span>
                                 {{/hasurl}}
                             </li>
                         {{/progress}}
