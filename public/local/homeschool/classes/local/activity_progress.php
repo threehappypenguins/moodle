@@ -59,6 +59,9 @@ class activity_progress {
     /** @var array */
     protected static $cmgroupfieldsloadedcourses = [];
 
+    /** @var array<int, bool> cmid => whether the activity has embedded questions. */
+    protected static $hasembedcache = [];
+
     /**
      * Clear request-level caches (also used between PHPUnit tests).
      */
@@ -69,6 +72,7 @@ class activity_progress {
         self::$groupsvisiblecache = [];
         self::$cmgroupfieldscache = [];
         self::$cmgroupfieldsloadedcourses = [];
+        self::$hasembedcache = [];
     }
 
     /**
@@ -95,6 +99,7 @@ class activity_progress {
         $completioninfo = new \completion_info($course);
         $assign = null;
         $hassubmissiontypes = false;
+        $hasembeds = self::activity_has_embedded_questions($cm);
 
         if ($cm->modname === 'assign') {
             global $CFG;
@@ -114,6 +119,7 @@ class activity_progress {
                 (int) $activity->completion,
                 $assign,
                 $hassubmissiontypes,
+                $hasembeds,
             )) {
                 continue;
             }
@@ -128,6 +134,7 @@ class activity_progress {
                 (int) $activity->completion,
                 $assign,
                 $hassubmissiontypes,
+                $hasembeds,
             );
             if ($primary !== null) {
                 $lines[] = $primary;
@@ -135,6 +142,10 @@ class activity_progress {
 
             if ($hassubmissiontypes && $assign !== null && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
                 $lines[] = self::assign_submission_line($assign, $userid);
+            }
+
+            if ($hasembeds && self::can_view_embed_progress_for_user($course, $cm, $userid)) {
+                $lines[] = self::embed_submission_line($cm, $userid);
             }
 
             self::mark_optional_notsubmitted($lines);
@@ -172,6 +183,7 @@ class activity_progress {
      * @param int $tracking COMPLETION_TRACKING_*
      * @param \assign|null $assign
      * @param bool $hassubmissiontypes
+     * @param bool $hasembeds
      * @return bool
      */
     protected static function can_view_any_progress_for_activity(
@@ -182,6 +194,7 @@ class activity_progress {
         int $tracking,
         $assign,
         bool $hassubmissiontypes,
+        bool $hasembeds = false,
     ): bool {
         if ($tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
                 && self::can_view_completion_for_user($course, $cm, $userid)) {
@@ -194,6 +207,10 @@ class activity_progress {
 
         if ($cm->modname === 'assign' && $assign !== null
                 && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
+            return true;
+        }
+
+        if ($hasembeds && self::can_view_embed_progress_for_user($course, $cm, $userid)) {
             return true;
         }
 
@@ -261,6 +278,30 @@ class activity_progress {
         }
 
         if (!has_capability('mod/quiz:viewreports', $cm->context)) {
+            return false;
+        }
+
+        return groups_user_groups_visible($course, $userid, $cm);
+    }
+
+    /**
+     * @param \stdClass $course
+     * @param \cm_info $cm
+     * @param int $userid
+     * @return bool
+     */
+    protected static function can_view_embed_progress_for_user(\stdClass $course, \cm_info $cm, int $userid): bool {
+        global $USER;
+
+        if (!self::embedquestion_available()) {
+            return false;
+        }
+
+        if ($userid === (int) $USER->id) {
+            return has_capability('report/embedquestion:viewmyprogress', $cm->context);
+        }
+
+        if (!has_capability('report/embedquestion:viewallprogress', $cm->context)) {
             return false;
         }
 
@@ -461,7 +502,7 @@ class activity_progress {
     }
 
     /**
-     * Primary status line (completion / attempts). Assign submission is a separate line.
+     * Primary status line (completion / attempts). Assign/embed submission is a separate line.
      *
      * @param \cm_info $cm
      * @param \stdClass $course
@@ -470,6 +511,7 @@ class activity_progress {
      * @param int $tracking COMPLETION_TRACKING_*
      * @param \assign|null $assign
      * @param bool $hassubmissiontypes
+     * @param bool $hasembeds
      * @return \stdClass|null
      */
     protected static function resolve_primary_status(
@@ -480,7 +522,11 @@ class activity_progress {
         int $tracking,
         $assign,
         bool $hassubmissiontypes,
+        bool $hasembeds = false,
     ): ?\stdClass {
+        // File/online text or embeds get their own line; keep completion on the primary line.
+        $hassecondarysubmission = $hassubmissiontypes || $hasembeds;
+
         if ($tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
                 && self::can_view_completion_for_user($course, $cm, $userid)) {
             $data = $completioninfo->get_data($cm, false, $userid);
@@ -491,24 +537,27 @@ class activity_progress {
             if (in_array($state, [COMPLETION_COMPLETE_FAIL, COMPLETION_COMPLETE_FAIL_HIDDEN], true)) {
                 return self::status_line(self::STATE_FAILED, get_string('progressfailed', 'local_homeschool'));
             }
-            // Unfinished completion is incomplete; we cannot tell whether work was started.
-            if ($hassubmissiontypes) {
+            // Unfinished completion stays Incomplete even when embeds/files were submitted.
+            if ($hassecondarysubmission) {
                 return self::status_line(self::STATE_NOTSTARTED, get_string('progressincomplete', 'local_homeschool'));
             }
-            // Otherwise fall through for quiz attempts / assign without file|onlinetext.
+            // Otherwise fall through for quiz attempts / assign without file|onlinetext|embeds.
         }
 
         if ($cm->modname === 'quiz' && self::can_view_quiz_attempts_for_user($course, $cm, $userid)) {
             return self::quiz_status($cm, $userid);
         }
 
-        // Assign without file/onlinetext: keep submission-ish status on the primary line.
-        if ($cm->modname === 'assign' && !$hassubmissiontypes && $assign !== null
+        // Assign without a dedicated submission line: keep submission-ish status on the primary line.
+        if ($cm->modname === 'assign' && !$hassecondarysubmission && $assign !== null
                 && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
-            return self::assign_legacy_status($assign, $userid);
+            $legacy = self::assign_legacy_status($assign, $userid);
+            if ($legacy !== null) {
+                return $legacy;
+            }
         }
 
-        if ($hassubmissiontypes) {
+        if ($hassecondarysubmission) {
             // Submission covered by the dedicated line.
             return null;
         }
@@ -561,7 +610,154 @@ class activity_progress {
             }
         }
 
-        return self::status_line(self::STATE_NOTSUBMITTED, get_string('progressnotsubmitted', 'local_homeschool'));
+        // File/online text can be skipped when the activity is already complete.
+        return self::status_line(
+            self::STATE_NOTSUBMITTED,
+            get_string('progressnotsubmitted', 'local_homeschool'),
+            null,
+            true,
+        );
+    }
+
+    /**
+     * Whether filter/report embedquestion are available on this site.
+     *
+     * @return bool
+     */
+    protected static function embedquestion_available(): bool {
+        return class_exists(\filter_embedquestion\text_filter::class)
+            && class_exists(\report_embedquestion\attempt_tracker::class);
+    }
+
+    /**
+     * Whether this activity contains (or has ever recorded) embedded questions.
+     *
+     * @param \cm_info $cm
+     * @return bool
+     */
+    protected static function activity_has_embedded_questions(\cm_info $cm): bool {
+        $cmid = (int) $cm->id;
+        if (array_key_exists($cmid, self::$hasembedcache)) {
+            return self::$hasembedcache[$cmid];
+        }
+
+        if (!self::embedquestion_available()) {
+            self::$hasembedcache[$cmid] = false;
+            return false;
+        }
+
+        $has = self::activity_content_has_embed($cm);
+        if (!$has) {
+            global $DB;
+            $has = $DB->record_exists('report_embedquestion_attempt', ['contextid' => $cm->context->id]);
+        }
+
+        self::$hasembedcache[$cmid] = $has;
+        return $has;
+    }
+
+    /**
+     * Scan activity content for {Q{...}Q} embed tokens.
+     *
+     * @param \cm_info $cm
+     * @return bool
+     */
+    protected static function activity_content_has_embed(\cm_info $cm): bool {
+        global $DB;
+
+        $modname = $cm->modname;
+        $instance = (int) $cm->instance;
+        $needle = '{Q{';
+
+        if (plugin_supports('mod', $modname, FEATURE_MOD_INTRO)) {
+            $intro = $DB->get_field($modname, 'intro', ['id' => $instance]);
+            if (is_string($intro) && str_contains($intro, $needle)) {
+                return true;
+            }
+        }
+
+        switch ($modname) {
+            case 'assign':
+                $activity = $DB->get_field('assign', 'activity', ['id' => $instance]);
+                return is_string($activity) && str_contains($activity, $needle);
+            case 'page':
+                $content = $DB->get_field('page', 'content', ['id' => $instance]);
+                return is_string($content) && str_contains($content, $needle);
+            case 'lesson':
+                return $DB->record_exists_select(
+                    'lesson_pages',
+                    'lessonid = ? AND ' . $DB->sql_like('contents', '?'),
+                    [$instance, '%' . $DB->sql_like_escape($needle) . '%'],
+                );
+            case 'book':
+                return $DB->record_exists_select(
+                    'book_chapters',
+                    'bookid = ? AND ' . $DB->sql_like('content', '?'),
+                    [$instance, '%' . $DB->sql_like_escape($needle) . '%'],
+                );
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Embedded-question attempt line (Submitted / Not submitted).
+     *
+     * Opening an embed creates a “Not yet answered” (todo) step; that alone is
+     * not a submission. Only a non-todo step counts as answered.
+     *
+     * Unlike assignment file/online text, a missing embed answer stays a problem
+     * even when the activity is already marked complete.
+     *
+     * @param \cm_info $cm
+     * @param int $userid
+     * @return \stdClass
+     */
+    protected static function embed_submission_line(\cm_info $cm, int $userid): \stdClass {
+        $usageid = self::latest_answered_embed_usageid($cm, $userid);
+
+        if ($usageid !== null) {
+            $url = (new \moodle_url('/report/embedquestion/activity.php', [
+                'cmid' => $cm->id,
+                'userid' => $userid,
+                'usageid' => $usageid,
+            ]))->out(false);
+            return self::status_line(
+                self::STATE_SUBMITTED,
+                get_string('progresssubmitted', 'local_homeschool'),
+                $url,
+            );
+        }
+
+        return self::status_line(
+            self::STATE_NOTSUBMITTED,
+            get_string('progressnotsubmitted', 'local_homeschool'),
+        );
+    }
+
+    /**
+     * Latest question usage for this user/activity that has a real (non-todo) answer.
+     *
+     * @param \cm_info $cm
+     * @param int $userid
+     * @return int|null
+     */
+    protected static function latest_answered_embed_usageid(\cm_info $cm, int $userid): ?int {
+        global $DB;
+
+        $usageid = $DB->get_field_sql(
+            "SELECT ra.questionusageid
+               FROM {report_embedquestion_attempt} ra
+               JOIN {question_attempts} qa ON qa.questionusageid = ra.questionusageid
+               JOIN {question_attempt_steps} qas ON qas.questionattemptid = qa.id
+              WHERE ra.userid = ? AND ra.contextid = ?
+                    AND qas.state <> ?
+           ORDER BY qas.timecreated DESC, ra.timemodified DESC, ra.id DESC",
+            [$userid, $cm->context->id, 'todo'],
+            IGNORE_MULTIPLE,
+        );
+
+        return $usageid !== false ? (int) $usageid : null;
     }
 
     /**
@@ -671,7 +867,8 @@ class activity_progress {
     }
 
     /**
-     * When work is already complete, an unsubmitted assignment is optional, not a problem.
+     * When work is already complete, optional unsubmitted lines (e.g. assign file)
+     * are de-emphasised. Embedded-question “Not submitted” stays highlighted.
      *
      * @param \stdClass[] $lines
      * @return void
@@ -692,6 +889,9 @@ class activity_progress {
             if ($line->state !== self::STATE_NOTSUBMITTED) {
                 continue;
             }
+            if (empty($line->optionalwhencomplete)) {
+                continue;
+            }
             $line->needsattention = false;
             $line->stateclass = 'is-notsubmitted is-optional';
             $line->labelclass = 'local-homeschool-progress-label badge text-bg-secondary';
@@ -702,9 +902,15 @@ class activity_progress {
      * @param string $state
      * @param string $label
      * @param string|null $url Optional link target for the label
+     * @param bool $optionalwhencomplete Soften Not submitted when already complete
      * @return \stdClass
      */
-    protected static function status_line(string $state, string $label, ?string $url = null): \stdClass {
+    protected static function status_line(
+        string $state,
+        string $label,
+        ?string $url = null,
+        bool $optionalwhencomplete = false,
+    ): \stdClass {
         $needsattention = in_array($state, [self::STATE_NOTSTARTED, self::STATE_NOTSUBMITTED], true);
         $labelclass = 'local-homeschool-progress-label';
         if ($needsattention) {
@@ -717,6 +923,7 @@ class activity_progress {
             'labelclass' => $labelclass,
             'stateclass' => 'is-' . $state,
             'needsattention' => $needsattention,
+            'optionalwhencomplete' => $optionalwhencomplete,
             'studentname' => '',
             'showname' => false,
             'url' => $url ?? '',

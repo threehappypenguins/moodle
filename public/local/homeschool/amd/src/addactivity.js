@@ -82,8 +82,15 @@ export const init = () => {
 
     const syncControls = () => {
         const option = select.options[select.selectedIndex];
-        const missing = !!(option && option.dataset.missingsection === '1');
-        const ready = !!(option && option.value && !option.disabled && !missing);
+        if (!option) {
+            button.disabled = true;
+            if (missingHelp) {
+                missingHelp.hidden = true;
+            }
+            return;
+        }
+        const missing = option.dataset.missingsection === '1';
+        const ready = !!(option.value && !option.disabled && !missing);
         button.disabled = !ready;
         if (missingHelp) {
             missingHelp.hidden = !missing;
