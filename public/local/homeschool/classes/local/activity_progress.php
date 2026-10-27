@@ -524,6 +524,14 @@ class activity_progress {
         bool $hassubmissiontypes,
         bool $hasembeds = false,
     ): ?\stdClass {
+        // Quizzes: show only attempt count (linked), never Complete/Incomplete alongside it.
+        if ($cm->modname === 'quiz' && self::can_view_quiz_attempts_for_user($course, $cm, $userid)) {
+            $quizline = self::quiz_status($cm, $userid);
+            if ($quizline !== null) {
+                return $quizline;
+            }
+        }
+
         // File/online text or embeds get their own line; keep completion on the primary line.
         $hassecondarysubmission = $hassubmissiontypes || $hasembeds;
 
@@ -541,11 +549,7 @@ class activity_progress {
             if ($hassecondarysubmission) {
                 return self::status_line(self::STATE_NOTSTARTED, get_string('progressincomplete', 'local_homeschool'));
             }
-            // Otherwise fall through for quiz attempts / assign without file|onlinetext|embeds.
-        }
-
-        if ($cm->modname === 'quiz' && self::can_view_quiz_attempts_for_user($course, $cm, $userid)) {
-            return self::quiz_status($cm, $userid);
+            // Otherwise fall through for assign without file|onlinetext|embeds.
         }
 
         // Assign without a dedicated submission line: keep submission-ish status on the primary line.
@@ -863,7 +867,26 @@ class activity_progress {
         return self::status_line(
             self::STATE_ATTEMPTED,
             get_string('progressattempted', 'local_homeschool', $count),
+            self::quiz_attempts_url($cm, $userid),
         );
+    }
+
+    /**
+     * Results report filtered to one student's attempts, if the viewer can see reports.
+     *
+     * @param \cm_info $cm
+     * @param int $userid
+     * @return string|null
+     */
+    protected static function quiz_attempts_url(\cm_info $cm, int $userid): ?string {
+        if (!has_capability('mod/quiz:viewreports', $cm->context)) {
+            return null;
+        }
+        return (new \moodle_url('/mod/quiz/report.php', [
+            'id' => $cm->id,
+            'mode' => 'overview',
+            'userid' => $userid,
+        ]))->out(false);
     }
 
     /**

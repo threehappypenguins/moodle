@@ -309,4 +309,97 @@ final class activity_progress_test extends \local_homeschool\base_testcase {
         $this->assertTrue($rows[2]->needsattention);
         $this->assertStringContainsString('text-bg-danger', $rows[2]->labelclass);
     }
+
+    /**
+     * Quiz attempt counts link to that student's overview results report.
+     */
+    public function test_quiz_attempts_link_to_student_overview(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
+        [, $course, $student] = $this->setup_course_with_student();
+
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'questionsperpage' => 0,
+            'grade' => 100.0,
+            'sumgrades' => 1,
+            'completion' => COMPLETION_TRACKING_NONE,
+        ]);
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $cat = $questiongenerator->create_question_category();
+        $question = $questiongenerator->create_question('truefalse', null, ['category' => $cat->id]);
+        quiz_add_quiz_question($question->id, $quiz);
+
+        /** @var \mod_quiz_generator $quizgenerator */
+        $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+        $quizgenerator->create_attempt($quiz->id, $student->id);
+
+        $activity = (object) [
+            'cmid' => $quiz->cmid,
+            'courseid' => $course->id,
+            'modname' => 'quiz',
+            'completion' => COMPLETION_TRACKING_NONE,
+        ];
+        $rows = activity_progress::export_for_activity($activity, [$student->id => $student]);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(activity_progress::STATE_ATTEMPTED, $rows[0]->state);
+        $this->assertTrue($rows[0]->hasurl);
+        $expected = (new \moodle_url('/mod/quiz/report.php', [
+            'id' => $quiz->cmid,
+            'mode' => 'overview',
+            'userid' => $student->id,
+        ]))->out(false);
+        $this->assertSame($expected, $rows[0]->url);
+    }
+
+    /**
+     * Quizzes show only the attempt link, even when marked complete (unlike assigns/embeds).
+     */
+    public function test_quiz_complete_shows_attempts_only(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
+        [, $course, $student] = $this->setup_course_with_student();
+
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'questionsperpage' => 0,
+            'grade' => 100.0,
+            'sumgrades' => 1,
+            'completion' => COMPLETION_TRACKING_MANUAL,
+        ]);
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $cat = $questiongenerator->create_question_category();
+        $question = $questiongenerator->create_question('truefalse', null, ['category' => $cat->id]);
+        quiz_add_quiz_question($question->id, $quiz);
+
+        /** @var \mod_quiz_generator $quizgenerator */
+        $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+        $quizgenerator->create_attempt($quiz->id, $student->id);
+
+        $modinfo = get_fast_modinfo($course->id);
+        $cm = $modinfo->get_cm($quiz->cmid);
+        $completion = new \completion_info($course);
+        $completion->update_state($cm, COMPLETION_COMPLETE, $student->id);
+
+        $activity = (object) [
+            'cmid' => $quiz->cmid,
+            'courseid' => $course->id,
+            'modname' => 'quiz',
+            'completion' => COMPLETION_TRACKING_MANUAL,
+        ];
+        $rows = activity_progress::export_for_activity($activity, [$student->id => $student]);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(activity_progress::STATE_ATTEMPTED, $rows[0]->state);
+        $this->assertTrue($rows[0]->hasurl);
+        $expected = (new \moodle_url('/mod/quiz/report.php', [
+            'id' => $quiz->cmid,
+            'mode' => 'overview',
+            'userid' => $student->id,
+        ]))->out(false);
+        $this->assertSame($expected, $rows[0]->url);
+    }
 }
