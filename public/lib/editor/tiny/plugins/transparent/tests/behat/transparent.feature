@@ -1,4 +1,4 @@
-@editor @editor_tiny @tiny_transparent
+@editor @editor_tiny @tiny @tiny_transparent
 Feature: Tiny transparent text
     In order to mark text as transparent in TinyMCE
     As a User

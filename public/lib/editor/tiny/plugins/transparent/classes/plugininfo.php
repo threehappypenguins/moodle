@@ -28,7 +28,6 @@ use editor_tiny\plugin_with_menuitems;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class plugininfo extends plugin implements plugin_with_buttons, plugin_with_menuitems {
-
     /**
      * Get a list of the buttons provided by this plugin.
      *
