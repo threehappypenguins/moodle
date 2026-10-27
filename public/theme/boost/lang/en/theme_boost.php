@@ -39,7 +39,7 @@ $string['colourmode:light'] = 'Light';
 $string['colourmodeselected'] = 'Colour mode: {$a}';
 $string['configtitle'] = 'Boost';
 $string['defaultcolourmode'] = 'Default colour mode';
-$string['defaultcolourmode_desc'] = 'The colour mode used by people who have not chosen one. \'System\' follows the colour scheme set on their device or browser.';
+$string['defaultcolourmode_desc'] = 'The colour mode used by people who have not chosen one. \'System\' follows the colour scheme set on their device or browser. While colour modes are experimental, this is set to \'Light\', so that people are only shown the dark mode once they choose it.';
 $string['enablecolourmodes'] = 'Enable colour modes';
 $string['enablecolourmodes_desc'] = 'Allow people to switch the site between a light and a dark colour scheme. When disabled, the site is always shown in light mode.
 

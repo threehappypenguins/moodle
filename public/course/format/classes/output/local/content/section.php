@@ -192,7 +192,7 @@ class section implements named_templatable, renderable {
         $headerdata = $header->export_for_template($output);
 
         // When a section is displayed alone the title goes over the section, not inside it.
-        if ($section->section != 0 && $section->section == $format->get_sectionnum()) {
+        if ($section->section != 0 && $section->id == $format->get_sectionid()) {
             $data->singleheader = $headerdata;
         } else {
             $data->header = $headerdata;
@@ -214,7 +214,7 @@ class section implements named_templatable, renderable {
         $format = $this->format;
 
         $showsummary = ($section->section != 0 &&
-            $section->section != $format->get_sectionnum() &&
+            $section->id != $format->get_sectionid() &&
             ($format->get_course_display() == COURSE_DISPLAY_MULTIPAGE && !$section->is_delegated()) &&
             !$format->show_editor()
         );
@@ -333,6 +333,14 @@ class section implements named_templatable, renderable {
             $format->get_course_display() == COURSE_DISPLAY_MULTIPAGE &&
             !$section->is_delegated()
         );
+
+        // The collapsemenu attribute is deprecated since Moodle 5.3. The collapse/expand all sections
+        // toggle is now exported by \core_courseformat\output\local\content and rendered above the
+        // section list. It is kept here only for course formats and themes still overriding the
+        // core_courseformat/local/content template with a version that does not render the toggle.
+        // It must always be set: \core_courseformat\output\local\content exports a collapsemenu
+        // attribute too, and Mustache would otherwise fall back to it for every section.
+        $data->collapsemenu = ($data->num === 0 && !$data->iscoursedisplaymultipage);
 
         $data->contentcollapsed = $this->is_section_collapsed();
 

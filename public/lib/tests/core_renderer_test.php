@@ -16,6 +16,7 @@
 
 namespace core;
 
+use core_courseformat\local\linearnavigationsettings;
 use core_renderer;
 use moodle_page;
 
@@ -26,8 +27,15 @@ use moodle_page;
  * @category  test
  * @copyright 2024 Andrew Lyons <andrew@nicols.co.uk>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers \core_renderer
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\core_renderer::class)]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\core\output\core_renderer::class, 'language_header_links')]
+#[\PHPUnit\Framework\Attributes\CoversClass(\core\hook\output\before_standard_top_of_body_html_generation::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\core\hook\output\before_footer_html_generation::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\core\hook\output\before_standard_footer_html_generation::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\core\hook\output\after_standard_main_region_html_generation::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\core\hook\output\before_html_attributes::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\core\hook\output\before_help_icon_rendered::class)]
 final class core_renderer_test extends \advanced_testcase {
 
     /**
@@ -249,14 +257,13 @@ EOF
     /**
      * Tests the various SEO headers for language links
      *
-     * @covers \core\output\core_renderer::language_header_links
-     * @dataProvider language_header_links_provider
      * @param string $lang what is the default language
      * @param string[] $languages what are all the languages installed
      * @param string $langscrawlable what languages are ok to be crawled
      * @param string $param what is the optional param lang param
      * @param string $expected header links
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('language_header_links_provider')]
     public function test_language_header_links($lang, $languages, $langscrawlable, $param, $expected): void {
         global $CFG;
         $beforelang = $CFG->lang;
@@ -275,9 +282,6 @@ EOF
         $CFG->langscrawlable = $beforelangscrawlable;
     }
 
-    /**
-     * @covers \core\hook\output\before_standard_top_of_body_html_generation
-     */
     public function test_standard_top_of_body_html(): void {
         $page = new moodle_page();
         $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
@@ -287,9 +291,6 @@ EOF
         $this->assertStringNotContainsString('A heading can be added to the top of the body HTML', $html);
     }
 
-    /**
-     * @covers \core\hook\output\before_standard_top_of_body_html_generation
-     */
     public function test_before_standard_top_of_body_html_generation_hooked(): void {
         require_once(__DIR__ . '/fixtures/core_renderer/before_standard_top_of_body_html_generation_callbacks.php');
 
@@ -308,9 +309,6 @@ EOF
         $this->assertStringContainsString('A heading can be added to the top of the body HTML', $html);
     }
 
-    /**
-     * @covers \core\hook\output\before_footer_html_generation
-     */
     public function test_before_footer_html_generation(): void {
         $this->resetAfterTest();
         $page = new moodle_page();
@@ -324,9 +322,6 @@ EOF
         $this->assertStringNotContainsString('A heading can be added', $html);
     }
 
-    /**
-     * @covers \core\hook\output\before_footer_html_generation
-     */
     public function test_before_footer_html_generation_hooked(): void {
         $this->resetAfterTest();
         require_once(__DIR__ . '/fixtures/core_renderer/before_footer_html_generation_callbacks.php');
@@ -349,9 +344,6 @@ EOF
         $this->assertStringContainsString('A heading can be added', $html);
     }
 
-    /**
-     * @covers \core\hook\output\before_standard_footer_html_generation
-     */
     public function before_standard_footer_html_generation(): void {
         $page = new moodle_page();
         $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
@@ -361,9 +353,6 @@ EOF
         $this->assertStringNotContainsString('A heading can be added', $html);
     }
 
-    /**
-     * @covers \core\hook\output\before_standard_footer_html_generation
-     */
     public function test_before_standard_footer_html_generation_hooked(): void {
         require_once(__DIR__ . '/fixtures/core_renderer/before_standard_footer_html_generation_callbacks.php');
 
@@ -382,9 +371,6 @@ EOF
         $this->assertStringContainsString('A heading can be added', $html);
     }
 
-    /**
-     * @covers \core\hook\output\after_standard_main_region_html_generation
-     */
     public function test_after_standard_main_region_html_generation(): void {
         $page = new moodle_page();
         $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
@@ -394,9 +380,6 @@ EOF
         $this->assertStringNotContainsString('A heading can be added', $html);
     }
 
-    /**
-     * @covers \core\hook\output\after_standard_main_region_html_generation
-     */
     public function test_after_standard_main_region_html_generation_hooked(): void {
         require_once(__DIR__ . '/fixtures/core_renderer/after_standard_main_region_html_generation_callbacks.php');
 
@@ -415,9 +398,6 @@ EOF
         $this->assertStringContainsString('A heading can be added', $html);
     }
 
-    /**
-     * @covers \core\hook\output\before_html_attributes
-     */
     public function test_htmlattributes(): void {
         $page = new moodle_page();
         $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
@@ -427,9 +407,6 @@ EOF
         $this->assertStringNotContainsString('data-test="test"', $attributes);
     }
 
-    /**
-     * @covers \core\hook\output\before_html_attributes
-     */
     public function test_htmlattributes_hooked(): void {
         require_once(__DIR__ . '/fixtures/core_renderer/htmlattributes_callbacks.php');
 
@@ -446,5 +423,198 @@ EOF
         $attributes = $renderer->htmlattributes();
         $this->assertIsString($attributes);
         $this->assertStringContainsString('data-test="test"', $attributes);
+    }
+
+    /**
+     * Get a renderer for an activity page, in a course with linear navigation enabled, that has started printing its body.
+     *
+     * @return core_renderer
+     */
+    private function get_activity_page_renderer_with_linear_navigation(): core_renderer {
+        global $PAGE;
+
+        set_config(linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV, 1, 'format_topics');
+        $course = $this->getDataGenerator()->create_course(['format' => 'topics']);
+        $module = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+        $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+
+        $PAGE->set_cm(get_coursemodule_from_id('page', $module->cmid), $course);
+        $PAGE->set_url('/mod/page/view.php', ['id' => $module->cmid]);
+        $PAGE->set_state(moodle_page::STATE_PRINTING_HEADER);
+        $PAGE->set_state(moodle_page::STATE_IN_BODY);
+        $PAGE->opencontainers->push('header/footer', '</body></html>');
+
+        return new core_renderer($PAGE, RENDERER_TARGET_GENERAL);
+    }
+
+    /**
+     * Test the linear navigation footer is shown on an activity page.
+     */
+    public function test_footer_shows_linear_navigation_footer(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $renderer = $this->get_activity_page_renderer_with_linear_navigation();
+
+        $html = $renderer->footer();
+        $this->assertStringContainsString('course-linear-navigation', $html);
+    }
+
+    /**
+     * Test the linear navigation footer is not shown on an error page raised from an activity page.
+     */
+    public function test_fatal_error_hides_linear_navigation_footer(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $renderer = $this->get_activity_page_renderer_with_linear_navigation();
+
+        $html = $renderer->fatal_error('Error message', '', '', []);
+        $this->assertStringContainsString('Error message', $html);
+        $this->assertStringNotContainsString('course-linear-navigation', $html);
+        $this->assertFalse($renderer->get_page()->should_show_navigation_footer());
+    }
+
+    /**
+     * The Edit mode switch renders the design system Switch component with matching props.
+     */
+    public function test_edit_switch_renders_design_system_switch(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $page = new moodle_page();
+        $page->set_url('/course/view.php', ['id' => 2]);
+        $page->set_context(\context_system::instance());
+        $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
+
+        $html = $renderer->edit_switch();
+
+        $this->assertNotNull($html);
+        $this->assertStringContainsString('data-react-component="@moodle/lms/core/EditModeSwitch"', $html);
+        $this->assertStringContainsString('editmode-switch-form', $html);
+        $this->assertStringContainsString(get_string('editmode'), $html);
+        $this->assertStringContainsString(get_string('setmode', 'core'), $html);
+        $this->assertStringContainsString('name="sesskey"', $html);
+        $this->assertStringContainsString('name="pageurl"', $html);
+        $this->assertStringContainsString('name="context"', $html);
+
+        // Extract and decode the JSON props handed to the React component.
+        $this->assertMatchesRegularExpression('/data-react-props=\'([^\']+)\'/', $html);
+        preg_match('/data-react-props=\'([^\']+)\'/', $html, $matches);
+        $props = json_decode($matches[1], true);
+        $this->assertIsArray($props);
+        $this->assertSame($page->context->id, $props['context']);
+        $this->assertSame($page->url->out(false), $props['pageurl']);
+        $this->assertArrayNotHasKey('sesskey', $props);
+        $this->assertFalse($props['checked']);
+        $this->assertSame(get_string('editmode'), $props['label']);
+
+        // The same id must be shared between the props and the fallback checkbox/label, so
+        // core/edit_switch.js and Behat's label-based field lookup keep working either way.
+        $this->assertStringContainsString('id="' . $props['id'] . '"', $html);
+        $this->assertStringContainsString('for="' . $props['id'] . '"', $html);
+
+        // The accessibility fix itself: the fallback must use the design system's "enable" variant
+        // and its thumb icon (both states rendered, toggled via CSS), not a bare unlabelled circle.
+        $this->assertStringContainsString('mds-switch--variant-enable', $html);
+        $this->assertStringContainsString('mds-switch-icon-item mds-switch-icon-item--unchecked', $html);
+        $this->assertStringContainsString('mds-switch-icon-item mds-switch-icon-item--checked', $html);
+    }
+
+    /**
+     * The switch's checked state and props reflect that the current user has editing on.
+     */
+    public function test_edit_switch_reflects_editing_on(): void {
+        global $USER;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $USER->editing = 1;
+
+        $page = new moodle_page();
+        $page->set_url('/course/view.php', ['id' => 2]);
+        $page->set_context(\context_system::instance());
+        $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
+
+        $html = $renderer->edit_switch();
+
+        $this->assertMatchesRegularExpression('/data-react-props=\'([^\']+)\'/', $html);
+        preg_match('/data-react-props=\'([^\']+)\'/', $html, $matches);
+        $props = json_decode($matches[1], true);
+        $this->assertTrue($props['checked']);
+
+        // The fallback markup always emits both icon spans (toggled via CSS opacity, not
+        // conditional markup), so assert the checkbox's checked attribute specifically rather
+        // than the literal substring 'checked', which is present regardless of switch state.
+        $this->assertMatchesRegularExpression('/<input[^>]*\bchecked\b[^>]*class="mds-switch-input"/', $html);
+    }
+
+    /**
+     * The switch is not rendered at all for a user without editing capability.
+     */
+    public function test_edit_switch_returns_null_when_user_cannot_edit(): void {
+        $this->resetAfterTest();
+        $this->setGuestUser();
+
+        $page = new moodle_page();
+        $page->set_url('/course/view.php', ['id' => 2]);
+        $page->set_context(\context_system::instance());
+        $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
+
+        $this->assertNull($renderer->edit_switch());
+    }
+
+    /**
+     * Test that the help icon hook can completely replace the output.
+     */
+    public function test_before_help_icon_rendered_replacement(): void {
+        require_once(__DIR__ . '/fixtures/core_renderer/before_help_icon_rendered_replacement_callbacks.php');
+
+        \core\di::set(
+            \core\hook\manager::class,
+            \core\hook\manager::phpunit_get_instance([
+                'test_plugin1' => __DIR__ . '/fixtures/core_renderer/before_help_icon_rendered_replacement_hooks.php',
+            ]),
+        );
+
+        $page = new moodle_page();
+        $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
+
+        $html = $renderer->help_icon('moodledocslink', 'core');
+        $this->assertIsString($html);
+        $this->assertStringContainsString('Replaced help icon', $html);
+        $this->assertStringContainsString('custom-replacement', $html);
+        // The original help icon template output should not be present.
+        $this->assertStringNotContainsString('data-bs-toggle="popover"', $html);
+    }
+
+    /**
+     * Test that the help icon hook can add content before and after the icon.
+     */
+    public function test_before_help_icon_rendered_before_and_after(): void {
+        require_once(__DIR__ . '/fixtures/core_renderer/before_help_icon_rendered_beforeafter_callbacks.php');
+
+        \core\di::set(
+            \core\hook\manager::class,
+            \core\hook\manager::phpunit_get_instance([
+                'test_plugin1' => __DIR__ . '/fixtures/core_renderer/before_help_icon_rendered_beforeafter_hooks.php',
+            ]),
+        );
+
+        $page = new moodle_page();
+        $renderer = new core_renderer($page, RENDERER_TARGET_GENERAL);
+
+        $html = $renderer->help_icon('moodledocslink', 'core');
+        $this->assertIsString($html);
+        // The original help icon should still be present.
+        $this->assertStringContainsString('data-bs-toggle="popover"', $html);
+        // Before and after content should be present.
+        $this->assertStringContainsString('before-help-icon', $html);
+        $this->assertStringContainsString('after-help-icon', $html);
+        // Verify order: before comes first, after comes last.
+        $beforepos = strpos($html, 'before-help-icon');
+        $popoverpos = strpos($html, 'data-bs-toggle="popover"');
+        $afterpos = strpos($html, 'after-help-icon');
+        $this->assertLessThan($popoverpos, $beforepos);
+        $this->assertGreaterThan($popoverpos, $afterpos);
     }
 }

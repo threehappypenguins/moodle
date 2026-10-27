@@ -167,6 +167,13 @@ class GoogleCloudRunV2Service extends \Google\Collection
    */
   public $description;
   /**
+   * Optional. Immutable. Indicates whether the Service has durable execution
+   * enabled. This field is immutable once the Service is created.
+   *
+   * @var bool
+   */
+  public $durableExecution;
+  /**
    * Optional. A system-generated fingerprint for this version of the resource.
    * May be used to detect modification conflict during updates.
    *
@@ -312,6 +319,12 @@ class GoogleCloudRunV2Service extends \Google\Collection
   public $satisfiesPzs;
   protected $scalingType = GoogleCloudRunV2ServiceScaling::class;
   protected $scalingDataType = '';
+  /**
+   * Optional. Enables SSH access to the Service.
+   *
+   * @var bool
+   */
+  public $sshEnabled;
   protected $templateType = GoogleCloudRunV2RevisionTemplate::class;
   protected $templateDataType = '';
   protected $terminalConditionType = GoogleCloudRunV2Condition::class;
@@ -561,6 +574,23 @@ class GoogleCloudRunV2Service extends \Google\Collection
   public function getDescription()
   {
     return $this->description;
+  }
+  /**
+   * Optional. Immutable. Indicates whether the Service has durable execution
+   * enabled. This field is immutable once the Service is created.
+   *
+   * @param bool $durableExecution
+   */
+  public function setDurableExecution($durableExecution)
+  {
+    $this->durableExecution = $durableExecution;
+  }
+  /**
+   * @return bool
+   */
+  public function getDurableExecution()
+  {
+    return $this->durableExecution;
   }
   /**
    * Optional. A system-generated fingerprint for this version of the resource.
@@ -892,6 +922,22 @@ class GoogleCloudRunV2Service extends \Google\Collection
   public function getScaling()
   {
     return $this->scaling;
+  }
+  /**
+   * Optional. Enables SSH access to the Service.
+   *
+   * @param bool $sshEnabled
+   */
+  public function setSshEnabled($sshEnabled)
+  {
+    $this->sshEnabled = $sshEnabled;
+  }
+  /**
+   * @return bool
+   */
+  public function getSshEnabled()
+  {
+    return $this->sshEnabled;
   }
   /**
    * Required. The template used to create revisions for this Service.

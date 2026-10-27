@@ -33,8 +33,8 @@ require_once($CFG->libdir . '/form/duration.php');
  * @category   test
  * @copyright  2009 Tim Hunt
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers     \MoodleQuickForm_duration
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\MoodleQuickForm_duration::class)]
 final class duration_test extends \basic_testcase {
 
     /**
@@ -66,6 +66,31 @@ final class duration_test extends \basic_testcase {
         $mform = $this->get_test_form();
         $this->expectException(\coding_exception::class);
         $mform->addElement('duration', 'testel', null, ['defaultunit' => 123, 'optional' => false]);
+    }
+
+    /**
+     * The default unit (explicit) must be a member of the restricted units array.
+     */
+    public function test_constructor_rejects_defaultunit_not_in_units(): void {
+        $mform = $this->get_test_form();
+        $this->expectException(\coding_exception::class);
+        $this->expectExceptionMessageMatches('~is not one of the units allowed~');
+        $mform->addElement('duration', 'testel', null, [
+            'units' => [DAYSECS, WEEKSECS],
+            'defaultunit' => HOURSECS,
+        ]);
+    }
+
+    /**
+     * The class-default unit (MINSECS) must also be validated against a restricted units array.
+     */
+    public function test_constructor_rejects_class_default_not_in_units(): void {
+        $mform = $this->get_test_form();
+        $this->expectException(\coding_exception::class);
+        $this->expectExceptionMessageMatches('~is not one of the units allowed~');
+        $mform->addElement('duration', 'testel', null, [
+            'units' => [DAYSECS, WEEKSECS],
+        ]);
     }
 
     /**
@@ -113,10 +138,10 @@ final class duration_test extends \basic_testcase {
     /**
      * Testcase for testing conversion of seconds to the best possible unit.
      *
-     * @dataProvider seconds_to_unit_cases
      * @param array $expected expected return value from seconds_to_unit
      * @param int $seconds value to pass to seconds_to_unit
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('seconds_to_unit_cases')]
     public function test_seconds_to_unit(array $expected, int $seconds): void {
         [, $element] = $this->get_test_form_and_element();
         $this->assertEquals($expected, $element->seconds_to_unit($seconds));
@@ -157,7 +182,6 @@ final class duration_test extends \basic_testcase {
     /**
      * Testcase to check generated timestamp
      *
-     * @dataProvider export_value_cases
      * @param int $expected Expected value returned by the element.
      * @param string $number Number entered into the element.
      * @param int $unit Unit selected in the element.
@@ -165,6 +189,7 @@ final class duration_test extends \basic_testcase {
      * @param bool $optional Whether the element has the optional option on.
      * @param string|null $label The element's label.
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('export_value_cases')]
     public function test_export_value(int $expected, string $number, int $unit, int $enabled = 0,
             bool $optional = false, ?string $label = null): void {
 
@@ -181,6 +206,36 @@ final class duration_test extends \basic_testcase {
         // Test.
         $this->assertEquals(['testel' => $expected], $el->exportValue($values, true));
         $this->assertEquals($expected, $el->exportValue($values));
+    }
+
+    /**
+     * When the timeunit child control is missing from the submission (e.g. the child <select>
+     * was disabled via disabledIf/hideIf and the browser did not submit it), exportValue()
+     * should fall back to the configured defaultunit rather than emit a PHP warning.
+     */
+    public function test_export_value_missing_timeunit_falls_back_to_defaultunit(): void {
+        $mform = $this->get_test_form();
+        /** @var \MoodleQuickForm_duration $el */
+        $el = $mform->addElement('duration', 'testel', null, ['defaultunit' => HOURSECS]);
+
+        // Simulate a submission where only 'number' arrived (timeunit control disabled).
+        $values = ['testel' => ['number' => '3']];
+        $this->assertEquals(['testel' => 3 * HOURSECS], $el->exportValue($values, true));
+        $this->assertEquals(3 * HOURSECS, $el->exportValue($values));
+    }
+
+    /**
+     * When the number child control is missing from the submission, exportValue() should
+     * treat it as 0 rather than emit a PHP warning.
+     */
+    public function test_export_value_missing_number_defaults_to_zero(): void {
+        $mform = $this->get_test_form();
+        /** @var \MoodleQuickForm_duration $el */
+        $el = $mform->addElement('duration', 'testel', null, ['defaultunit' => HOURSECS]);
+
+        $values = ['testel' => ['timeunit' => MINSECS]];
+        $this->assertEquals(['testel' => 0], $el->exportValue($values, true));
+        $this->assertEquals(0, $el->exportValue($values));
     }
 
     /**
@@ -201,12 +256,12 @@ final class duration_test extends \basic_testcase {
     /**
      * Test for {@see MoodleQuickForm_duration::validateSubmitValue()}.
      *
-     * @dataProvider validate_submit_value_cases
      * @param bool $allownegative whether the element should be created to allow negative values.
      * @param int $number the number submitted.
      * @param int $unit the unit submitted.
      * @param bool $isvalid whether this submission is valid.
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('validate_submit_value_cases')]
     public function test_validate_submit_value(bool $allownegative, int $number, int $unit, bool $isvalid): void {
         $form = new temp_form_duration(null, null, 'post', '', null, true);
         /** @var \MoodleQuickForm_duration $element */

@@ -94,18 +94,18 @@ final class oauth2_test extends \advanced_testcase {
     /**
      * Create a client entity fixture with the specified identifier, name and description.
      *
-     * Built via create_from_record() (rather than a bare new client_entity() with only its
-     * identifier set), so that a test exercising anything that reads the client's name or
-     * description (e.g. oauth2_page::describe_client(), used by the OAuth2 login screen and
-     * the other OAuth2 pages) does not fail on those typed properties being uninitialised.
-     *
-     * @param string $identifier
      * @param string $name
      * @param string $description
+     * @param bool $isconfidential Whether the client can keep a secret confidential.
+     * @param bool $ispkcerequired Whether PKCE is required for this client.
+     * @param array $scopes The scope identifiers this client is approved to use.
      */
     protected function make_client_entity(
         string $name = 'Example client',
         string $description = 'This application would like to access your account.',
+        bool $isconfidential = true,
+        bool $ispkcerequired = false,
+        array $scopes = [],
     ): client_entity {
         $clientmanager = \core\di::get(\core\oauth2\server\client_manager::class);
 
@@ -114,7 +114,9 @@ final class oauth2_test extends \advanced_testcase {
             ownercontext: \core\context\system::instance(),
             granttypes: [],
             description: $description,
-            isconfidential: true,
+            isconfidential: $isconfidential,
+            ispkcerequired: $ispkcerequired,
+            scopes: $scopes,
         );
 
         return $client;
@@ -138,11 +140,13 @@ final class oauth2_test extends \advanced_testcase {
      * @param client_entity|null $client
      * @param string|null $state
      * @param string[] $scopes Scope identifiers to set on the request, if any.
+     * @param string|null $codechallenge The PKCE code challenge to set on the request, if any.
      */
     protected function make_auth_request(
         ?client_entity $client = null,
         ?string $state = null,
         array $scopes = [],
+        ?string $codechallenge = null,
     ): AuthorizationRequest {
         $authrequest = new AuthorizationRequest();
         $authrequest->setGrantTypeId('authorization_code');
@@ -155,6 +159,9 @@ final class oauth2_test extends \advanced_testcase {
                 fn (string $identifier): ScopeEntityInterface => $this->make_scope_entity($identifier),
                 $scopes,
             ));
+        }
+        if ($codechallenge !== null) {
+            $authrequest->setCodeChallenge($codechallenge);
         }
         return $authrequest;
     }
@@ -609,6 +616,141 @@ final class oauth2_test extends \advanced_testcase {
             OAuthServerException::invalidCredentials()->getHttpStatusCode(),
             $response->getStatusCode(),
         );
+    }
+
+    /**
+     * authorize() rejects the request with an invalid_request error, without ever reaching the
+     * login or consent flow, when the client requires PKCE but the request does not include a
+     * code challenge.
+     */
+    public function test_authorize_rejects_request_when_pkce_required_and_no_code_challenge(): void {
+        $this->resetAfterTest();
+
+        $client = $this->make_client_entity(ispkcerequired: true);
+        $authrequest = $this->make_auth_request($client);
+
+        $server = $this->createMock(AuthorizationServer::class);
+        $server->method('validateAuthorizationRequest')->willReturn($authrequest);
+
+        $route = $this->get_route($server);
+
+        $response = $route->authorize(
+            new ServerRequest('GET', '/authorize'),
+            new Response(),
+            new user_repository(),
+            $this->make_granted_scopes_repository_stub(),
+        );
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        $this->assertEquals('invalid_request', $body['error']);
+        $this->assertStringContainsString('PKCE', $body['hint']);
+    }
+
+    /**
+     * authorize() proceeds with the normal flow (here, redirecting an anonymous user to login)
+     * when the client requires PKCE and the request includes a code challenge.
+     */
+    public function test_authorize_proceeds_when_pkce_required_and_code_challenge_present(): void {
+        $this->resetAfterTest();
+
+        $client = $this->make_client_entity(ispkcerequired: true);
+        $authrequest = $this->make_auth_request($client, codechallenge: 'somecodechallenge');
+
+        $server = $this->createMock(AuthorizationServer::class);
+        $server->method('validateAuthorizationRequest')->willReturn($authrequest);
+
+        $route = $this->get_route($server);
+
+        $response = $route->authorize(
+            new ServerRequest('GET', '/authorize'),
+            new Response(),
+            new user_repository(),
+            $this->make_granted_scopes_repository_stub(),
+        );
+
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertStringContainsString('/login', $response->getHeaderLine('Location'));
+    }
+
+    /**
+     * authorize() proceeds with the normal flow when the client does not require PKCE, even
+     * though the request does not include a code challenge.
+     */
+    public function test_authorize_proceeds_when_pkce_not_required_and_no_code_challenge(): void {
+        $this->resetAfterTest();
+
+        $client = $this->make_client_entity(ispkcerequired: false);
+        $authrequest = $this->make_auth_request($client);
+
+        $server = $this->createMock(AuthorizationServer::class);
+        $server->method('validateAuthorizationRequest')->willReturn($authrequest);
+
+        $route = $this->get_route($server);
+
+        $response = $route->authorize(
+            new ServerRequest('GET', '/authorize'),
+            new Response(),
+            new user_repository(),
+            $this->make_granted_scopes_repository_stub(),
+        );
+
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertStringContainsString('/login', $response->getHeaderLine('Location'));
+    }
+
+    /**
+     * authorize() rejects the request with an invalid_request error for a public (non-confidential)
+     * client without a code challenge, even when that client's stored "PKCE required" flag is
+     * false, because public clients must always use PKCE.
+     */
+    public function test_authorize_rejects_request_when_public_client_has_no_code_challenge(): void {
+        $this->resetAfterTest();
+
+        $client = $this->make_client_entity(isconfidential: false, ispkcerequired: false);
+        $authrequest = $this->make_auth_request($client);
+
+        $server = $this->createMock(AuthorizationServer::class);
+        $server->method('validateAuthorizationRequest')->willReturn($authrequest);
+
+        $route = $this->get_route($server);
+
+        $response = $route->authorize(
+            new ServerRequest('GET', '/authorize'),
+            new Response(),
+            new user_repository(),
+            $this->make_granted_scopes_repository_stub(),
+        );
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        $this->assertEquals('invalid_request', $body['error']);
+    }
+
+    /**
+     * authorize() proceeds with the normal flow for a public (non-confidential) client when a
+     * code challenge is present.
+     */
+    public function test_authorize_proceeds_when_public_client_has_code_challenge(): void {
+        $this->resetAfterTest();
+
+        $client = $this->make_client_entity(isconfidential: false, ispkcerequired: false);
+        $authrequest = $this->make_auth_request($client, codechallenge: 'somecodechallenge');
+
+        $server = $this->createMock(AuthorizationServer::class);
+        $server->method('validateAuthorizationRequest')->willReturn($authrequest);
+
+        $route = $this->get_route($server);
+
+        $response = $route->authorize(
+            new ServerRequest('GET', '/authorize'),
+            new Response(),
+            new user_repository(),
+            $this->make_granted_scopes_repository_stub(),
+        );
+
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertStringContainsString('/login', $response->getHeaderLine('Location'));
     }
 
     /**
@@ -1231,7 +1373,7 @@ final class oauth2_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $client = $this->make_client_entity();
+        $client = $this->make_client_entity(scopes: ['moodle']);
         $requestid = $this->store_auth_request_in_session($this->make_auth_request($client, scopes: ['moodle']));
 
         $clientrepository = $this->createStub(ClientRepositoryInterface::class);
@@ -1395,7 +1537,12 @@ final class oauth2_test extends \advanced_testcase {
             ->withQueryParams(['authrequestid' => $requestid]);
 
         try {
-            $route->authorize($request, new Response(), $userrepository, $this->make_granted_scopes_repository_stub());
+            $route->authorize(
+                $request,
+                new Response(),
+                $userrepository,
+                $this->make_granted_scopes_repository_stub(),
+            );
             $this->fail('Expected require_login() to attempt a redirect for the forced password change.');
         // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
         } catch (\core\exception\moodle_exception $e) {
@@ -1459,7 +1606,12 @@ final class oauth2_test extends \advanced_testcase {
             ->withQueryParams(['authrequestid' => $requestid]);
 
         try {
-            $route->authorize($request, new Response(), $userrepository, $this->make_granted_scopes_repository_stub());
+            $route->authorize(
+                $request,
+                new Response(),
+                $userrepository,
+                $this->make_granted_scopes_repository_stub(),
+            );
             $this->fail('Expected require_login() to attempt a redirect for the incomplete profile.');
         // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
         } catch (\core\exception\moodle_exception $e) {
@@ -1515,7 +1667,12 @@ final class oauth2_test extends \advanced_testcase {
             ->withQueryParams(['authrequestid' => $requestid]);
 
         try {
-            $route->authorize($request, new Response(), $userrepository, $this->make_granted_scopes_repository_stub());
+            $route->authorize(
+                $request,
+                new Response(),
+                $userrepository,
+                $this->make_granted_scopes_repository_stub(),
+            );
             $this->fail('Expected require_login() to attempt a redirect for the unagreed site policy.');
         // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
         } catch (\core\exception\moodle_exception $e) {
@@ -1573,7 +1730,12 @@ final class oauth2_test extends \advanced_testcase {
             ->withQueryParams(['authrequestid' => $requestid]);
 
         try {
-            $route->authorize($request, new Response(), $userrepository, $this->make_granted_scopes_repository_stub());
+            $route->authorize(
+                $request,
+                new Response(),
+                $userrepository,
+                $this->make_granted_scopes_repository_stub(),
+            );
             $this->fail('Expected require_login() to attempt a redirect for the forced password change.');
         // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
         } catch (\core\exception\moodle_exception $e) {
@@ -2034,7 +2196,13 @@ final class oauth2_test extends \advanced_testcase {
      * username/password alone.
      */
     public function test_do_login_valid_credentials_with_invalid_logintoken_does_not_authenticate(): void {
+        global $CFG;
+
         $this->resetAfterTest();
+
+        // Redirect error logging to the test log to avoid expected output during invalid login attempts.
+        $oldlog = ini_get('error_log');
+        ini_set('error_log', "{$CFG->dataroot}/testlog.log");
 
         // Rejected login-token attempts are logged with the requesting user agent; supply one so
         // that this does not trigger an unrelated PHP warning for a missing array key.
@@ -2073,6 +2241,8 @@ final class oauth2_test extends \advanced_testcase {
 
         // No Moodle session was established for the rejected credentials.
         $this->assertFalse(isloggedin());
+
+        ini_set('error_log', $oldlog);
     }
 
     /**
@@ -2083,7 +2253,13 @@ final class oauth2_test extends \advanced_testcase {
      * attacker could authenticate with valid credentials simply by omitting the field.
      */
     public function test_do_login_valid_credentials_missing_logintoken_does_not_bypass_validation(): void {
+        global $CFG;
+
         $this->resetAfterTest();
+
+        // Redirect error logging to the test log to avoid expected output during invalid login attempts.
+        $oldlog = ini_get('error_log');
+        ini_set('error_log', "{$CFG->dataroot}/testlog.log");
 
         // Rejected login-token attempts are logged with the requesting user agent; supply one so
         // that this does not trigger an unrelated PHP warning for a missing array key.
@@ -2117,6 +2293,8 @@ final class oauth2_test extends \advanced_testcase {
 
         // No Moodle session was established for the rejected credentials.
         $this->assertFalse(isloggedin());
+
+        ini_set('error_log', $oldlog);
     }
 
     /**
@@ -2319,7 +2497,12 @@ final class oauth2_test extends \advanced_testcase {
             ->withQueryParams(['authrequestid' => $requestid]);
 
         try {
-            $route->authorize($authorizerequest, new Response(), $userrepository, $this->make_granted_scopes_repository_stub());
+            $route->authorize(
+                $authorizerequest,
+                new Response(),
+                $userrepository,
+                $this->make_granted_scopes_repository_stub(),
+            );
             $this->fail('Expected require_login() to attempt a redirect for the forced password change.');
         // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
         } catch (\core\exception\moodle_exception $e) {
@@ -2760,7 +2943,9 @@ final class oauth2_test extends \advanced_testcase {
         $moodleuser = $this->getDataGenerator()->create_user();
         $this->setUser($moodleuser);
 
-        $client = $this->make_client_entity();
+        $client = $this->make_client_entity(
+            scopes: ['moodle'],
+        );
         $user = $this->make_user_entity($moodleuser->id);
         $authrequest = $this->make_auth_request($client, scopes: ['moodle']);
         $authrequest->setUser($user);

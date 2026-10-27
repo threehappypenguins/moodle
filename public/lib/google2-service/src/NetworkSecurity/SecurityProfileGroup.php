@@ -40,8 +40,8 @@ class SecurityProfileGroup extends \Google\Model
    */
   public $customMirroringProfile;
   /**
-   * Output only. Identifier used by the data-path. Unique within {container,
-   * location}.
+   * Output only. Identifier used by the data-path. Unique within `{container,
+   * location}`.
    *
    * @var string
    */
@@ -88,6 +88,13 @@ class SecurityProfileGroup extends \Google\Model
    * @var string
    */
   public $updateTime;
+  /**
+   * Optional. Reference to a SecurityProfile with the UrlFiltering
+   * configuration.
+   *
+   * @var string
+   */
+  public $urlFilteringProfile;
 
   /**
    * Output only. Resource creation timestamp.
@@ -140,8 +147,8 @@ class SecurityProfileGroup extends \Google\Model
     return $this->customMirroringProfile;
   }
   /**
-   * Output only. Identifier used by the data-path. Unique within {container,
-   * location}.
+   * Output only. Identifier used by the data-path. Unique within `{container,
+   * location}`.
    *
    * @param string $dataPathId
    */
@@ -257,6 +264,23 @@ class SecurityProfileGroup extends \Google\Model
   public function getUpdateTime()
   {
     return $this->updateTime;
+  }
+  /**
+   * Optional. Reference to a SecurityProfile with the UrlFiltering
+   * configuration.
+   *
+   * @param string $urlFilteringProfile
+   */
+  public function setUrlFilteringProfile($urlFilteringProfile)
+  {
+    $this->urlFilteringProfile = $urlFilteringProfile;
+  }
+  /**
+   * @return string
+   */
+  public function getUrlFilteringProfile()
+  {
+    return $this->urlFilteringProfile;
   }
 }
 

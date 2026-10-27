@@ -281,6 +281,7 @@ class overview extends \core_courseformat\activityoverviewbase {
             ['name' => 'data-action', 'value' => 'toggle'],
             ['name' => 'data-forumid', 'value' => $this->forum->id],
             ['name' => 'data-forumname', 'value' => $this->forum->name],
+            ['name' => 'data-username', 'value' => fullname($this->user)],
             ['name' => 'data-targetstate', 'value' => !$subscribed],
             ['name' => 'aria-label', 'value' => $arialabel],
         ];

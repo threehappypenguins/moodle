@@ -171,6 +171,9 @@ class colour_mode {
      * exercised in one mode without every feature having to set a user preference. A preference set by a scenario
      * still wins, so a feature can pin itself to the mode it is about.
      *
+     * The setting defaults to light while colour modes are experimental, rather than following the device, so that
+     * turning them on does not move anybody into dark mode without them choosing it. See MDL-89379.
+     *
      * @return string One of the self::LIGHT, self::DARK or self::AUTO constants.
      */
     public static function get_site_default(): string {
@@ -187,8 +190,10 @@ class colour_mode {
             }
         }
 
+        // Falls back to the same mode the setting defaults to, so that a site which has never saved the setting and a
+        // site which has saved something unusable are rendered the same way.
         $default = get_config('theme_boost', 'defaultcolourmode');
-        return self::is_valid_mode($default) ? $default : self::AUTO;
+        return self::is_valid_mode($default) ? $default : self::LIGHT;
     }
 
     /**

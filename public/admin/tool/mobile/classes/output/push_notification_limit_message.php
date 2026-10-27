@@ -72,10 +72,8 @@ class push_notification_limit_message implements \renderable, \templatable {
             $progresswidth = min(100, (int) ceil(($currentdevices / $devicelimit) * 100));
         }
 
-        if ($ignorednotifications === 1) {
-            $subheading = get_string('misseduserssingle', 'tool_mobile');
-        } else if ($ignorednotifications > 1) {
-            $subheading = get_string('missedusersmultiple', 'tool_mobile', $ignorednotifications);
+        if ($ignorednotifications >= 1) {
+            $subheading = get_string('missedusers', 'tool_mobile', $ignorednotifications);
         } else {
             $subheading = get_string('missedadditionalusers', 'tool_mobile');
         }

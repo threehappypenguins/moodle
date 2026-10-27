@@ -33,6 +33,8 @@ class GoogleIdentityAccesscontextmanagerV1EgressSource extends \Google\Model
    * @var string
    */
   public $accessLevel;
+  protected $pscEndpointType = GoogleIdentityAccesscontextmanagerV1PrivateServiceConnectEndpoint::class;
+  protected $pscEndpointDataType = '';
   /**
    * A Google Cloud resource from the service perimeter that you want to allow
    * to access data outside the perimeter. This field supports only projects.
@@ -66,6 +68,24 @@ class GoogleIdentityAccesscontextmanagerV1EgressSource extends \Google\Model
   public function getAccessLevel()
   {
     return $this->accessLevel;
+  }
+  /**
+   * A PrivateServiceConnectEndpoint that is allowed to access data outside the
+   * perimeter. The Private Service Connect endpoint may be in any organization,
+   * not just the organization that the perimeter is defined in.
+   *
+   * @param GoogleIdentityAccesscontextmanagerV1PrivateServiceConnectEndpoint $pscEndpoint
+   */
+  public function setPscEndpoint(GoogleIdentityAccesscontextmanagerV1PrivateServiceConnectEndpoint $pscEndpoint)
+  {
+    $this->pscEndpoint = $pscEndpoint;
+  }
+  /**
+   * @return GoogleIdentityAccesscontextmanagerV1PrivateServiceConnectEndpoint
+   */
+  public function getPscEndpoint()
+  {
+    return $this->pscEndpoint;
   }
   /**
    * A Google Cloud resource from the service perimeter that you want to allow

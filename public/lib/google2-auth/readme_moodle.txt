@@ -12,3 +12,10 @@ This is a description for including the Google Auth Library for PHP in Moodle
  - composer.json
  - LICENSE
  - README.md
+
+## Upgrade stack
+
+As of MDL-89576, this library is upgraded together with google2 and
+google2-service as a coordinated stack: google2 (the top-level client)
+requires a compatible version of this library, so when bumping this
+library, check and upgrade google2 and google2-service too.

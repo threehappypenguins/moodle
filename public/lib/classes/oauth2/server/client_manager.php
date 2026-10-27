@@ -69,6 +69,12 @@ class client_manager {
                    FROM {oauth2_server_client_access_tokens}
                   WHERE clientidentifier = :clientidentifier)';
 
+    /** @var string The config log name for changes to a client and its redirect URIs. */
+    protected const string CONFIG_LOG_CLIENT = 'oauth2serverclient';
+
+    /** @var string The config log name for changes to a client secret. */
+    protected const string CONFIG_LOG_SECRET = 'oauth2serverclientsecret';
+
     /**
      * Constructor.
      *
@@ -95,7 +101,7 @@ class client_manager {
      * @param array $redirecturis The redirect URIs to register, as strings. Duplicates are ignored.
      * @param string|null $description An optional human-readable description.
      * @param bool $isconfidential Whether the client can keep a secret confidential.
-     * @param bool $ispkceenabled Whether PKCE is enabled for this client.
+     * @param bool $ispkcerequired Whether PKCE is required for this client.
      * @return client_entity The client that was created.
      * @throws moodle_exception If any of the redirect URIs is not usable.
      */
@@ -106,7 +112,8 @@ class client_manager {
         array $redirecturis = [],
         ?string $description = null,
         bool $isconfidential = true,
-        bool $ispkceenabled = true,
+        bool $ispkcerequired = true,
+        array $scopes = [],
     ): client_entity {
         $redirecturis = array_values(array_unique($redirecturis));
 
@@ -125,14 +132,16 @@ class client_manager {
             'status' => client_entity::STATUS_ACTIVE,
             'isconfidential' => (int) $isconfidential,
             'granttypes' => implode(',', $granttypes),
-            'ispkceenabled' => (int) $ispkceenabled,
+            'ispkcerequired' => (int) $ispkcerequired,
             'timecreated' => $now,
             'timemodified' => $now,
+            'scopes' => implode(' ', $scopes),
         ];
 
         $transaction = $this->db->start_delegated_transaction();
         $record->id = $this->db->insert_record('oauth2_server_clients', $record);
         $this->insert_redirect_uris($record->clientidentifier, $redirecturis);
+        $this->log_change(self::CONFIG_LOG_CLIENT, null, $this->get_client_snapshot($record, $redirecturis));
         $transaction->allow_commit();
 
         // Everything the entity needs is already in hand, so build it rather than reading it back.
@@ -175,9 +184,9 @@ class client_manager {
     /**
      * Update the administrative metadata of a client.
      *
-     * Only the name and the description can be changed. Any other key in $updates is ignored, so
-     * that security-relevant properties such as the client identifier or the owner context can
-     * never be altered through this method.
+     * Only the name, description, PKCE requirement and scopes can be changed. Any other key in
+     * $updates is ignored, so that security-relevant properties such as the client identifier or
+     * the owner context can never be altered through this method.
      *
      * @param int $clientid The client ID.
      * @param array $updates The new values, keyed by field name.
@@ -188,48 +197,61 @@ class client_manager {
         $allowedfields = ['name', 'description'];
         $filteredupdates = array_intersect_key($updates, array_flip($allowedfields));
 
-        if (empty($filteredupdates)) {
+        $haspkceupdate = array_key_exists('ispkcerequired', $updates);
+        $hasscopesupdate = array_key_exists('scopes', $updates);
+
+        if (empty($filteredupdates) && !$haspkceupdate && !$hasscopesupdate) {
             return;
         }
 
         $client = $this->get_client_record($clientid);
+        $uris = $this->get_uris($client->clientidentifier);
+        $oldsnapshot = $this->get_client_snapshot($client, $uris);
 
         foreach ($filteredupdates as $field => $value) {
             $client->{$field} = $value;
         }
+
+        if ($client->isconfidential && $haspkceupdate) {
+            $client->ispkcerequired = (int) $updates['ispkcerequired'];
+        }
+
+        if ($hasscopesupdate) {
+            $client->scopes = implode(' ', $updates['scopes']);
+        }
+
         $client->timemodified = $this->clock->time();
 
         $this->db->update_record('oauth2_server_clients', $client);
+        $this->log_change(self::CONFIG_LOG_CLIENT, $oldsnapshot, $this->get_client_snapshot($client, $uris));
     }
 
     /**
-     * Revoke a client, cutting off all of its existing access immediately.
+     * Disable a client, cutting off all of its existing access immediately.
      *
-     * Revoking marks the client as revoked and cascades to every credential it holds: its secrets,
-     * its access tokens, its refresh tokens and its outstanding authorisation codes. Access is
-     * therefore withdrawn straight away rather than merely being blocked for future requests.
+     * Disabling marks the client as disabled and cascades to its access tokens, its refresh tokens and its outstanding
+     * authorisation codes. Access is therefore withdrawn straight away rather than merely being blocked for future
+     * requests.
+     *
+     * Client secrets are not explicitly revoked as part of this action, but will remain invalid for use
+     * as long as the client is disabled. The reason why explicit secret revocation is skipped is to allow existing
+     * secrets to still be used in the case of re-enabling the client.
      *
      * @param int $clientid The client ID.
      * @return void
      * @throws \dml_missing_record_exception If the client does not exist.
      */
-    public function revoke_client(int $clientid): void {
+    public function disable_client(int $clientid): void {
         $client = $this->get_client_record($clientid);
         $params = ['clientidentifier' => $client->clientidentifier];
+        $uris = $this->get_uris($client->clientidentifier);
+        $oldsnapshot = $this->get_client_snapshot($client, $uris);
 
         $transaction = $this->db->start_delegated_transaction();
 
-        $client->status = client_entity::STATUS_REVOKED;
+        $client->status = client_entity::STATUS_DISABLED;
         $client->timemodified = $this->clock->time();
         $this->db->update_record('oauth2_server_clients', $client);
-
-        $this->db->set_field_select(
-            'oauth2_server_client_secrets',
-            'revoked',
-            client_entity::SECRET_REVOKED_YES,
-            'clientidentifier = :clientidentifier',
-            $params,
-        );
 
         $this->db->set_field_select(
             'oauth2_server_client_refresh_tokens',
@@ -255,15 +277,15 @@ class client_manager {
             $params,
         );
 
+        $this->log_change(self::CONFIG_LOG_CLIENT, $oldsnapshot, $this->get_client_snapshot($client, $uris));
         $transaction->allow_commit();
     }
 
     /**
-     * Reactivate a revoked client.
+     * Reactivate a disabled client.
      *
-     * Only the client record itself is restored. Secrets and tokens revoked when the client was
-     * revoked stay revoked, so the client must be issued a new secret and must be authorised again
-     * before it can obtain new tokens.
+     * Only the client record itself is restored. Tokens that were revoked when the client was disabled remain revoked,
+     * so the client must be authorized again before it can obtain new tokens.
      *
      * @param int $clientid The client ID.
      * @return void
@@ -271,32 +293,36 @@ class client_manager {
      */
     public function reactivate_client(int $clientid): void {
         $client = $this->get_client_record($clientid);
+        $uris = $this->get_uris($client->clientidentifier);
+        $oldsnapshot = $this->get_client_snapshot($client, $uris);
 
         $client->status = client_entity::STATUS_ACTIVE;
         $client->timemodified = $this->clock->time();
 
         $this->db->update_record('oauth2_server_clients', $client);
+        $this->log_change(self::CONFIG_LOG_CLIENT, $oldsnapshot, $this->get_client_snapshot($client, $uris));
     }
 
     /**
      * Permanently delete a client and everything belonging to it.
      *
-     * The client must already be revoked. Requiring revocation first guards against destroying a
+     * The client must already be disabled. Requiring disabling first guards against destroying a
      * live integration in a single step.
      *
      * @param int $clientid The client ID.
      * @return void
      * @throws \dml_missing_record_exception If the client does not exist.
-     * @throws moodle_exception If the client has not been revoked yet.
+     * @throws moodle_exception If the client has not been disabled yet.
      */
     public function delete_client(int $clientid): void {
         $client = $this->get_client_record($clientid);
 
-        if ((int) $client->status !== client_entity::STATUS_REVOKED) {
-            throw new moodle_exception('oauth2clientnotrevoked', 'error', '', $client->clientidentifier);
+        if ((int) $client->status !== client_entity::STATUS_DISABLED) {
+            throw new moodle_exception('oauth2clientnotdisabled', 'error', '', $client->clientidentifier);
         }
 
         $params = ['clientidentifier' => $client->clientidentifier];
+        $oldsnapshot = $this->get_client_snapshot($client);
 
         $transaction = $this->db->start_delegated_transaction();
 
@@ -313,6 +339,7 @@ class client_manager {
         $this->db->delete_records('oauth2_server_client_redirect_uris', $params);
         $this->db->delete_records('oauth2_server_clients', ['id' => $clientid]);
 
+        $this->log_change(self::CONFIG_LOG_CLIENT, $oldsnapshot, null);
         $transaction->allow_commit();
     }
 
@@ -326,15 +353,13 @@ class client_manager {
      * @param int|null $expirytime When the secret expires. Defaults to self::SECRET_LIFETIME from now.
      * @return string The plain text secret.
      * @throws \dml_missing_record_exception If the client does not exist.
-     * @throws moodle_exception If the client is public or revoked, or already holds the maximum
-     *      number of active secrets.
+     * @throws moodle_exception If the client is public or already holds the maximum
+     *                          number of active secrets.
      */
     public function create_secret(int $clientid, ?int $expirytime = null): string {
-        $client = $this->get_client_record($clientid);
+        global $USER;
 
-        if ((int) $client->status !== client_entity::STATUS_ACTIVE) {
-            throw new moodle_exception('oauth2clientrevoked', 'error', '', $client->clientidentifier);
-        }
+        $client = $this->get_client_record($clientid);
 
         // A public client cannot keep a secret confidential, so it is never issued one.
         if (!(int) $client->isconfidential) {
@@ -346,17 +371,62 @@ class client_manager {
         }
 
         $now = $this->clock->time();
+        $expirytime ??= $now + self::SECRET_LIFETIME;
         $secret = bin2hex(random_bytes(32));
 
-        $this->db->insert_record('oauth2_server_client_secrets', (object) [
+        $secretrecord = (object) [
             'clientidentifier' => $client->clientidentifier,
             'secret' => password_hash($secret, PASSWORD_DEFAULT),
-            'expirytime' => $expirytime ?? $now + self::SECRET_LIFETIME,
+            'expirytime' => $expirytime,
             'revoked' => client_entity::SECRET_REVOKED_NO,
             'timecreated' => $now,
+        ];
+        $secretrecord->id = $this->db->insert_record('oauth2_server_client_secrets', $secretrecord);
+        $this->log_change(self::CONFIG_LOG_SECRET, null, $this->get_secret_snapshot($secretrecord));
+
+        // Sent from ad hoc tasks rather than now: anything message output prints would corrupt
+        // the JSON response of the route that creates secrets.
+        $this->queue_secret_created_notices([
+            'creatorid' => $USER->id,
+            'name' => $client->name,
+            'expirytime' => $expirytime,
+            'url' => \core\router\util::get_path_for_callable(
+                [\core_admin\route\controller\oauth2\server\client_management::class, 'manage_client_secrets'],
+                ['client' => $clientid],
+            )->out(false),
         ]);
 
         return $secret;
+    }
+
+    /**
+     * Queue a notice of a new secret to each person who can manage OAuth 2 clients.
+     *
+     * @param array $notice The task custom data describing the secret.
+     * @return void
+     */
+    protected function queue_secret_created_notices(array $notice): void {
+        // Site admins pass every capability check without holding a role, so they are not in the
+        // capability query and have to be added to it.
+        $recipients = get_admins() + get_users_by_capability(
+            \core\context\system::instance(),
+            'moodle/site:manageoauth2clients',
+            'u.id',
+        );
+
+        foreach (array_keys($recipients) as $userid) {
+            $task = new \core\task\oauth2_secret_created_task();
+            $task->set_custom_data($notice);
+            $task->set_userid($userid);
+
+            try {
+                \core\task\manager::queue_adhoc_task($task);
+            } catch (moodle_exception $e) {
+                // Queueing refuses a user cron could not run the task as, such as a suspended one.
+                // Only that recipient is skipped, not everyone after them.
+                continue;
+            }
+        }
     }
 
     /**
@@ -407,12 +477,23 @@ class client_manager {
      * @return void
      */
     public function revoke_secret(int $secretid): void {
+        $secretrecord = $this->db->get_record('oauth2_server_client_secrets', ['id' => $secretid]);
+
+        // Revoking a secret which does not exist does nothing.
+        if (!$secretrecord) {
+            return;
+        }
+
+        $oldsnapshot = $this->get_secret_snapshot($secretrecord);
+        $secretrecord->revoked = client_entity::SECRET_REVOKED_YES;
+
         $this->db->set_field(
             'oauth2_server_client_secrets',
             'revoked',
-            client_entity::SECRET_REVOKED_YES,
+            $secretrecord->revoked,
             ['id' => $secretid],
         );
+        $this->log_change(self::CONFIG_LOG_SECRET, $oldsnapshot, $this->get_secret_snapshot($secretrecord));
     }
 
     /**
@@ -449,7 +530,9 @@ class client_manager {
             return;
         }
 
+        $oldsnapshot = $this->get_client_snapshot($client);
         $this->insert_redirect_uris($client->clientidentifier, [$uri]);
+        $this->log_change(self::CONFIG_LOG_CLIENT, $oldsnapshot, $this->get_client_snapshot($client));
     }
 
     /**
@@ -471,8 +554,10 @@ class client_manager {
             return;
         }
 
+        $oldsnapshot = $this->get_client_snapshot($client);
         [$insql, $params] = $this->db->get_in_or_equal($matches, SQL_PARAMS_NAMED);
         $this->db->delete_records_select('oauth2_server_client_redirect_uris', "id {$insql}", $params);
+        $this->log_change(self::CONFIG_LOG_CLIENT, $oldsnapshot, $this->get_client_snapshot($client));
     }
 
     /**
@@ -499,6 +584,56 @@ class client_manager {
      */
     protected function get_client_record(int $clientid): \stdClass {
         return $this->db->get_record('oauth2_server_clients', ['id' => $clientid], '*', MUST_EXIST);
+    }
+
+    /**
+     * Describe a client and its redirect URIs for the config log.
+     *
+     * @param \stdClass $client The client record.
+     * @param string[]|null $uris The client's redirect URIs, if already known. Read from the database if null.
+     * @return string The client state, as JSON.
+     */
+    protected function get_client_snapshot(\stdClass $client, ?array $uris = null): string {
+        return json_encode([
+            'clientidentifier' => $client->clientidentifier,
+            'name' => $client->name,
+            'description' => $client->description,
+            'status' => (int) $client->status,
+            'isconfidential' => (int) $client->isconfidential,
+            'ispkcerequired' => (int) $client->ispkcerequired,
+            'granttypes' => $client->granttypes,
+            'scopes' => $client->scopes,
+            'redirecturis' => array_values($uris ?? $this->get_uris($client->clientidentifier)),
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Describe a client secret for the config log, leaving out the secret hash.
+     *
+     * @param \stdClass $secret The secret record.
+     * @return string The secret state, as JSON.
+     */
+    protected function get_secret_snapshot(\stdClass $secret): string {
+        return json_encode([
+            'clientidentifier' => $secret->clientidentifier,
+            'secretid' => (int) $secret->id,
+            'expirytime' => (int) $secret->expirytime,
+            'revoked' => (int) $secret->revoked,
+        ]);
+    }
+
+    /**
+     * Record a change in the config log, unless nothing actually changed.
+     *
+     * @param string $name The config log name.
+     * @param string|null $oldvalue The state before the change, or null if it was created.
+     * @param string|null $newvalue The state after the change, or null if it was deleted.
+     * @return void
+     */
+    protected function log_change(string $name, ?string $oldvalue, ?string $newvalue): void {
+        if ($oldvalue !== $newvalue) {
+            add_to_config_log($name, $oldvalue, $newvalue, 'core');
+        }
     }
 
     /**

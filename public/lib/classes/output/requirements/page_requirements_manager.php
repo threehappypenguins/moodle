@@ -1063,14 +1063,58 @@ class page_requirements_manager {
         $themes = core_component::get_all_plugins_list('theme');
         $importmap->set_available_themes(array_keys($themes));
 
-        return html_writer::tag(
+        $importmapdata = $importmap->jsonSerialize();
+
+        // The importmap script tag must be emitted before any modulepreload link (or module
+        // script): browsers only honour an import map for specifier resolution if it is
+        // registered before the first module-related resource is processed. A modulepreload
+        // link emitted ahead of the importmap here would silently break bare specifier
+        // resolution ("react", "@moodlehq/design-system", ...) for every module on the page.
+        $output = html_writer::tag(
             'script',
             json_encode(
-                $importmap,
+                $importmapdata,
                 JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
             ),
             ['type' => 'importmap'],
         );
+        $output .= $this->get_import_map_preload_links($importmap, $importmapdata);
+
+        return $output;
+    }
+
+    /**
+     * Return modulepreload link tags for the import map's explicitly preloadable entries.
+     *
+     * The ESM dependency graph is normally discovered one level at a time: the browser must
+     * fetch and parse each module before it learns which further modules that module imports.
+     * For a handful of foundational entries (the JS framework runtime and its themed design
+     * system entry point) the resolved URL is already known from the import map itself, so
+     * preloading them lets the browser start those fetches immediately in parallel with page
+     * parsing rather than waiting for import-graph discovery to reach them.
+     *
+     * Which entries qualify is a closed allowlist maintained on the import_map entries
+     * themselves (see import_map::get_preload_specifiers()), not a filter over specifier name
+     * shape: this deliberately excludes any import registered by a plugin via the
+     * before_import_map_config hook unless that plugin explicitly opts in, so third-party
+     * dependencies are not fetched on every page by default.
+     *
+     * @param import_map $importmap The import map instance the preload allowlist is read from.
+     * @param array $importmapdata The serialised import map data, as returned by import_map::jsonSerialize().
+     * @return string
+     */
+    protected function get_import_map_preload_links(import_map $importmap, array $importmapdata): string {
+        $output = '';
+        foreach ($importmap->get_preload_specifiers() as $specifier) {
+            if (!array_key_exists($specifier, $importmapdata['imports'])) {
+                continue;
+            }
+            $output .= html_writer::empty_tag('link', [
+                'rel' => 'modulepreload',
+                'href' => $importmapdata['imports'][$specifier],
+            ]);
+        }
+        return $output;
     }
 
     /**

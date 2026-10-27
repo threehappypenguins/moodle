@@ -63,16 +63,21 @@ async function subscriptionToggleClickHandler(toggleElement, changeLabel = true)
         const context = await Repository.setForumSubscriptionState(forumId, newState);
         const newTargetState = !!context.userstate.subscribed;
 
+        // The aria-label may only follow the toggle state when the visible label follows it too (changeLabel).
+        // Otherwise the visible label stays static and a state-dependent aria-label would contradict it,
+        // failing WCAG SC 2.5.3 Label in Name.
         let labelKey = '';
+        let ariaLabelKey = '';
         if (changeLabel) {
             labelKey = newTargetState ? 'unsubscribe' : 'subscribe';
+            ariaLabelKey = newTargetState ? 'unsubscribefromforum' : 'subscribetoforum';
         }
 
         await updateSwitchState(
             toggleElement,
             newTargetState,
             labelKey,
-            newTargetState ? 'unsubscribefromforum' : 'subscribetoforum',
+            ariaLabelKey,
             forumName,
         );
 

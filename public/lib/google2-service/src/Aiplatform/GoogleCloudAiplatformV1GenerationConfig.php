@@ -44,6 +44,8 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
    * @var bool
    */
   public $audioTimestamp;
+  protected $audioTranscriptionConfigType = GoogleCloudAiplatformV1AudioTranscriptionConfig::class;
+  protected $audioTranscriptionConfigDataType = '';
   /**
    * Optional. The number of candidate responses to generate. A higher
    * `candidate_count` can provide more options to choose from, but it also
@@ -108,10 +110,14 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
    * @var float
    */
   public $presencePenalty;
+  protected $responseFormatType = GoogleCloudAiplatformV1ResponseFormat::class;
+  protected $responseFormatDataType = 'array';
   /**
    * Optional. When this field is set, response_schema must be omitted and
-   * response_mime_type must be set to `application/json`.
+   * response_mime_type must be set to `application/json`. Deprecated: Use
+   * `response_format` instead.
    *
+   * @deprecated
    * @var array
    */
   public $responseJsonSchema;
@@ -130,8 +136,9 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
    * generate output that conforms to this MIME type. Supported values include
    * 'text/plain' (default) and 'application/json'. The model needs to be
    * prompted to output the appropriate response type, otherwise the behavior is
-   * undefined. This is a preview feature.
+   * undefined. Deprecated: Use `response_format` instead.
    *
+   * @deprecated
    * @var string
    */
   public $responseMimeType;
@@ -224,6 +231,22 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
     return $this->audioTimestamp;
   }
   /**
+   * Optional. Configuration for audio transcription (speech recognition).
+   *
+   * @param GoogleCloudAiplatformV1AudioTranscriptionConfig $audioTranscriptionConfig
+   */
+  public function setAudioTranscriptionConfig(GoogleCloudAiplatformV1AudioTranscriptionConfig $audioTranscriptionConfig)
+  {
+    $this->audioTranscriptionConfig = $audioTranscriptionConfig;
+  }
+  /**
+   * @return GoogleCloudAiplatformV1AudioTranscriptionConfig
+   */
+  public function getAudioTranscriptionConfig()
+  {
+    return $this->audioTranscriptionConfig;
+  }
+  /**
    * Optional. The number of candidate responses to generate. A higher
    * `candidate_count` can provide more options to choose from, but it also
    * consumes more resources. This can be useful for generating a variety of
@@ -279,8 +302,10 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
     return $this->frequencyPenalty;
   }
   /**
-   * Optional. Config for image generation features.
+   * Optional. Config for image generation features. Deprecated: Use
+   * `response_format.image` instead.
    *
+   * @deprecated
    * @param GoogleCloudAiplatformV1ImageConfig $imageConfig
    */
   public function setImageConfig(GoogleCloudAiplatformV1ImageConfig $imageConfig)
@@ -288,6 +313,7 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
     $this->imageConfig = $imageConfig;
   }
   /**
+   * @deprecated
    * @return GoogleCloudAiplatformV1ImageConfig
    */
   public function getImageConfig()
@@ -375,9 +401,28 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
     return $this->presencePenalty;
   }
   /**
-   * Optional. When this field is set, response_schema must be omitted and
-   * response_mime_type must be set to `application/json`.
+   * Optional. New response format field for the model to configure output
+   * formatting and delivery.
    *
+   * @param GoogleCloudAiplatformV1ResponseFormat[] $responseFormat
+   */
+  public function setResponseFormat($responseFormat)
+  {
+    $this->responseFormat = $responseFormat;
+  }
+  /**
+   * @return GoogleCloudAiplatformV1ResponseFormat[]
+   */
+  public function getResponseFormat()
+  {
+    return $this->responseFormat;
+  }
+  /**
+   * Optional. When this field is set, response_schema must be omitted and
+   * response_mime_type must be set to `application/json`. Deprecated: Use
+   * `response_format` instead.
+   *
+   * @deprecated
    * @param array $responseJsonSchema
    */
   public function setResponseJsonSchema($responseJsonSchema)
@@ -385,6 +430,7 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
     $this->responseJsonSchema = $responseJsonSchema;
   }
   /**
+   * @deprecated
    * @return array
    */
   public function getResponseJsonSchema()
@@ -416,8 +462,9 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
    * generate output that conforms to this MIME type. Supported values include
    * 'text/plain' (default) and 'application/json'. The model needs to be
    * prompted to output the appropriate response type, otherwise the behavior is
-   * undefined. This is a preview feature.
+   * undefined. Deprecated: Use `response_format` instead.
    *
+   * @deprecated
    * @param string $responseMimeType
    */
   public function setResponseMimeType($responseMimeType)
@@ -425,6 +472,7 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
     $this->responseMimeType = $responseMimeType;
   }
   /**
+   * @deprecated
    * @return string
    */
   public function getResponseMimeType()
@@ -456,8 +504,9 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
    * generating structured data such as JSON. The schema is a subset of the
    * [OpenAPI 3.0 schema object](https://spec.openapis.org/oas/v3.0.3#schema)
    * object. When this field is set, you must also set the `response_mime_type`
-   * to `application/json`.
+   * to `application/json`. Deprecated: Use `response_format` instead.
    *
+   * @deprecated
    * @param GoogleCloudAiplatformV1Schema $responseSchema
    */
   public function setResponseSchema(GoogleCloudAiplatformV1Schema $responseSchema)
@@ -465,6 +514,7 @@ class GoogleCloudAiplatformV1GenerationConfig extends \Google\Collection
     $this->responseSchema = $responseSchema;
   }
   /**
+   * @deprecated
    * @return GoogleCloudAiplatformV1Schema
    */
   public function getResponseSchema()

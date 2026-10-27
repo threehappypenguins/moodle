@@ -75,6 +75,13 @@ describe('Timeline', () => {
         expect(screen.queryByTestId('courses-view')).not.toBeInTheDocument();
     });
 
+    it('does not present the view containers as tab panels', () => {
+        const {container} = render(<Timeline {...defaultProps} />);
+
+        expect(container.querySelector('[data-region="view-dates"]')).not.toHaveAttribute('role');
+        expect(container.querySelector('[data-region="view-courses"]')).not.toHaveAttribute('role');
+    });
+
     it('renders the CoursesView when order is sortbycourses', () => {
         render(<Timeline {...defaultProps} order="sortbycourses" />);
         expect(screen.getByTestId('courses-view')).toBeInTheDocument();

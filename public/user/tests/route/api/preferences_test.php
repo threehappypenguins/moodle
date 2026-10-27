@@ -18,6 +18,8 @@ namespace core_user\route\api;
 
 use core\tests\router\route_testcase;
 use GuzzleHttp\Psr7\Utils;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Tests for user preference API handler.
@@ -25,9 +27,9 @@ use GuzzleHttp\Psr7\Utils;
  * @package    core_user
  * @copyright  Andrew Lyons <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers \core_user\route\api\preferences
- * @covers \core_user\route\responses\user_preferences_response
  */
+#[CoversClass(preferences::class)]
+#[CoversClass(\core_user\route\responses\user_preferences_response::class)]
 final class preferences_test extends route_testcase {
     /**
      * Ensure that preferences returned for a user without login are empty.
@@ -292,5 +294,104 @@ final class preferences_test extends route_testcase {
             ])),
         );
         $this->assert_access_denied_response($response);
+    }
+
+    /**
+     * Reading preferences only requires the read scope, while setting preferences requires both the read
+     * and write scopes.
+     *
+     * @param string $method
+     * @param string[] $expectedidentifiers
+     */
+    #[DataProvider('required_scopes_provider')]
+    public function test_required_scopes(string $method, array $expectedidentifiers): void {
+        $this->assert_route_required_scopes(
+            $expectedidentifiers,
+            [preferences::class, $method],
+        );
+    }
+
+    /**
+     * Data provider for test_required_scopes.
+     *
+     * @return array
+     */
+    public static function required_scopes_provider(): array {
+        return [
+            'get_preferences' => [
+                'get_preferences', [
+                    ['core_user:user:read:self'],
+                ],
+            ],
+            'set_preferences' => [
+                'set_preferences', [
+                    ['core_user:user:read:self', 'core_user:user:update:self'],
+                ],
+            ],
+            'set_preference' => [
+                'set_preference', [
+                    ['core_user:user:read:self', 'core_user:user:update:self'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Ensure that each route is authorized by any scope set which satisfies its requirements, whether
+     * the granted scopes are the required scopes themselves or an ancestor of them.
+     *
+     * @param string $method
+     * @param string[][] $scopesets
+     */
+    #[DataProvider('satisfying_scopes_provider')]
+    public function test_satisfying_scopes(string $method, array $scopesets): void {
+        foreach ($scopesets as $scopeset) {
+            $this->assert_route_authorized_with_scopes(
+                $scopeset,
+                [preferences::class, $method],
+            );
+        }
+    }
+
+    /**
+     * Data provider for test_satisfying_scopes.
+     *
+     * @return array
+     */
+    public static function satisfying_scopes_provider(): array {
+        return [
+            'get_preferences' => [
+                'get_preferences', [
+                    ['core_user:user:read'],
+                    ['core_user:user:read:self'],
+                ],
+            ],
+            'set_preferences' => [
+                'set_preferences', [
+                    ['core_user:user:read', 'core_user:user:update'],
+                    ['core_user:user:read', 'core_user:user:update:self'],
+                    ['core_user:user:read:self', 'core_user:user:update'],
+                    ['core_user:user:read:self', 'core_user:user:update:self'],
+                ],
+            ],
+            'set_preference' => [
+                'set_preference', [
+                    ['core_user:user:read', 'core_user:user:update'],
+                    ['core_user:user:read', 'core_user:user:update:self'],
+                    ['core_user:user:read:self', 'core_user:user:update'],
+                    ['core_user:user:read:self', 'core_user:user:update:self'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Reading preferences requires the read scope and is not satisfied by just the write scope
+     */
+    public function test_not_satisfying_scopes(): void {
+        $this->assert_route_not_authorized_with_scopes(
+            ['core_user:user:update'],
+            [preferences::class, 'get_preferences'],
+        );
     }
 }

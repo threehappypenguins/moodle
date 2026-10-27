@@ -1,4 +1,4 @@
-Description of XHProf 2.3.9 library/viewer import into Moodle
+Description of XHProf 2.3.10 library/viewer import into Moodle
 
 Removed (commit #1):
  * examples - examples dir removed completely
@@ -45,3 +45,4 @@ TODO:
 20221214 - MDL-76397 - Stevani Andolo (stevandoMoodle): Upgrade to 2.3.9 release;
 20251024 - MDL-86235 - Andi Permana (andimendunia): Add table-hover class to profiling table
 20260424 - MDL-88424 - Andi Permana (andimendunia): Fix PHP 8.1 stripos() null deprecation in xhprof_parse_parent_child()
+20260828 - MDL-89582 - Huong Nguyen (huongn): Upgrade to 2.3.10 release; fix PHP 8.4 compatibility issue in xhprof_lib/display/xhprof.php

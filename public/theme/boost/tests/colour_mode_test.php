@@ -51,14 +51,17 @@ final class colour_mode_test extends \advanced_testcase {
     }
 
     /**
-     * Auto is used when the site default is missing or has been given a value which is not a colour mode.
+     * Light is used when the site default is missing or has been given a value which is not a colour mode.
+     *
+     * This matches the default the setting itself carries, so a site which has never saved it and a site which has
+     * saved something unusable are rendered the same way.
      */
     public function test_get_site_default_with_invalid_config(): void {
         unset_config('defaultcolourmode', 'theme_boost');
-        $this->assertEquals(colour_mode::AUTO, colour_mode::get_site_default());
+        $this->assertEquals(colour_mode::LIGHT, colour_mode::get_site_default());
 
         set_config('defaultcolourmode', 'chartreuse', 'theme_boost');
-        $this->assertEquals(colour_mode::AUTO, colour_mode::get_site_default());
+        $this->assertEquals(colour_mode::LIGHT, colour_mode::get_site_default());
     }
 
     /**

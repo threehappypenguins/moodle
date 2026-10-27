@@ -30,7 +30,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import {loadComponents, PLUGIN_MANIFEST_FILENAME} from './utils.mjs';
+import {loadComponents, detectComponentExport, PLUGIN_MANIFEST_FILENAME} from './utils.mjs';
 
 /** Safety level assigned to a component discovered without an explicit swizzle.json entry. */
 const DEFAULT_ACTIONS = {eject: 'risky', wrap: 'risky'};
@@ -96,51 +96,36 @@ export function generateSwizzleManifest(rootDir) {
 }
 
 /**
- * True when the given source file contains a top-level default export.
+ * Discover component module names under a js/esm/src/ directory, recursively.
  *
- * Used as a lightweight signal that a .tsx module is a swizzleable React
- * component rather than a plain utility file (e.g. ajax.ts, utils.ts).
- *
- * @param {string} filePath
- * @returns {boolean}
- */
-function hasDefaultExport(filePath) {
-    return /export\s+default\b/.test(fs.readFileSync(filePath, 'utf8'));
-}
-
-/**
- * Discover component module names directly under a js/esm/src/ directory.
- *
- * A module is either a top-level .tsx file, or a directory containing an
- * index.tsx/index.ts — in both cases only counted when it has a default
- * export, mirroring how wrap/eject resolve the component's source file.
- *
- * @param {string} srcDir
+ * @param {string} srcDir  Absolute path to the component's js/esm/src/.
+ * @param {string} prefix  Module path accumulated so far, '' at the top level.
  * @returns {string[]}
  */
-function discoverModuleNames(srcDir) {
+function discoverModuleNames(srcDir, prefix = '') {
     if (!fs.existsSync(srcDir)) {
         return [];
     }
 
     const names = [];
     for (const entry of fs.readdirSync(srcDir, {withFileTypes: true})) {
+        const moduleName = prefix ? `${prefix}/${entry.name}` : entry.name;
+
         if (entry.isFile() && entry.name.endsWith('.tsx')) {
-            const filePath = path.join(srcDir, entry.name);
-            if (hasDefaultExport(filePath)) {
-                names.push(entry.name.slice(0, -'.tsx'.length));
+            const stem = moduleName.slice(0, -'.tsx'.length);
+            if (detectComponentExport(path.join(srcDir, entry.name), stem)) {
+                names.push(stem);
             }
             continue;
         }
 
-        if (entry.isDirectory()) {
-            const indexFile = ['index.tsx', 'index.ts']
-                .map(name => path.join(srcDir, entry.name, name))
-                .find(candidate => fs.existsSync(candidate));
-            if (indexFile && hasDefaultExport(indexFile)) {
-                names.push(entry.name);
-            }
+        if (!entry.isDirectory()) {
+            continue;
         }
+
+        // Descend into every directory. An index file is a module like any other,
+        // named by its own path, because module specifiers carry no implicit index.
+        names.push(...discoverModuleNames(path.join(srcDir, entry.name), moduleName));
     }
     return names;
 }

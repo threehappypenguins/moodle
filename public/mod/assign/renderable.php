@@ -299,6 +299,8 @@ class assign_feedback_status implements renderable {
     public $gradingcontrollergrade;
     /** @var array information for the given plugins. */
     public $plugins = [];
+    /** @var array markerfeedback - feedback broken down by individual marker (for multi-marker assignments). */
+    public $markerfeedback = [];
 
     /**
      * Constructor

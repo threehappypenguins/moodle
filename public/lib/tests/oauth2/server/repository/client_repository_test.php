@@ -49,7 +49,7 @@ final class client_repository_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $repository = new client_repository();
+        $repository = \core\di::get(client_repository::class);
 
         if (!empty($clientdata)) {
             // Ensure valid system context is set.
@@ -76,7 +76,7 @@ final class client_repository_test extends \advanced_testcase {
             $this->assertSame($expectedproperties['status'], $client->get_status());
             $this->assertSame($expectedproperties['isconfidential'], $client->isConfidential());
             $this->assertEqualsCanonicalizing($expectedproperties['granttypes'], $client->get_grant_types());
-            $this->assertEquals($expectedproperties['ispkceenabled'], $client->is_pkce_enabled());
+            $this->assertEquals($expectedproperties['ispkcerequired'], $client->is_pkce_required());
             $this->assertEqualsCanonicalizing($expectedproperties['redirecturi'], array_values($client->getRedirectUri()));
         }
     }
@@ -102,9 +102,10 @@ final class client_repository_test extends \advanced_testcase {
                     'status' => client_entity::STATUS_ACTIVE,
                     'isconfidential' => 1,
                     'granttypes' => client_entity::GRANT_TYPE_CLIENT_CREDENTIALS,
-                    'ispkceenabled' => false,
+                    'ispkcerequired' => false,
                     'timecreated' => time(),
                     'redirecturis' => ['https://example.test/callback'],
+                    'scopes' => '',
                 ],
                 'client-identifier-1',
                 false,
@@ -115,7 +116,7 @@ final class client_repository_test extends \advanced_testcase {
                     'status' => client_entity::STATUS_ACTIVE,
                     'isconfidential' => true,
                     'granttypes' => [client_entity::GRANT_TYPE_CLIENT_CREDENTIALS],
-                    'ispkceenabled' => false,
+                    'ispkcerequired' => false,
                     'redirecturi' => ['https://example.test/callback'],
                 ],
             ],
@@ -124,7 +125,7 @@ final class client_repository_test extends \advanced_testcase {
                     'name' => 'Revoked Client',
                     'clientidentifier' => 'client-identifier-1',
                     'description' => null,
-                    'status' => client_entity::STATUS_REVOKED,
+                    'status' => client_entity::STATUS_DISABLED,
                     'isconfidential' => 0,
                     'granttypes' => implode(
                         ',' ,
@@ -133,9 +134,10 @@ final class client_repository_test extends \advanced_testcase {
                             client_entity::GRANT_TYPE_REFRESH_TOKEN,
                         ]
                     ),
-                    'ispkceenabled' => true,
+                    'ispkcerequired' => true,
                     'timecreated' => time(),
                     'redirecturis' => ['https://example.test/uri1', 'https://example.test/uri2'],
+                    'scopes' => '',
                 ],
                 'client-identifier-1',
                 true,
@@ -146,6 +148,10 @@ final class client_repository_test extends \advanced_testcase {
 
     /**
      * Test validateClient under different scenarios using data providers.
+     *
+     * Also verifies that the secret's lastaccessed timestamp is updated at the exact moment a
+     * secret is matched, and left untouched when validation fails, since that is the only
+     * signal available for tracking the secret.
      *
      * @param array $clientdata The data to insert into the clients table.
      * @param string|null $plaintextsecret The plain secret to insert (hashed) into secrets table.
@@ -172,14 +178,16 @@ final class client_repository_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $repository = new client_repository();
+        $clock = $this->mock_clock_with_frozen();
+        $repository = \core\di::get(client_repository::class);
 
+        $secretid = null;
         if (!empty($clientdata)) {
             $clientdata['ownercontext'] = \context_system::instance()->id;
             $DB->insert_record('oauth2_server_clients', (object) $clientdata);
 
             if ($plaintextsecret !== null) {
-                $DB->insert_record('oauth2_server_client_secrets', (object) [
+                $secretid = $DB->insert_record('oauth2_server_client_secrets', (object) [
                     'clientidentifier' => $clientdata['clientidentifier'],
                     'secret' => password_hash($plaintextsecret, PASSWORD_DEFAULT),
                     'revoked' => $secretrevoked,
@@ -193,6 +201,15 @@ final class client_repository_test extends \advanced_testcase {
             $expectedresult,
             $repository->validateClient($checkidentifier, $checksecret, $checkgranttype)
         );
+
+        if ($secretid !== null) {
+            $lastaccessed = $DB->get_field('oauth2_server_client_secrets', 'lastaccessed', ['id' => $secretid]);
+            if ($expectedresult) {
+                $this->assertEquals($clock->time(), $lastaccessed);
+            } else {
+                $this->assertNull($lastaccessed);
+            }
+        }
     }
 
     /**
@@ -226,6 +243,7 @@ final class client_repository_test extends \advanced_testcase {
                         ],
                     ),
                     'timecreated' => time(),
+                    'scopes' => '',
                 ],
                 'supersecret',
                 client_entity::SECRET_REVOKED_NO,
@@ -249,6 +267,7 @@ final class client_repository_test extends \advanced_testcase {
                         ],
                     ),
                     'timecreated' => time(),
+                    'scopes' => '',
                 ],
                 'supersecret',
                 client_entity::SECRET_REVOKED_NO,
@@ -272,6 +291,7 @@ final class client_repository_test extends \advanced_testcase {
                         ],
                     ),
                     'timecreated' => time(),
+                    'scopes' => '',
                 ],
                 'supersecret',
                 client_entity::SECRET_REVOKED_YES,
@@ -295,6 +315,7 @@ final class client_repository_test extends \advanced_testcase {
                         ],
                     ),
                     'timecreated' => time(),
+                    'scopes' => '',
                 ],
                 'supersecret',
                 client_entity::SECRET_REVOKED_NO,
@@ -318,6 +339,7 @@ final class client_repository_test extends \advanced_testcase {
                         ],
                     ),
                     'timecreated' => time() - 7200,
+                    'scopes' => '',
                 ],
                 'supersecret',
                 client_entity::SECRET_REVOKED_NO,

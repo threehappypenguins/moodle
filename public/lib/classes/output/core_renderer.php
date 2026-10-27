@@ -37,6 +37,7 @@ use core\hook\output\after_standard_main_region_html_generation;
 use core\hook\output\before_footer_html_generation;
 use core\hook\output\before_html_attributes;
 use core\hook\output\before_http_headers;
+use core\hook\output\before_help_icon_rendered;
 use core\hook\output\before_standard_footer_html_generation;
 use core\hook\output\before_standard_top_of_body_html_generation;
 use core\output\actions\component_action;
@@ -2255,7 +2256,21 @@ class core_renderer extends renderer_base {
      */
     protected function render_help_icon(help_icon $helpicon) {
         $context = $helpicon->export_for_template($this);
-        return $this->render_from_template('core/help_icon', $context);
+
+        $hook = new before_help_icon_rendered($helpicon, $this, $context);
+        di::get(hook_manager::class)->dispatch($hook);
+
+        // If a plugin provided a complete replacement, return it directly.
+        if ($hook->get_replacement() !== null) {
+            return $hook->get_replacement();
+        }
+
+        // Render with any extra HTML before/after the help icon.
+        $output = $hook->get_before_icon();
+        $output .= $this->render_from_template('core/help_icon', $hook->get_templatecontext());
+        $output .= $hook->get_after_icon();
+
+        return $output;
     }
 
     /**
@@ -2600,13 +2615,28 @@ EOD;
      */
     public function edit_switch() {
         if ($this->page->user_allowed_editing()) {
+            // Generated once here, rather than via the template's own {{uniqid}} helper, so the
+            // same id can be shared between the reactprops below and the NonJS fallback markup.
+            $elementid = html_writer::random_id('editingswitch');
+            $checked = $this->page->user_is_editing();
             $temp = (object) [
                 'legacyseturl' => (new moodle_url('/editmode.php'))->out(false),
                 'pagecontextid' => $this->page->context->id,
                 'pageurl' => $this->page->url,
                 'sesskey' => sesskey(),
+                'elementid' => $elementid,
+                // JSON props for the core/EditModeSwitch React component (core/nav/PrimaryNav's
+                // export_react_props() pattern): built server-side so the React markup and the
+                // NonJS fallback markup below can never disagree about id/label/state.
+                'reactprops' => json_encode([
+                    'id' => $elementid,
+                    'context' => $this->page->context->id,
+                    'pageurl' => $this->page->url->out(false),
+                    'checked' => $checked,
+                    'label' => get_string('editmode'),
+                ], JSON_UNESCAPED_UNICODE),
             ];
-            if ($this->page->user_is_editing()) {
+            if ($checked) {
                 $temp->checked = true;
             }
             return $this->render_from_template('core/editswitch', $temp);
@@ -2663,6 +2693,9 @@ EOD;
 
         $output = '';
         $obbuffer = '';
+
+        // Do not display the navigation footer when encountering an error.
+        $this->page->set_show_navigation_footer(false);
 
         if ($this->has_started()) {
             // we can not always recover properly here, we have problems with output buffering,
@@ -2903,7 +2936,9 @@ EOD;
      * @return string the HTML to output.
      */
     public function skip_link_target($id = null) {
-        return html_writer::span('', '', ['id' => $id]);
+        // The tabindex="-1" makes the target focusable so that activating the skip link moves
+        // keyboard focus to it, rather than leaving focus on the link (which would trap the user).
+        return html_writer::span('', '', ['id' => $id, 'tabindex' => -1]);
     }
 
     /**

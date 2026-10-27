@@ -97,7 +97,7 @@ class RevokeClientSecretAction extends baseClientAction {
      * @returns {Promise<string>} Resolved button string text.
      */
     async getConfirmationButtonText() {
-        return await getString('oauth2server_clientrevoke', 'admin');
+        return await getString('oauth2server_revoke', 'admin');
     }
 
     /**

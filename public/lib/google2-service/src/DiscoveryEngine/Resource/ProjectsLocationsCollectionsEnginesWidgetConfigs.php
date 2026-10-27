@@ -46,6 +46,18 @@ class ProjectsLocationsCollectionsEnginesWidgetConfigs extends \Google\Service\R
    * @opt_param bool getWidgetConfigRequestOption.turnOffCollectionComponents
    * Optional. Whether to turn off collection_components in WidgetConfig to reduce
    * latency and data transmission.
+   * @opt_param string languageCode Optional. BCP-47 language tag (e.g. "en", "fr-
+   * CA"). Used to localize human-readable strings in the response, such as the
+   * model selector `display_name` / `description` on
+   * `WidgetConfig.UiSettings.ModelConfigInfo`. Empty / unset falls back to the
+   * default language (English).
+   * @opt_param string modelInfoView Optional. Selects which view of
+   * `WidgetConfig.UiSettings.ModelConfigInfo` the backend computes.
+   * `MODEL_INFO_VIEW_ADMIN` is set by the Cloud Console admin "Feature
+   * Management" page (screen/4Vn9gQKbN8tb7gm) to receive the admin-surfaced model
+   * set with `ResolvedModel.admin_view` populated; unset / `MODEL_INFO_VIEW_WEB`
+   * returns the end-user selector. The mobile surface is detected from the
+   * `X-Goog-Gemini-Enterprise-Mobile` header instead (see `ModelInfoView`).
    * @return GoogleCloudDiscoveryengineV1WidgetConfig
    * @throws \Google\Service\Exception
    */

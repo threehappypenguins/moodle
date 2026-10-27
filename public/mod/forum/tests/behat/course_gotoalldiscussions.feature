@@ -12,9 +12,11 @@ Feature: Course linear navigation from forum activity
 
   @javascript
   Scenario Outline: A user can go to the discussions list from a discussion forum page
-    Given the following "courses" exist:
-      | fullname | shortname | format | enablelinearnav |
-      | Course1  | C1        | topics | <linearnav>     |
+    Given the following config values are set as admin:
+      | enablelinearnav | <linearnav> | format_topics |
+    And the following "courses" exist:
+      | fullname | shortname | format |
+      | Course1  | C1        | topics |
     And the following "course enrolments" exist:
       | user    | course | role           |
       | student | C1     | student        |

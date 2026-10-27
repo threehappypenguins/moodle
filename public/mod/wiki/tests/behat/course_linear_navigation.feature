@@ -9,9 +9,11 @@ Feature: Display the course linear navigation in the wiki pages
       | username | firstname | lastname |
       | teacher  | Teacher   | 1        |
       | student  | Student   | 1        |
+    And the following config values are set as admin:
+      | enablelinearnav | 1 | format_topics |
     And the following "courses" exist:
-      | fullname | shortname | format | enablelinearnav |
-      | Course 1 | C1        | topics | 1               |
+      | fullname | shortname | format |
+      | Course 1 | C1        | topics |
     And the following "course enrolments" exist:
       | user    | course | role           |
       | student | C1     | student        |

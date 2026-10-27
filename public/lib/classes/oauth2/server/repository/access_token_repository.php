@@ -19,6 +19,7 @@ namespace core\oauth2\server\repository;
 use League\OAuth2\Server\Repositories\AccessTokenRepositoryInterface;
 use League\OAuth2\Server\Entities\AccessTokenEntityInterface;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
+use core\clock;
 use core\oauth2\server\entity\access_token_entity;
 
 /**
@@ -29,6 +30,17 @@ use core\oauth2\server\entity\access_token_entity;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class access_token_repository implements AccessTokenRepositoryInterface {
+    /**
+     * Constructor.
+     *
+     * @param clock $clock The clock used to timestamp the issuing client's last access.
+     */
+    public function __construct(
+        /** @var clock The clock used to timestamp the issuing client's last access. */
+        private readonly clock $clock,
+    ) {
+    }
+
     #[\Override]
     public function getNewToken(
         ClientEntityInterface $cliententity,
@@ -38,7 +50,9 @@ class access_token_repository implements AccessTokenRepositoryInterface {
         $accesstokenentity = new access_token_entity();
         $accesstokenentity->setClient($cliententity);
 
-        if ($useridentifier !== null) {
+        if ($useridentifier === null) {
+            $accesstokenentity->setUserIdentifier(0);
+        } else {
             $accesstokenentity->setUserIdentifier($useridentifier);
         }
 
@@ -53,17 +67,14 @@ class access_token_repository implements AccessTokenRepositoryInterface {
     public function persistNewAccessToken(AccessTokenEntityInterface $accesstokenentity): void {
         global $DB;
 
-        $scopes = array_map(function ($scope) {
-            return $scope->getIdentifier();
-        }, $accesstokenentity->getScopes());
+        $scopes = array_map(
+            static fn ($scope) => $scope->getIdentifier(),
+            $accesstokenentity->getScopes(),
+        );
 
         $record = new \stdClass();
         $record->identifier = $accesstokenentity->getIdentifier();
-
-        if ($userid = $accesstokenentity->getUserIdentifier()) {
-            $record->userid = $userid;
-        }
-
+        $record->userid = $accesstokenentity->getUserIdentifier() ?? 0;
         $record->clientidentifier = $accesstokenentity->getClient()->getIdentifier();
         $record->scopes = implode(' ', $scopes);
         $record->expirytime = $accesstokenentity->getExpiryDateTime()->getTimestamp();
@@ -71,6 +82,21 @@ class access_token_repository implements AccessTokenRepositoryInterface {
         $record->timecreated = time();
 
         $DB->insert_record('oauth2_server_client_access_tokens', $record);
+
+        // The token has just been issued to this client, so this is the definitive moment to record the client's access.
+        try {
+            $DB->set_field(
+                'oauth2_server_clients',
+                'lastaccessed',
+                $this->clock->time(),
+                ['clientidentifier' => $accesstokenentity->getClient()->getIdentifier()],
+            );
+        } catch (\Throwable $exception) {
+            // Best-effort tracking: the token has already been issued above, so a failure here should not affect the
+            // response. error_log() ensures it is still visible in server logs.
+            // phpcs:ignore moodle.PHP.ForbiddenFunctions.FoundWithAlternative
+            error_log('Failed to update client lastaccessed timestamp: ' . $exception->getMessage());
+        }
     }
 
     #[\Override]

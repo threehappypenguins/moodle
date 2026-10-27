@@ -28,6 +28,9 @@ require_once($CFG->libdir.'/adminlib.php');
  * @copyright  2020 Brendan Heywood <brendan@catalyst-au.net>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversFunction('db_should_replace')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('admin_output_new_settings_by_page')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('admin_apply_default_settings')]
 final class adminlib_test extends \advanced_testcase {
 
     /**
@@ -69,12 +72,11 @@ final class adminlib_test extends \advanced_testcase {
     /**
      * Test which tables and column should be replaced.
      *
-     * @dataProvider db_should_replace_dataprovider
-     * @covers ::db_should_replace
      * @param string $table name
      * @param string $column name
      * @param bool $expected whether it should be replaced
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('db_should_replace_dataprovider')]
     public function test_db_should_replace(string $table, string $column, bool $expected): void {
         $actual = db_should_replace($table, $column);
         $this->assertSame($actual, $expected);
@@ -83,7 +85,6 @@ final class adminlib_test extends \advanced_testcase {
     /**
      * Data provider for additional skip tables.
      *
-     * @covers ::db_should_replace
      * @return array
      */
     public static function db_should_replace_additional_skip_tables_dataprovider(): array {
@@ -114,12 +115,11 @@ final class adminlib_test extends \advanced_testcase {
     /**
      * Test additional skip tables.
      *
-     * @dataProvider db_should_replace_additional_skip_tables_dataprovider
-     * @covers ::db_should_replace
      * @param string $table name
      * @param string $column name
      * @param bool $expected whether it should be replaced
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('db_should_replace_additional_skip_tables_dataprovider')]
     public function test_db_should_replace_additional_skip_tables(string $table, string $column, bool $expected): void {
         $this->resetAfterTest();
         $additionalskiptables = 'context, quiz_attempts, role_assignments ';
@@ -129,8 +129,6 @@ final class adminlib_test extends \advanced_testcase {
 
     /**
      * Test admin_output_new_settings_by_page method.
-     *
-     * @covers ::admin_output_new_settings_by_page
      */
     public function test_admin_output_new_settings_by_page(): void {
         $this->resetAfterTest();
@@ -160,8 +158,6 @@ final class adminlib_test extends \advanced_testcase {
 
     /**
      * Test repeated recursive application of default settings.
-     *
-     * @covers ::admin_apply_default_settings
      */
     public function test_admin_apply_default_settings(): void {
         global $DB;
@@ -205,5 +201,43 @@ final class adminlib_test extends \advanced_testcase {
         // Make sure there were enough repetitions.
         $saved = admin_apply_default_settings(null, false);
         $this->assertSame([], $saved);
+    }
+
+    /**
+     * The deprecated override and warning context variables of core_admin/setting must still be provided.
+     *
+     * @covers ::format_admin_setting
+     */
+    public function test_format_admin_setting_provides_deprecated_context(): void {
+        global $CFG, $OUTPUT;
+        $this->resetAfterTest();
+        require_once($CFG->libdir . '/adminlib.php');
+
+        $captured = null;
+        $renderer = $this->getMockBuilder(\core_renderer::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['render_from_template'])
+            ->getMock();
+        $renderer->method('render_from_template')->willReturnCallback(
+            function (string $template, $context) use (&$captured): string {
+                $captured = $context;
+                return '';
+            }
+        );
+        $originaloutput = $OUTPUT;
+        $OUTPUT = $renderer;
+
+        try {
+            $setting = new \admin_setting_configtext('mdl87756test', 'Test', 'Desc', '');
+            $CFG->config_php_settings['mdl87756test'] = 'forced';
+
+            format_admin_setting($setting, 'Title', '<input>', 'Description', true, 'Example warning.');
+
+            $this->assertSame('Example warning.', $captured->warning);
+            $this->assertSame(get_string('configoverride', 'admin'), $captured->override);
+            $this->assertCount(2, $captured->notifications);
+        } finally {
+            $OUTPUT = $originaloutput;
+        }
     }
 }

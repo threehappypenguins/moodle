@@ -48,8 +48,8 @@ class api_token_entity {
     /** @var int The user ID of the token owner. */
     protected int $userid;
 
-    /** @var string The space-separated list of scopes. */
-    protected string $scopes;
+    /** @var string[] An array of scopes stored as their string values */
+    protected array $scopes;
 
     /** @var int|null The token expiry timestamp. */
     protected ?int $expirytime;
@@ -63,6 +63,9 @@ class api_token_entity {
     /** @var int|null The timestamp when the token was last accessed. */
     protected ?int $lastaccessed;
 
+    /** @var int|null When the owner was last reminded that the token is about to expire. */
+    protected ?int $timeexpirywarned;
+
     /**
      * Create an API token entity from a database record.
      *
@@ -75,12 +78,13 @@ class api_token_entity {
         $token->name = $record->name;
         $token->token = $record->token;
         $token->userid = (int) $record->userid;
-        $token->scopes = $record->scopes;
+        $token->scopes = explode(' ', $record->scopes);
         $token->timecreated = (int) $record->timecreated;
         $token->description = $record->description ?? null;
         $token->expirytime = isset($record->expirytime) ? (int) $record->expirytime : null;
         $token->revoked = (int) $record->revoked;
         $token->lastaccessed = isset($record->lastaccessed) ? (int) $record->lastaccessed : null;
+        $token->timeexpirywarned = isset($record->timeexpirywarned) ? (int) $record->timeexpirywarned : null;
 
         return $token;
     }
@@ -131,11 +135,11 @@ class api_token_entity {
     }
 
     /**
-     * Get the space-separated list of scopes.
+     * Get the list of scopes as an array of scopes in their string format.
      *
-     * @return string
+     * @return string[]
      */
-    public function get_scopes(): string {
+    public function get_scopes(): array {
         return $this->scopes;
     }
 
@@ -173,6 +177,15 @@ class api_token_entity {
      */
     public function get_lastaccessed(): ?int {
         return $this->lastaccessed;
+    }
+
+    /**
+     * Get when the owner was last reminded that the token is about to expire.
+     *
+     * @return int|null
+     */
+    public function get_timeexpirywarned(): ?int {
+        return $this->timeexpirywarned;
     }
 
     /**

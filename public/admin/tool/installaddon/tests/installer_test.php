@@ -34,8 +34,8 @@ require_once(__DIR__ . '/fixtures/testable_installer_without_site_info.php');
  * @category    test
  * @copyright 2013 David Mudrak <david@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers \tool_installaddon_installer
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\tool_installaddon_installer::class)]
 final class installer_test extends \advanced_testcase {
 
     public function test_get_addons_repository_url(): void {
@@ -75,6 +75,22 @@ final class installer_test extends \advanced_testcase {
         $this->assertSame('marketplace.moodle.com', parse_url($marketplaceurl, PHP_URL_HOST));
         $this->assertSame('https', parse_url($marketplaceurl, PHP_URL_SCHEME));
         $this->assertEmpty(parse_url($marketplaceurl, PHP_URL_QUERY));
+    }
+
+    /**
+     * Tests that an alternative add-ons repository defined in config.php is detected and used.
+     */
+    public function test_alternative_addons_repository(): void {
+        global $CFG;
+        $this->resetAfterTest();
+
+        $installer = testable_tool_installaddon_installer::instance();
+        $this->assertFalse($installer->has_alternative_addons_repository());
+        $this->assertEquals($installer->get_marketplace_url(), $installer->get_addons_repository_url());
+
+        $CFG->config_php_settings['alternativeaddonsrepositoryurl'] = 'https://plugins.example.com/get.php';
+        $this->assertTrue($installer->has_alternative_addons_repository());
+        $this->assertSame('plugins.example.com', parse_url($installer->get_addons_repository_url(), PHP_URL_HOST));
     }
 
     public function test_decode_remote_request(): void {

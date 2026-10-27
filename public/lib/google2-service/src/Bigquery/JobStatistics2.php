@@ -82,6 +82,8 @@ class JobStatistics2 extends \Google\Collection
   protected $exportDataStatisticsDataType = '';
   protected $externalServiceCostsType = ExternalServiceCost::class;
   protected $externalServiceCostsDataType = 'array';
+  protected $genAiStatsType = GenAiStats::class;
+  protected $genAiStatsDataType = '';
   protected $incrementalResultStatsType = IncrementalResultStats::class;
   protected $incrementalResultStatsDataType = '';
   protected $loadQueryStatisticsType = LoadQueryStatistics::class;
@@ -113,12 +115,16 @@ class JobStatistics2 extends \Google\Collection
    * @var string
    */
   public $numDmlAffectedRows;
+  protected $objectStorageStatsType = ObjectStorageStats::class;
+  protected $objectStorageStatsDataType = 'array';
   protected $performanceInsightsType = PerformanceInsights::class;
   protected $performanceInsightsDataType = '';
   protected $queryInfoType = QueryInfo::class;
   protected $queryInfoDataType = '';
   protected $queryPlanType = ExplainQueryStage::class;
   protected $queryPlanDataType = 'array';
+  protected $referencedPropertyGraphsType = PropertyGraphReference::class;
+  protected $referencedPropertyGraphsDataType = 'array';
   protected $referencedRoutinesType = RoutineReference::class;
   protected $referencedRoutinesDataType = 'array';
   protected $referencedTablesType = TableReference::class;
@@ -297,8 +303,11 @@ class JobStatistics2 extends \Google\Collection
    */
   public $totalSlotMs;
   /**
-   * Output only. Total bytes transferred for cross-cloud queries such as Cross
-   * Cloud Transfer and CREATE TABLE AS SELECT (CTAS).
+   * Output only. Total bytes transferred for BigQuery Omni queries from the
+   * remote cloud back to Google Cloud. This tracks data movement over Google-
+   * managed connections (like query results). It doesn't include input data
+   * read from the external data lake (for example, S3) because that data stays
+   * within the remote cloud.
    *
    * @var string
    */
@@ -596,6 +605,22 @@ class JobStatistics2 extends \Google\Collection
     return $this->externalServiceCosts;
   }
   /**
+   * Output only. Statistics related to GenAI usage in the query.
+   *
+   * @param GenAiStats $genAiStats
+   */
+  public function setGenAiStats(GenAiStats $genAiStats)
+  {
+    $this->genAiStats = $genAiStats;
+  }
+  /**
+   * @return GenAiStats
+   */
+  public function getGenAiStats()
+  {
+    return $this->genAiStats;
+  }
+  /**
    * Output only. Statistics related to incremental query results, if enabled
    * for the query. This feature is not yet available.
    *
@@ -743,6 +768,23 @@ class JobStatistics2 extends \Google\Collection
     return $this->numDmlAffectedRows;
   }
   /**
+   * Output only. Storage and caching statistics per cloud provider for queries
+   * over object storage.
+   *
+   * @param ObjectStorageStats[] $objectStorageStats
+   */
+  public function setObjectStorageStats($objectStorageStats)
+  {
+    $this->objectStorageStats = $objectStorageStats;
+  }
+  /**
+   * @return ObjectStorageStats[]
+   */
+  public function getObjectStorageStats()
+  {
+    return $this->objectStorageStats;
+  }
+  /**
    * Output only. Performance insights.
    *
    * @param PerformanceInsights $performanceInsights
@@ -789,6 +831,23 @@ class JobStatistics2 extends \Google\Collection
   public function getQueryPlan()
   {
     return $this->queryPlan;
+  }
+  /**
+   * Output only. Referenced property graphs for the job. Queries that reference
+   * more than 50 property graphs will not have a complete list.
+   *
+   * @param PropertyGraphReference[] $referencedPropertyGraphs
+   */
+  public function setReferencedPropertyGraphs($referencedPropertyGraphs)
+  {
+    $this->referencedPropertyGraphs = $referencedPropertyGraphs;
+  }
+  /**
+   * @return PropertyGraphReference[]
+   */
+  public function getReferencedPropertyGraphs()
+  {
+    return $this->referencedPropertyGraphs;
   }
   /**
    * Output only. Referenced routines for the job.
@@ -1140,8 +1199,11 @@ class JobStatistics2 extends \Google\Collection
     return $this->totalSlotMs;
   }
   /**
-   * Output only. Total bytes transferred for cross-cloud queries such as Cross
-   * Cloud Transfer and CREATE TABLE AS SELECT (CTAS).
+   * Output only. Total bytes transferred for BigQuery Omni queries from the
+   * remote cloud back to Google Cloud. This tracks data movement over Google-
+   * managed connections (like query results). It doesn't include input data
+   * read from the external data lake (for example, S3) because that data stays
+   * within the remote cloud.
    *
    * @param string $transferredBytes
    */

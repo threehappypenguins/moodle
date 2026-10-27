@@ -53,6 +53,8 @@ class ProjectsLocationsFirewallEndpoints extends \Google\Service\Resource
    * clients from accidentally creating duplicate commitments. The request ID must
    * be a valid UUID with the exception that zero UUID is not supported
    * (00000000-0000-0000-0000-000000000000).
+   * @opt_param bool validateOnly Optional. If set, validate the request and
+   * preview the endpoint, but do not actually create it.
    * @return Operation
    * @throws \Google\Service\Exception
    */
@@ -63,7 +65,7 @@ class ProjectsLocationsFirewallEndpoints extends \Google\Service\Resource
     return $this->call('create', [$params], Operation::class);
   }
   /**
-   * Deletes a single Endpoint. (firewallEndpoints.delete)
+   * Deletes a single project Endpoint. (firewallEndpoints.delete)
    *
    * @param string $name Required. Name of the resource
    * @param array $optParams Optional parameters.
@@ -89,7 +91,7 @@ class ProjectsLocationsFirewallEndpoints extends \Google\Service\Resource
     return $this->call('delete', [$params], Operation::class);
   }
   /**
-   * Gets details of a single Endpoint. (firewallEndpoints.get)
+   * Gets details of a single project Endpoint. (firewallEndpoints.get)
    *
    * @param string $name Required. Name of the resource
    * @param array $optParams Optional parameters.
@@ -126,7 +128,7 @@ class ProjectsLocationsFirewallEndpoints extends \Google\Service\Resource
     return $this->call('list', [$params], ListFirewallEndpointsResponse::class);
   }
   /**
-   * Update a single Endpoint. (firewallEndpoints.patch)
+   * Update a single project Endpoint. (firewallEndpoints.patch)
    *
    * @param string $name Immutable. Identifier. Name of resource.
    * @param FirewallEndpoint $postBody

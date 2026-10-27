@@ -1,6 +1,6 @@
 # aiprovider_gemini Upgrade notes
 
-## 5.3dev
+## 5.3
 
 ### Added
 
@@ -13,4 +13,3 @@
 - `process_generate_image` now branches its request and response handling on the configured endpoint's method (`:predict` for Imagen vs `:generateContent` for Gemini's native image generation), instead of assuming the Imagen protocol. This is determined from the endpoint URL rather than the model name, so it also applies to any custom model an admin configures.
 
   For more information see [MDL-89431](https://tracker.moodle.org/browse/MDL-89431)
-

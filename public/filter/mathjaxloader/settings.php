@@ -36,7 +36,7 @@ if ($ADMIN->fulltree) {
         'filter_mathjaxloader/httpsurl',
         new lang_string('httpsurl', 'filter_mathjaxloader'),
         new lang_string('httpsurl_help', 'filter_mathjaxloader'),
-        'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.js',
+        'https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-mml-chtml.js',
         PARAM_RAW
     );
     $settings->add($item);

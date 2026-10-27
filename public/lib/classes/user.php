@@ -562,6 +562,25 @@ class user {
     }
 
     /**
+     * Get the user record for the system user.
+     *
+     * @return stdClass user record
+     */
+    public static function get_system_user(): stdClass {
+        global $CFG;
+
+        // The system user is essentially the admin user, but with some value removed.
+        // We ignore the timezone language, and locale preferences - use the site default instead.
+        $systemuser = get_admin();
+        $systemuser->timezone = $CFG->timezone;
+        $systemuser->lang = '';
+        $systemuser->theme = '';
+        unset($systemuser->description);
+
+        return $systemuser;
+    }
+
+    /**
      * Reset self::$noreplyuser and self::$supportuser.
      * This is only used by phpunit, and there is no other use case for this function.
      * Please don't use it outside phpunit.
@@ -1924,6 +1943,11 @@ class user {
             $updaterecord = (object) $changedattributes;
             $updaterecord->id = $currentrecord->id;
             $DB->update_record('user', $updaterecord);
+
+            if (array_key_exists('email', $changedattributes)) {
+                // Invalidate any outstanding forgot-password tokens, as they were sent to the old email address.
+                $DB->delete_records('user_password_resets', ['userid' => $currentrecord->id]);
+            }
         }
 
         if ($updatepassword) {
@@ -3082,6 +3106,27 @@ class user {
      */
     public static function update_device_public_key(string $uuid, string $appid, string $publickey): bool {
         return \core_user\devicekey::update_device_public_key($uuid, $appid, $publickey);
+    }
+
+    /**
+     * Return the confirmation text used for user deletion confirmations.
+     *
+     * Plugins may extend the text via the \core_user\hook\before_deletion_confirmation_html_generation hook.
+     *
+     * @return string confirmation text (HTML)
+     */
+    public static function get_deletion_confirmation_text(): string {
+        $hook = new \core_user\hook\before_deletion_confirmation_html_generation();
+        \core\di::get(\core\hook\manager::class)->dispatch($hook);
+
+        // Each block is a self-contained piece of HTML, so they are rendered one after another rather than
+        // being combined into a single sentence.
+        $blocks = [
+            html_writer::tag('p', get_string('deleteuserdatawarning', 'moodle')),
+            ...$hook->get_additions(),
+        ];
+
+        return implode('', $blocks);
     }
 }
 

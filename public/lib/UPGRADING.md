@@ -1,6 +1,29 @@
 # core (subsystem) Upgrade notes
 
-## 5.3dev
+## 6.0dev
+
+### Added
+
+- A new `\core\hook\output\before_help_icon_rendered` hook is dispatched when a help icon is rendered. Callbacks can modify the template context (e.g. the popover `text`), add HTML before or after the icon using `add_before_icon()` and `add_after_icon()`, or replace the whole help icon output using `set_replacement()`.
+
+  For more information see [MDL-88319](https://tracker.moodle.org/browse/MDL-88319)
+
+### Changed
+
+- Admin settings now dispatch the `core\hook\admin_setting_notification` hook when rendering each setting row. Plugins can implement a listener for this hook to add custom `\core\output\notification` messages (info, warning, success, or error).
+
+  For more information see [MDL-87756](https://tracker.moodle.org/browse/MDL-87756)
+
+### Deprecated
+
+- The `deletecheckfull` language string has been deprecated and should no longer be used. It has been replaced by the `deleteuserdatawarning` language string.
+
+  For more information see [MDL-62843](https://tracker.moodle.org/browse/MDL-62843)
+- The `override` and `warning` context variables of the `core_admin/setting` template are deprecated and are no longer rendered by core. Use the new `notifications` context variable instead. Theme and plugin overrides of this template should be updated; the old variables are still provided until their final deprecation.
+
+  For more information see [MDL-87756](https://tracker.moodle.org/browse/MDL-87756)
+
+## 5.3
 
 ### Added
 
@@ -11,6 +34,9 @@
 - `email_to_user()` now emits a hook `before_email_to_user`. This hook allows any subscriber to modify the email contents, add additional headers, or add reasons to block the email. If any block reasons are added, the email is stopped from being sent and the reasons are output.
 
   For more information see [MDL-69724](https://tracker.moodle.org/browse/MDL-69724)
+- A new Behat step `I set the focus on the "<element>" "<selector>"` has been added to move keyboard focus onto an element without activating it.
+
+  For more information see [MDL-84065](https://tracker.moodle.org/browse/MDL-84065)
 - Token endpoint security improvements: earlier service validation, GET parameter sanitization. The 'appsitecheck' parameter has been removed from the token endpoint.
 
   For more information see [MDL-87010](https://tracker.moodle.org/browse/MDL-87010)
@@ -137,6 +163,9 @@
 - New `flexible_table::set_columnheadersattributes(...)` method for tables to define additional attributes ('class', 'data-X', etc.) for column headers
 
   For more information see [MDL-89384](https://tracker.moodle.org/browse/MDL-89384)
+- Closes an operational-visibility gap: available-updates check requests could not previously be attributed to a specific registered site, which limited abuse detection and support diagnostics on the hub side. \core\update\checker now sends two optional parameters with the available updates check: siteidentifier, the md5() of the site's registration secret, sent only when the site is registered with the sites directory, and countrycode, the configured $CFG->country, sent whenever it is set. Either parameter is omitted when it cannot be determined and the update check is never blocked by them.
+
+  For more information see [MDL-89513](https://tracker.moodle.org/browse/MDL-89513)
 - Support for Attribute-based Dependency Injection has been added:
 
   ```php
@@ -181,9 +210,15 @@
 - The `\core\task\manager::set_scheduled_task_nextruntime()` method now returns a boolean indicating whether the next run time was updated. It returns `false` when the scheduled task is already running.
 
   For more information see [MDL-89200](https://tracker.moodle.org/browse/MDL-89200)
+- Uninstalling a block plugin no longer deletes its instances synchronously. \core\plugininfo\block::uninstall_cleanup() now queues the new \core\task\delete_block_instances_task ad-hoc task, which deletes the instances and their related data (contexts, positions, user preferences and search index entries) in batches. This makes block removal upgrade steps and plugin uninstallation effectively instant on large sites. Remaining instances are not displayed anywhere once the block record has been deleted.
+
+  For more information see [MDL-89289](https://tracker.moodle.org/browse/MDL-89289)
 - The primary navigation in the Boost navbar is now rendered by the `core/nav/PrimaryNav` React component via the new `core/primarymoremenu` template, replacing `core/moremenu`. With JavaScript enabled the markup no longer includes the `.moremenu` wrapper, and navigation items are rendered as `a.mds-nav-pill` (selected items carry `.mds-nav-pill--selected` and `aria-current="page"`) instead of `a.nav-link.active`. Themes and plugins that style or script `.primary-navigation .moremenu` or `.primary-navigation .nav-link` need updating. A server-rendered `core/moremenu_children` fallback is still emitted inside the mount point for non-JavaScript clients.
 
   For more information see [MDL-89294](https://tracker.moodle.org/browse/MDL-89294)
+- The Edit mode switch in the navbar now renders using the design system Switch component instead of a hand-rolled Bootstrap .form-switch, to meet WCAG SC 1.4.11 contrast requirements. Theme developers overriding the edit switch markup (core/editswitch template, primarynavigation.scss) should review their overrides against the new DOM structure and CSS classes.
+
+  For more information see [MDL-89814](https://tracker.moodle.org/browse/MDL-89814)
 
 ### Deprecated
 
@@ -233,6 +268,9 @@
 - The `core_course` scope classes for course content and course structure now resolve their summary and description language strings. The string identifiers in `lang/en/course.php` were missing the leading `course_` identifier segment, so `\core\router\scope\abstract_scope::get_summary()` failed for six scopes.
 
   For more information see [MDL-87706](https://tracker.moodle.org/browse/MDL-87706)
+- Fixes an operational-visibility gap: a registered site whose reporting to the hub silently stopped previously gave administrators no indication of the failure. This is now surfaced to administrators. A new scheduled task core\task\registration_reporting_check_task runs daily and sends a notification through the new registrationreportingpaused message provider when reporting pauses, either because new registration fields await confirmation or because the Site registration scheduled task is disabled. \core\hub\registration gains get_reporting_paused_reason(), get_registration_page_notification() and check_reporting_paused_notification(); registration_reminder() is now also called from /my/index.php and /my/courses.php; and core_admin_renderer::registration_warning() renders a warning for a registered site whose reporting is paused because the task is disabled.
+
+  For more information see [MDL-89463](https://tracker.moodle.org/browse/MDL-89463)
 
 ## 5.2
 

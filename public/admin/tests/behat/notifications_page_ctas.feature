@@ -12,7 +12,7 @@ Feature: From Moodle CTA cards on the notifications page
     Then I should see "From Moodle"
     And I should see "Moodle Marketplace"
     And I should see "MoodleCloud"
-    And I should see "Certified Moodle Partners"
+    And I should see "Moodle Services"
     And I should see "Help decide what we build next"
 
   Scenario: Disabling a CTA card by key hides only that card
@@ -21,7 +21,7 @@ Feature: From Moodle CTA cards on the notifications page
     When I navigate to "Notifications" in site administration
     Then I should see "Moodle Marketplace"
     And I should not see "MoodleCloud"
-    And I should see "Certified Moodle Partners"
+    And I should see "Moodle Services"
     And I should see "Help decide what we build next"
 
   Scenario: Disabling all CTA cards by key hides the entire "From Moodle" section

@@ -26,8 +26,8 @@ use core_reportbuilder\exception\report_access_exception;
  * @package    report_aiusage
  * @copyright  2026 Matt Porritt <matt.porritt@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers     \report_aiusage\reportbuilder\local\systemreports\course_usage
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\report_aiusage\reportbuilder\local\systemreports\course_usage::class)]
 final class course_usage_test extends \advanced_testcase {
     /** @var int Counter used to keep actionid unique across ai_action_register test rows. */
     private static int $nextactionid = 0;
@@ -77,8 +77,8 @@ final class course_usage_test extends \advanced_testcase {
         $coursecontext = context_course::instance($course->id);
 
         $teacher = $generator->create_and_enrol($course, 'editingteacher');
-        $student1 = $generator->create_and_enrol($course, 'student');
-        $student2 = $generator->create_and_enrol($course, 'student');
+        $student1 = $generator->create_and_enrol($course, 'student', ['firstname' => 'Student1']);
+        $student2 = $generator->create_and_enrol($course, 'student', ['firstname' => 'Student2']);
 
         foreach ([$student1, $student2] as $student) {
             $this->insert_ai_action($student->id, $coursecontext->id, $course->id);
@@ -201,8 +201,8 @@ final class course_usage_test extends \advanced_testcase {
 
         // Non-editing teachers hold report/aiusage:view but not moodle/site:accessallgroups.
         $teacher = $generator->create_and_enrol($course, 'teacher');
-        $student1 = $generator->create_and_enrol($course, 'student');
-        $student2 = $generator->create_and_enrol($course, 'student');
+        $student1 = $generator->create_and_enrol($course, 'student', ['firstname' => 'Student1']);
+        $student2 = $generator->create_and_enrol($course, 'student', ['firstname' => 'Student2']);
 
         foreach ([$student1, $student2] as $student) {
             $this->insert_ai_action($student->id, $coursecontext->id, $course->id);
@@ -236,7 +236,7 @@ final class course_usage_test extends \advanced_testcase {
 
         // A student in a different course, whose AI action must not leak into this course's report.
         $othercourse = $this->getDataGenerator()->create_course();
-        $otherstudent = $this->getDataGenerator()->create_and_enrol($othercourse, 'student');
+        $otherstudent = $this->getDataGenerator()->create_and_enrol($othercourse, 'student', ['firstname' => 'OtherStudent']);
         $this->insert_ai_action($otherstudent->id, context_course::instance($othercourse->id)->id, $othercourse->id);
 
         $this->setUser($teacher);

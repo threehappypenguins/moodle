@@ -16,6 +16,7 @@
 
 namespace core\oauth2\server\entity;
 
+use League\OAuth2\Server\Entities\ScopeEntityInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -114,15 +115,33 @@ final class client_entity_test extends \advanced_testcase {
     }
 
     /**
-     * Test the client grant types getter.
-     *
-     * @return void
+     * Test the PKCE getter.
      */
-    public function test_pkce_enabled_getter(): void {
+    #[DataProvider('pkce_required_provider')]
+    public function test_pkce_required_getter(
+        bool $ispkcerequired,
+        bool $isconfidential,
+        bool $expectedresult,
+    ): void {
         $client = new client_entity();
-        $this->set_protected_property($client, 'ispkceenabled', true);
+        $this->set_protected_property($client, 'ispkcerequired', $ispkcerequired);
+        $this->set_protected_property($client, 'isConfidential', $isconfidential);
 
-        $this->assertTrue($client->is_pkce_enabled());
+        $this->assertSame($expectedresult, $client->is_pkce_required());
+    }
+
+    /**
+     * Data provider for PKCE required tests.
+     *
+     * @return \Generator
+     */
+    public static function pkce_required_provider(): \Generator {
+        yield 'Confidential: PKCE Required' => [true, true, true];
+        yield 'Confidential: PKCE Not Required' => [false, true, false];
+
+        // PKCE is always required for public clients.
+        yield 'Public: PKCE Required' => [true, false, true];
+        yield 'Public: PKCE Not Required' => [false, false, true];
     }
 
     /**
@@ -271,8 +290,9 @@ final class client_entity_test extends \advanced_testcase {
      * @param int $expectedstatus The expected status.
      * @param bool $expectedconfidential The expected isConfidential state.
      * @param array $expectedgranttypes The expected grant types supported by the client.
-     * @param bool $expectedpkceenabled The expected PKCE enabled state.
+     * @param bool $expectedpkcerequired The expected PKCE enabled state.
      * @param array $expectedredirecturis The expected redirect URIs.
+     * @param array $expectedscopes The expected scopes allowed for the client.
      * @return void
      */
     #[DataProvider('create_from_record_provider')]
@@ -286,8 +306,9 @@ final class client_entity_test extends \advanced_testcase {
         int $expectedstatus,
         bool $expectedconfidential,
         array $expectedgranttypes,
-        bool $expectedpkceenabled,
-        array $expectedredirecturis
+        bool $expectedpkcerequired,
+        array $expectedredirecturis,
+        array $expectedscopes,
     ): void {
         $this->resetAfterTest();
         $systemcontext = \context_system::instance();
@@ -303,8 +324,20 @@ final class client_entity_test extends \advanced_testcase {
         $this->assertSame($expectedstatus, $client->get_status());
         $this->assertSame($expectedconfidential, $client->isConfidential());
         $this->assertSame($expectedgranttypes, $client->get_grant_types());
-        $this->assertSame($expectedpkceenabled, $client->is_pkce_enabled());
+        $this->assertSame($expectedpkcerequired, $client->is_pkce_required());
         $this->assertSame($expectedredirecturis, (array)$client->getRedirectUri());
+        $this->assertSame($expectedscopes, $client->get_scopes());
+
+        foreach ($expectedscopes as $approvedscope) {
+            $scope = $this->createMock(ScopeEntityInterface::class);
+            $scope->method('getIdentifier')->willReturn($approvedscope);
+            $this->assertTrue($client->is_scope_approved($scope));
+        }
+
+        $unapprovedscope = $this->createMock(ScopeEntityInterface::class);
+        $unapprovedscope->method('getIdentifier')->willReturn('not-an-approved-scope');
+        $this->assertFalse($client->is_scope_approved($unapprovedscope));
+        $this->assertFalse($client->is_scope_approved(null));
     }
 
     /**
@@ -321,30 +354,32 @@ final class client_entity_test extends \advanced_testcase {
                     'name' => 'Client One',
                     'description' => 'Description One',
                     'ownercontext' => 1,
-                    'status' => 1,
+                    'status' => client_entity::STATUS_ACTIVE,
                     'isconfidential' => 1,
                     'granttypes' => client_entity::GRANT_TYPE_CLIENT_CREDENTIALS,
-                    'ispkceenabled' => false,
+                    'ispkcerequired' => false,
+                    'scopes' => 'profile email',
                 ],
                 [(object) ['uri' => 'https://example.test/callback']],
                 10,
                 'client-1',
                 'Client One',
                 'Description One',
-                1,
+                client_entity::STATUS_ACTIVE,
                 true,
                 [client_entity::GRANT_TYPE_CLIENT_CREDENTIALS],
                 false,
                 ['https://example.test/callback'],
+                ['profile', 'email'],
             ],
-            'revoked, public client with multiple redirect uris' => [
+            'disabled, public client with multiple redirect uris' => [
                 (object) [
                     'id' => 20,
                     'clientidentifier' => 'client-2',
                     'name' => 'Client Two',
                     'description' => null,
                     'ownercontext' => 1,
-                    'status' => 2,
+                    'status' => client_entity::STATUS_DISABLED,
                     'isconfidential' => 0,
                     'granttypes' => implode(
                         ',',
@@ -353,7 +388,8 @@ final class client_entity_test extends \advanced_testcase {
                             client_entity::GRANT_TYPE_AUTHORIZATION_CODE,
                         ],
                     ),
-                    'ispkceenabled' => true,
+                    'ispkcerequired' => true,
+                    'scopes' => 'profile',
                 ],
                 [
                     (object) ['uri' => 'https://example.test/alt1'],
@@ -363,7 +399,7 @@ final class client_entity_test extends \advanced_testcase {
                 'client-2',
                 'Client Two',
                 null,
-                2,
+                client_entity::STATUS_DISABLED,
                 false,
                 [
                     client_entity::GRANT_TYPE_CLIENT_CREDENTIALS,
@@ -371,6 +407,7 @@ final class client_entity_test extends \advanced_testcase {
                 ],
                 true,
                 ['https://example.test/alt1', 'https://example.test/alt2'],
+                ['profile'],
             ],
         ];
     }

@@ -24,7 +24,8 @@ class RequestStatusPerDestination extends \Google\Model
    */
   public const REQUEST_STATUS_REQUEST_STATUS_UNKNOWN = 'REQUEST_STATUS_UNKNOWN';
   /**
-   * The request succeeded.
+   * Processing succeeded for all records without any errors. However, there may
+   * be warnings in the `warning_info` field.
    */
   public const REQUEST_STATUS_SUCCESS = 'SUCCESS';
   /**
@@ -32,11 +33,14 @@ class RequestStatusPerDestination extends \Google\Model
    */
   public const REQUEST_STATUS_PROCESSING = 'PROCESSING';
   /**
-   * The request failed.
+   * Processing failed for all records. Check the `error_info` field for error
+   * details, and check the `warning_info` field for warning details.
    */
   public const REQUEST_STATUS_FAILED = 'FAILED';
   /**
-   * The request partially succeeded.
+   * Processing completed successfully without errors for some records, but
+   * failed with errors for other records. Check the `error_info` field for
+   * error details, and check the `warning_info` field for warning details.
    */
   public const REQUEST_STATUS_PARTIAL_SUCCESS = 'PARTIAL_SUCCESS';
   protected $audienceMembersIngestionStatusType = IngestAudienceMembersStatus::class;
@@ -49,6 +53,8 @@ class RequestStatusPerDestination extends \Google\Model
   protected $errorInfoDataType = '';
   protected $eventsIngestionStatusType = IngestEventsStatus::class;
   protected $eventsIngestionStatusDataType = '';
+  protected $removeAllAudienceMembersStatusType = RemoveAllAudienceMembersStatus::class;
+  protected $removeAllAudienceMembersStatusDataType = '';
   /**
    * The request status of the destination.
    *
@@ -108,7 +114,9 @@ class RequestStatusPerDestination extends \Google\Model
   }
   /**
    * An error info error containing the error reason and error counts related to
-   * the upload.
+   * the upload. Only populated if the `request_status` is `FAILED` or
+   * `PARTIAL_SUCCESS`. This field isn't populated while the request has
+   * `request_status` of `PROCESSING`.
    *
    * @param ErrorInfo $errorInfo
    */
@@ -140,6 +148,22 @@ class RequestStatusPerDestination extends \Google\Model
     return $this->eventsIngestionStatus;
   }
   /**
+   * The status of the remove all audience members request.
+   *
+   * @param RemoveAllAudienceMembersStatus $removeAllAudienceMembersStatus
+   */
+  public function setRemoveAllAudienceMembersStatus(RemoveAllAudienceMembersStatus $removeAllAudienceMembersStatus)
+  {
+    $this->removeAllAudienceMembersStatus = $removeAllAudienceMembersStatus;
+  }
+  /**
+   * @return RemoveAllAudienceMembersStatus
+   */
+  public function getRemoveAllAudienceMembersStatus()
+  {
+    return $this->removeAllAudienceMembersStatus;
+  }
+  /**
    * The request status of the destination.
    *
    * Accepted values: REQUEST_STATUS_UNKNOWN, SUCCESS, PROCESSING, FAILED,
@@ -160,7 +184,8 @@ class RequestStatusPerDestination extends \Google\Model
   }
   /**
    * A warning info containing the warning reason and warning counts related to
-   * the upload.
+   * the upload. This field isn't populated while the request has
+   * `request_status` of `PROCESSING`.
    *
    * @param WarningInfo $warningInfo
    */

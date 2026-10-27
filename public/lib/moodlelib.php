@@ -2750,11 +2750,14 @@ function require_logout() {
     // Clone of $USER object to be used by auth plugins.
     $user = fullclone($USER);
 
-    // Delete session record and drop $_SESSION content.
-    \core\session\manager::terminate_current();
-
-    // Trigger event AFTER action.
-    $event->trigger();
+    // Trigger before terminating so log writers can record login-as context.
+    // Always end the session, even if an event observer throws an Error.
+    try {
+        $event->trigger();
+    } finally {
+        // Delete session record and drop $_SESSION content.
+        \core\session\manager::terminate_current();
+    }
 
     // Hook to execute auth plugins redirection after event trigger.
     foreach ($authplugins as $authplugin) {
@@ -4099,16 +4102,18 @@ function complete_user_login($user, array $extrauserinfo = []) {
     // Allow plugins to callback as soon possible after user has completed login.
     di::get(\core\hook\manager::class)->dispatch(new \core_user\hook\after_login_completed());
 
-    // Check if the user is using a new browser or session (a new MoodleSession cookie is set in that case).
-    // If the user is accessing from the same IP, ignore everything (most of the time will be a new session in the same browser).
-    // Skip Web Service requests, CLI scripts, AJAX scripts, and request from the mobile app itself.
+    // Send a new login notification when the IP address has changed since the last login,
+    // unless the same user is logging in again (identified via the MOODLEID1_ cookie).
+    // Skip Web Service requests, CLI scripts, and environments that don't support cookies.
     $loginip = getremoteaddr();
     $isnewip = isset($SESSION->userpreviousip) && $SESSION->userpreviousip != $loginip;
     $isvalidenv = (!WS_SERVER && !CLI_SCRIPT) || PHPUNIT_TEST;
     $isvalidenv = $isvalidenv && \core\session\manager::supports_cookies();
 
-    if (!empty($SESSION->isnewsessioncookie) && $isnewip && $isvalidenv && !\core_useragent::is_moodle_app()) {
+    $prevusername = get_moodle_cookie();
+    $issameuser = !empty($prevusername) && $prevusername == $USER->username;
 
+    if (!$issameuser && $isnewip && $isvalidenv) {
         $logintime = time();
         $ismoodleapp = false;
         $useragent = \core_useragent::get_user_agent_string();
@@ -4489,20 +4494,29 @@ function delete_course($courseorid, $showfeedback = true, bool $asyncpreferred =
         return false;
     }
 
-    // Allow plugins to use this course before we completely delete it.
-    if ($pluginsfunction = get_plugins_with_function('pre_course_delete')) {
-        foreach ($pluginsfunction as $plugintype => $plugins) {
-            foreach ($plugins as $pluginfunction) {
-                $pluginfunction($course);
+    // If the course is already marked as deletion-in-progress, the pre_course_delete callbacks and
+    // before_course_deleted hook below have already run for it, during the click-time call that
+    // queued the asynchronous deletion task. This is that deferred, cron-time call, so the callbacks
+    // must not run a second time.
+    $callbacksalreadyran = ((int) ($course->deletioninprogress ?? 0))
+        === \core_course\management\helper::COURSE_DELETION_IN_PROGRESS;
+
+    if (!$callbacksalreadyran) {
+        // Allow plugins to use this course before we completely delete it.
+        if ($pluginsfunction = get_plugins_with_function('pre_course_delete')) {
+            foreach ($pluginsfunction as $plugintype => $plugins) {
+                foreach ($plugins as $pluginfunction) {
+                    $pluginfunction($course);
+                }
             }
         }
-    }
 
-    // Dispatch the hook for pre course delete actions.
-    $hook = new \core_course\hook\before_course_deleted(
-        course: $course,
-    );
-    \core\di::get(\core\hook\manager::class)->dispatch($hook);
+        // Dispatch the hook for pre course delete actions.
+        $hook = new \core_course\hook\before_course_deleted(
+            course: $course,
+        );
+        \core\di::get(\core\hook\manager::class)->dispatch($hook);
+    }
 
     // Mark a course for deletion, regardless of whether synchronous or asynchronous deletion takes place,
     // to prevent interference between backup/restore processes.
@@ -6063,6 +6077,10 @@ function send_confirmation_email($user, $confirmationurl = null) {
     $username = str_replace('.', '%2E', $username);
 
     $data->link = $confirmationpath . ( $hasquerystring ? '&' : '?') . 'data='. $user->secret .'/'. $username;
+
+    // Add the username field as placeholder to the template data.
+    // Hereby, use the unchanged username from the user object as we do not need url encoding here.
+    $data->username = $user->username;
 
     $message     = get_string('emailconfirmation', '', $data);
     $messagehtml = text_to_html(get_string('emailconfirmation', '', $data), false, false, true);
@@ -9026,7 +9044,7 @@ function get_performance_info() {
     if (is_readable('/proc/loadavg') && $loadavg = @file('/proc/loadavg')) {
         list($serverload) = explode(' ', $loadavg[0]);
         unset($loadavg);
-    } else if ( function_exists('is_executable') && is_executable('/usr/bin/uptime') && $loadavg = `/usr/bin/uptime` ) {
+    } else if (function_exists('is_executable') && is_executable('/usr/bin/uptime') && $loadavg = shell_exec('/usr/bin/uptime')) {
         if (preg_match('/load averages?: (\d+[\.,:]\d+)/', $loadavg, $matches)) {
             $serverload = $matches[1];
         } else {

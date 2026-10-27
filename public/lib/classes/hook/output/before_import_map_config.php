@@ -24,6 +24,10 @@ namespace core\hook\output;
  * (react, react-dom, @moodlehq/design-system, @moodle/lms/, etc.) and may call
  * {@see add_import()} to add their own specifiers or override existing ones.
  *
+ * Imports registered here are never automatically preloaded with a modulepreload hint: that is
+ * a closed core allowlist (see {@see \core\output\requirements\import_map::get_preload_specifiers()})
+ * so a plugin's own dependency is not fetched on every page that does not need it.
+ *
  * @package    core
  * @copyright  Andrew Lyons <andrew@nicols.co.uk>
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

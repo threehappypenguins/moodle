@@ -38,9 +38,11 @@ class composer_di {
             function (): \core\composer {
                 global $CFG;
 
+                $vendordir = \core\composer::locate_moodle_vendor_directory($CFG->root);
+
                 return new \core\composer(
-                    $CFG->root . '/vendor',
-                    $CFG->root . '/composer.lock'
+                    $vendordir,
+                    dirname($vendordir) . '/composer.lock',
                 );
             }
         );

@@ -114,41 +114,34 @@ $rb-right-sidebar-width: 350px !default;
 // Reportbuilder full page layout
 
 @include media-breakpoint-up(lg) {
-    $tabs-height: 83px;
-    $sidebar-margin-top: $navbar-height + $tabs-height + 20px;
+    $tabs-height: calc(44px + 1.5rem * 2); // 44px = tabs height, 1.5rem * 2 = top and bottom spacing.
+    $sidebar-margin-top: calc(#{$navbar-height} + #{$tabs-height});
     .path-admin-reportbuilder.pagelayout-popup {
         // Fix for behat-site defined in theme/boost/scss/moodle/debug.scss:7 is not needed. Override it.
         &.behat-site .fixed-top {
             position: fixed;
         }
-        #region-main {
+        #region-main,
+        #page-content {
             border: none;
-            padding: 0;
+            padding: 0 !important; /* stylelint-disable-line declaration-no-important */
         }
         #maincontent {
             visibility: hidden;
         }
-        .dynamictabs .nav-tabs {
-            position: fixed;
-            z-index: $zindex-fixed;
-            width: calc(100% - 35px);
-            padding-top: 1.25rem;
-            background-color: var(--#{$prefix}white);
-            // Small hack to simulate padding bottom after nav-tabs border.
-            box-shadow: 0 1.25rem 0 var(--#{$prefix}white);
-        }
-        .dynamictabs .tab-content {
-            padding-top: $tabs-height;
+        .nav-tabs {
+            padding-top: map-get($spacers, 4);
         }
         .reportbuilder-sidebar-menu {
             position: fixed;
             .reportbuilder-sidebar-menu-cards {
-                max-height: calc(100vh - #{$sidebar-margin-top} - 52px); // 52px corresponds to "search" input size.
+                $sidebar-search-height: calc(38px + 1rem);
+                max-height: calc(100vh - #{$sidebar-margin-top} - #{$sidebar-search-height});
             }
         }
         .reportbuilder-sidebar-settings {
             position: fixed;
-            right: 30px;
+            right: 1.5rem;
             max-height: calc(100vh - #{$sidebar-margin-top});
         }
         .reportbuilder-report[data-editing] .reportbuilder-report-container {

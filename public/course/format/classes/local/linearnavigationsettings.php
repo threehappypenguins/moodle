@@ -16,8 +16,6 @@
 
 namespace core_courseformat\local;
 
-use core\lang_string;
-
 /**
  * Class course linear navigation settings.
  *
@@ -33,7 +31,9 @@ class linearnavigationsettings {
     private const SETTING_ENABLE_LINEAR_NAV_DEFAULT = 1;
 
     /**
-     * Get the default linear navigation value for a format.
+     * Get the linear navigation value configured site-wide for a format.
+     *
+     * Formats that do not define the setting fall back to enabled.
      *
      * @param string $formatname The course format name
      * @return int
@@ -45,79 +45,6 @@ class linearnavigationsettings {
         }
 
         return self::SETTING_ENABLE_LINEAR_NAV_DEFAULT;
-    }
-
-    /**
-     * Get type and default course format options related to linear navigation.
-     *
-     * @param string $formatname The course format name
-     * @return array
-     */
-    public static function get_course_format_options_default(string $formatname): array {
-        return [
-            self::SETTING_ENABLE_LINEAR_NAV => [
-                'default' => self::get_default_linear_navigation_value($formatname),
-                'type' => PARAM_BOOL,
-            ],
-        ];
-    }
-
-    /**
-     * Get edit form for course format options related to linear navigation.
-     *
-     * @param string $formatname The course format name
-     * @return array
-     */
-    public static function get_course_format_options_edit_form(string $formatname): array {
-        $label = get_string_manager()->string_exists('linearnavigationsettings', $formatname) ?
-            new lang_string('linearnavigationsettings', $formatname) :
-            new lang_string('linearnavigationsettings', 'core_courseformat');
-        $helpcomponent = get_string_manager()->string_exists('linearnavigationsettings_help', $formatname) ?
-            $formatname : 'core_courseformat';
-        return [
-            self::SETTING_ENABLE_LINEAR_NAV => [
-                'label' => $label,
-                'element_type' => 'select',
-                'element_attributes' => [
-                    [
-                        0 => new lang_string('no'),
-                        1 => new lang_string('yes'),
-                    ],
-                ],
-                'inline_help' => 'linearnavigationsettings',
-                'help_component' => $helpcomponent,
-            ],
-        ];
-    }
-
-    /**
-     * Hook to set the default value of the linear navigation setting
-     * to enabled when creating a new course.
-     *
-     * @param \core_course\hook\after_form_definition_after_data $hook The hook object.
-     */
-    public static function after_form_definition_after_data(
-        \core_course\hook\after_form_definition_after_data $hook,
-    ): void {
-        if (!$hook->mform->elementExists(self::SETTING_ENABLE_LINEAR_NAV)) {
-            return;
-        }
-        $enablelinearnavelement = $hook->mform->getElement(self::SETTING_ENABLE_LINEAR_NAV);
-        $course = $hook->formwrapper->get_course();
-        $formatvalue = $hook->mform->getElementValue('format');
-        $courseformat = null;
-        if (is_array($formatvalue) && !empty($formatvalue)) {
-            $params = ['format' => $formatvalue[0]];
-            if (!empty($course->id)) {
-                $params['id'] = $course->id;
-            }
-            $courseformat = course_get_format((object) $params);
-        }
-        if ($enablelinearnavelement && empty($course->id) && $courseformat) {
-            $enablelinearnavelement->setValue(
-                self::get_default_linear_navigation_value($courseformat->get_format())
-            );
-        }
     }
 
     /**
@@ -156,7 +83,7 @@ class linearnavigationsettings {
     /**
      * Check if linear navigation is enabled for the course.
      *
-     * This only checks the course format and the linear navigation format option, regardless of any
+     * This only checks the course format and the site-level setting for that format, regardless of any
      * page-level state. It is useful for activities that need to adapt their output (for example,
      * hiding navigation controls of their own) when linear navigation is enabled.
      *
@@ -169,7 +96,6 @@ class linearnavigationsettings {
             // The course format does not support linear navigation.
             return false;
         }
-        $formatoptions = $format->get_format_options();
-        return (bool) ($formatoptions[self::SETTING_ENABLE_LINEAR_NAV] ?? false);
+        return (bool) self::get_default_linear_navigation_value($format->get_format());
     }
 }

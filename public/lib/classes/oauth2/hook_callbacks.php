@@ -73,6 +73,11 @@ class hook_callbacks {
         );
 
         $hook->add_definition(
+            'oauth2.server.accessTokenTTL',
+            \DI\create(\DateInterval::class)->constructor('PT1H'),
+        );
+
+        $hook->add_definition(
             AuthorizationServer::class,
             \DI\autowire()
                 ->constructorParameter(
@@ -86,12 +91,17 @@ class hook_callbacks {
                 ->method(
                     'enableGrantType',
                     \DI\get(\League\OAuth2\Server\Grant\AuthCodeGrant::class),
-                    \DI\create(\DateInterval::class)->constructor('PT1H'),
+                    \DI\get('oauth2.server.accessTokenTTL'),
                 )
                 ->method(
                     'enableGrantType',
                     \DI\get(\League\OAuth2\Server\Grant\RefreshTokenGrant::class),
-                    \DI\create(\DateInterval::class)->constructor('PT1H'),
+                    \DI\get('oauth2.server.accessTokenTTL'),
+                )
+                ->method(
+                    'enableGrantType',
+                    \DI\get(\League\OAuth2\Server\Grant\ClientCredentialsGrant::class),
+                    \DI\get('oauth2.server.accessTokenTTL'),
                 ),
         );
 
@@ -111,7 +121,6 @@ class hook_callbacks {
                     'authCodeTTL',
                     \DI\get('oauth2.server.authCodeTTL'),
                 )
-                ->method('disableRequireCodeChallengeForPublicClients')
                 ->method('setRefreshTokenTTL', \DI\get('oauth2.server.refreshTokenTTL')),
         );
 

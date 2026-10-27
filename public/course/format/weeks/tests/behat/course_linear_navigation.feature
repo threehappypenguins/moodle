@@ -1,24 +1,29 @@
 @format @format_weeks
 Feature: Week sections format supports course linear navigation
   In order to navigate through the course activities in a linear way
-  As a course creator
-  I need my courses to support course linear navigation when I choose to enable it in the course settings
+  As an administrator
+  I need the weekly sections format to support course linear navigation when I enable it site-wide
 
   @javascript
-  Scenario Outline: Global defaults set linear navigation for week sections format
-    Given the following config values are set as admin:
+  Scenario Outline: The site setting controls linear navigation for the weekly sections format
+    Given the following "users" exist:
+      | username | firstname | lastname |
+      | s1       | Student   | 1        |
+    And the following config values are set as admin:
       | enablelinearnav | <value> | format_weeks |
-    When I log in as "admin"
-    And I create a course with:
-      | Course full name  | Course 1 |
-      | Course short name | C1       |
-      | Format            | weeks   |
-    And I am on "Course 1" course homepage
-    And I navigate to "Settings" in current page administration
-    And I expand all fieldsets
-    Then the field "Enable linear navigation" matches value "<expected>"
+    And the following "courses" exist:
+      | fullname | shortname | format |
+      | Course 1 | C1        | weeks  |
+    And the following "course enrolments" exist:
+      | user | course | role    |
+      | s1   | C1     | student |
+    And the following "activities" exist:
+      | activity | name  | course |
+      | page     | Page1 | C1     |
+    When I am on the "Page1" "page activity" page logged in as "s1"
+    Then the course linear navigation <shouldbevisible>
 
     Examples:
-      | value | expected |
-      | 1     | Yes      |
-      | 0     | No       |
+      | value | shouldbevisible       |
+      | 1     | should be visible     |
+      | 0     | should not be visible |

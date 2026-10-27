@@ -69,8 +69,17 @@ class GoogleCloudRunV2Container extends \Google\Collection
   public $name;
   protected $portsType = GoogleCloudRunV2ContainerPort::class;
   protected $portsDataType = 'array';
+  protected $readinessProbeType = GoogleCloudRunV2Probe::class;
+  protected $readinessProbeDataType = '';
   protected $resourcesType = GoogleCloudRunV2ResourceRequirements::class;
   protected $resourcesDataType = '';
+  /**
+   * Optional. Indicates that this container can act as a sandbox supervisor and
+   * launch sandboxes.
+   *
+   * @var bool
+   */
+  public $sandboxLauncher;
   protected $sourceCodeType = GoogleCloudRunV2SourceCode::class;
   protected $sourceCodeDataType = '';
   protected $startupProbeType = GoogleCloudRunV2Probe::class;
@@ -256,6 +265,22 @@ class GoogleCloudRunV2Container extends \Google\Collection
     return $this->ports;
   }
   /**
+   * Readiness probe to be used for health checks.
+   *
+   * @param GoogleCloudRunV2Probe $readinessProbe
+   */
+  public function setReadinessProbe(GoogleCloudRunV2Probe $readinessProbe)
+  {
+    $this->readinessProbe = $readinessProbe;
+  }
+  /**
+   * @return GoogleCloudRunV2Probe
+   */
+  public function getReadinessProbe()
+  {
+    return $this->readinessProbe;
+  }
+  /**
    * Compute Resource requirements by this container.
    *
    * @param GoogleCloudRunV2ResourceRequirements $resources
@@ -270,6 +295,23 @@ class GoogleCloudRunV2Container extends \Google\Collection
   public function getResources()
   {
     return $this->resources;
+  }
+  /**
+   * Optional. Indicates that this container can act as a sandbox supervisor and
+   * launch sandboxes.
+   *
+   * @param bool $sandboxLauncher
+   */
+  public function setSandboxLauncher($sandboxLauncher)
+  {
+    $this->sandboxLauncher = $sandboxLauncher;
+  }
+  /**
+   * @return bool
+   */
+  public function getSandboxLauncher()
+  {
+    return $this->sandboxLauncher;
   }
   /**
    * Optional. Location of the source.

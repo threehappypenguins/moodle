@@ -32,8 +32,10 @@ class Value extends \Google\Model
    */
   public $booleanValue;
   /**
-   * A bytes value. Must not exceed 1 MiB - 89 bytes. Only the first 1,500 bytes
-   * are considered by queries.
+   * A bytes value. In Standard edition databases: * The value must not exceed 1
+   * MiB - 89 bytes. * Only the first 1,500 bytes are considered by queries. In
+   * Enterprise edition databases, there is no limit on the size of the value.
+   * However, it is still subject to document and index entry size limits.
    *
    * @var string
    */
@@ -44,6 +46,17 @@ class Value extends \Google\Model
    * @var 
    */
   public $doubleValue;
+  /**
+   * Value which references a field. This is considered relative (vs absolute)
+   * since it only refers to a field and not a field within a particular
+   * document. **Requires:** * Must follow field reference limitations. * Not
+   * allowed to be used when writing documents.
+   *
+   * @var string
+   */
+  public $fieldReferenceValue;
+  protected $functionValueType = FirestoreFunction::class;
+  protected $functionValueDataType = '';
   protected $geoPointValueType = LatLng::class;
   protected $geoPointValueDataType = '';
   /**
@@ -60,6 +73,8 @@ class Value extends \Google\Model
    * @var string
    */
   public $nullValue;
+  protected $pipelineValueType = Pipeline::class;
+  protected $pipelineValueDataType = '';
   /**
    * A reference to a document. For example:
    * `projects/{project_id}/databases/{database_id}/documents/{document_path}`.
@@ -68,9 +83,11 @@ class Value extends \Google\Model
    */
   public $referenceValue;
   /**
-   * A string value. The string, represented as UTF-8, must not exceed 1 MiB -
-   * 89 bytes. Only the first 1,500 bytes of the UTF-8 representation are
-   * considered by queries.
+   * A string value. In Standard edition databases: * The string, represented as
+   * UTF-8, must not exceed 1 MiB - 89 bytes. * Only the first 1,500 bytes of
+   * the UTF-8 representation are considered by queries. In Enterprise edition
+   * databases, there is no limit on the size of the value. However, it is still
+   * subject to document and index entry size limits.
    *
    * @var string
    */
@@ -82,10 +99,21 @@ class Value extends \Google\Model
    * @var string
    */
   public $timestampValue;
+  /**
+   * Pointer to a variable defined elsewhere in a pipeline. Unlike
+   * `field_reference_value` which references a field within a document, this
+   * refers to a variable, defined in a separate namespace than the fields of a
+   * document.
+   *
+   * @var string
+   */
+  public $variableReferenceValue;
 
   /**
-   * An array value. Cannot directly contain another array value, though can
-   * contain a map which contains another array.
+   * An array value. In Standard edition databases, an array value cannot
+   * directly contain another array value, though it can contain a map which
+   * contains another array. In Enterprise edition databases, an array value can
+   * contain another array value.
    *
    * @param ArrayValue $arrayValue
    */
@@ -117,8 +145,10 @@ class Value extends \Google\Model
     return $this->booleanValue;
   }
   /**
-   * A bytes value. Must not exceed 1 MiB - 89 bytes. Only the first 1,500 bytes
-   * are considered by queries.
+   * A bytes value. In Standard edition databases: * The value must not exceed 1
+   * MiB - 89 bytes. * Only the first 1,500 bytes are considered by queries. In
+   * Enterprise edition databases, there is no limit on the size of the value.
+   * However, it is still subject to document and index entry size limits.
    *
    * @param string $bytesValue
    */
@@ -140,6 +170,42 @@ class Value extends \Google\Model
   public function getDoubleValue()
   {
     return $this->doubleValue;
+  }
+  /**
+   * Value which references a field. This is considered relative (vs absolute)
+   * since it only refers to a field and not a field within a particular
+   * document. **Requires:** * Must follow field reference limitations. * Not
+   * allowed to be used when writing documents.
+   *
+   * @param string $fieldReferenceValue
+   */
+  public function setFieldReferenceValue($fieldReferenceValue)
+  {
+    $this->fieldReferenceValue = $fieldReferenceValue;
+  }
+  /**
+   * @return string
+   */
+  public function getFieldReferenceValue()
+  {
+    return $this->fieldReferenceValue;
+  }
+  /**
+   * A value that represents an unevaluated expression. **Requires:** * Not
+   * allowed to be used when writing documents.
+   *
+   * @param FirestoreFunction $functionValue
+   */
+  public function setFunctionValue(FirestoreFunction $functionValue)
+  {
+    $this->functionValue = $functionValue;
+  }
+  /**
+   * @return FirestoreFunction
+   */
+  public function getFunctionValue()
+  {
+    return $this->functionValue;
   }
   /**
    * A geo point value representing a point on the surface of Earth.
@@ -208,6 +274,23 @@ class Value extends \Google\Model
     return $this->nullValue;
   }
   /**
+   * A value that represents an unevaluated pipeline. **Requires:** * Not
+   * allowed to be used when writing documents.
+   *
+   * @param Pipeline $pipelineValue
+   */
+  public function setPipelineValue(Pipeline $pipelineValue)
+  {
+    $this->pipelineValue = $pipelineValue;
+  }
+  /**
+   * @return Pipeline
+   */
+  public function getPipelineValue()
+  {
+    return $this->pipelineValue;
+  }
+  /**
    * A reference to a document. For example:
    * `projects/{project_id}/databases/{database_id}/documents/{document_path}`.
    *
@@ -225,9 +308,11 @@ class Value extends \Google\Model
     return $this->referenceValue;
   }
   /**
-   * A string value. The string, represented as UTF-8, must not exceed 1 MiB -
-   * 89 bytes. Only the first 1,500 bytes of the UTF-8 representation are
-   * considered by queries.
+   * A string value. In Standard edition databases: * The string, represented as
+   * UTF-8, must not exceed 1 MiB - 89 bytes. * Only the first 1,500 bytes of
+   * the UTF-8 representation are considered by queries. In Enterprise edition
+   * databases, there is no limit on the size of the value. However, it is still
+   * subject to document and index entry size limits.
    *
    * @param string $stringValue
    */
@@ -258,6 +343,25 @@ class Value extends \Google\Model
   public function getTimestampValue()
   {
     return $this->timestampValue;
+  }
+  /**
+   * Pointer to a variable defined elsewhere in a pipeline. Unlike
+   * `field_reference_value` which references a field within a document, this
+   * refers to a variable, defined in a separate namespace than the fields of a
+   * document.
+   *
+   * @param string $variableReferenceValue
+   */
+  public function setVariableReferenceValue($variableReferenceValue)
+  {
+    $this->variableReferenceValue = $variableReferenceValue;
+  }
+  /**
+   * @return string
+   */
+  public function getVariableReferenceValue()
+  {
+    return $this->variableReferenceValue;
   }
 }
 

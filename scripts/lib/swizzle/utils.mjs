@@ -20,6 +20,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+import fs from 'fs';
 import path from 'path';
 import {createRequire} from 'module';
 import {fileURLToPath} from 'url';
@@ -63,4 +64,45 @@ export function loadComponents(rootDir) {
     } finally {
         process.chdir(savedCwd);
     }
+}
+
+/**
+ * Describe how a source file exports its component.
+ *
+ * @param {string} filePath   Absolute path to the .ts/.tsx source file.
+ * @param {string} moduleName Module part of the specifier, e.g. views/ActivityIcon.
+ * @returns {{kind: 'default'}|{kind: 'named', name: string}|null} null when no component export is found.
+ */
+export function detectComponentExport(filePath, moduleName) {
+    const source = fs.readFileSync(filePath, 'utf8');
+
+    if (/export\s+default\b/.test(source)) {
+        return {kind: 'default'};
+    }
+
+    const basename = moduleName.split('/').pop();
+    // A basename comes from a filename and may carry regex metacharacters.
+    const quoted = basename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const declared = String.raw`export\s+(?:async\s+)?(?:function|const|let|class)\s+`;
+    const named = new RegExp(`(?:${declared}|export\\s*\\{[^}]*\\b)${quoted}\\b`);
+
+    // Only an export named after the module counts. A file may export several
+    // components, and picking one of them would be a guess.
+    return named.test(source) ? {kind: 'named', name: basename} : null;
+}
+
+/**
+ * Convert a module path into a valid PascalCase JavaScript identifier.
+ *
+ * @param {string} moduleName Module part of the specifier.
+ * @returns {string}
+ */
+export function toIdentifier(moduleName) {
+    // Only the final segment: views/ActivityIcon names its wrapper ActivityIcon.
+    const identifier = moduleName.split('/').pop()
+        .replace(/(?:^|[_-]+)([a-z0-9])/g, (_, character) => character.toUpperCase())
+        .replace(/[^A-Za-z0-9_$]/g, '');
+
+    // A leading digit is legal in a module name but not in an identifier.
+    return /^[0-9]/.test(identifier) ? `Component${identifier}` : identifier;
 }

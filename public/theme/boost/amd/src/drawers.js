@@ -50,6 +50,9 @@ const SELECTORS = {
     DRAWERCONTENT: '.drawercontent',
     PAGECONTENT: '#page-content',
     NAVBAR: '.navbar.fixed-top',
+    OPEN_DROPDOWN_MENU: '.dropdown-menu.show',
+    OPEN_DROPDOWN_TOGGLE: '[data-bs-toggle="dropdown"].show',
+    RIGHTDRAWER: '.drawer.drawer-right',
 };
 
 const CLASSES = {
@@ -211,6 +214,45 @@ const addInnerScrollListener = (drawerNode) => {
             CLASSES.SCROLLED,
             content.scrollTop != 0
         );
+    });
+};
+
+/**
+ * Expand a content-sized drawer just enough to contain an open dropdown.
+ *
+ * Only content-sized drawers can grow. A scrollable drawer is already
+ * constrained by its maximum height.
+ *
+ * @param {HTMLElement} toggle The dropdown toggle.
+ * @private
+ */
+const expandDrawerForDropdown = (toggle) => {
+    const drawer = toggle.closest(SELECTORS.RIGHTDRAWER);
+    const drawerContent = drawer?.querySelector(`:scope > ${SELECTORS.DRAWERCONTENT}`);
+    if (!drawerContent) {
+        return;
+    }
+
+    // Wait until Bootstrap has displayed the menu and Popper has positioned it.
+    requestAnimationFrame(() => {
+        const menu = toggle.nextElementSibling;
+        if (!menu?.matches(SELECTORS.OPEN_DROPDOWN_MENU)) {
+            return;
+        }
+
+        const drawerHeight = drawer.getBoundingClientRect().height;
+        const maxHeight = parseFloat(getComputedStyle(drawer).maxHeight);
+        if (!Number.isFinite(maxHeight) || drawerHeight >= maxHeight - 1) {
+            return;
+        }
+
+        const overflow = Math.ceil(menu.getBoundingClientRect().bottom - drawerContent.getBoundingClientRect().bottom);
+        if (overflow <= 0) {
+            return;
+        }
+
+        const height = Math.min(drawerHeight + overflow, maxHeight);
+        drawer.style.height = `${height}px`;
     });
 };
 
@@ -493,6 +535,8 @@ export default class Drawers {
         if (hideEvent.defaultPrevented) {
             return;
         }
+
+        this.drawerNode.style.removeProperty('height');
 
         // Hide close button and header content while the drawer is hiding to prevent glitchy effects.
         const closeButton = this.drawerNode.querySelector(SELECTORS.CLOSEBTN);
@@ -791,6 +835,14 @@ const registerListeners = () => {
         Drawers.closeAllDrawers({focusOnOpenButton: false});
     });
 
+    document.addEventListener('show.bs.dropdown', e => {
+        expandDrawerForDropdown(e.target);
+    });
+
+    document.addEventListener('hidden.bs.dropdown', e => {
+        e.target.closest(SELECTORS.RIGHTDRAWER)?.style.removeProperty('height');
+    });
+
     // Close drawer when another drawer opens.
     document.addEventListener(Drawers.eventTypes.drawerShow, e => {
         if (isLarge()) {
@@ -833,6 +885,18 @@ const registerListeners = () => {
     });
 
     const closeOnResizeListener = () => {
+        drawerMap.forEach(drawerInstance => {
+            const drawerNode = drawerInstance.drawerNode;
+            if (!drawerNode.matches(SELECTORS.RIGHTDRAWER)) {
+                return;
+            }
+            const openDropdown = drawerNode.querySelector(SELECTORS.OPEN_DROPDOWN_TOGGLE);
+            drawerNode.style.removeProperty('height');
+            if (openDropdown) {
+                expandDrawerForDropdown(openDropdown);
+            }
+        });
+
         if (isSmall()) {
             let anyOpen = false;
             drawerMap.forEach(drawerInstance => {

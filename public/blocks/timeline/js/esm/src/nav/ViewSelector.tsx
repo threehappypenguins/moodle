@@ -16,18 +16,20 @@
 /**
  * Sort-order (dates / courses) selector for the Timeline block.
  *
- * Matches the DOM structure of the legacy nav-view-selector.mustache template.
+ * Matches the DOM structure of the legacy nav-view-selector.mustache template, except for the
+ * ARIA roles: this is a dropdown of two sort options, so it uses the menu pattern that DayFilter
+ * and Bootstrap's own dropdown JS already implement, rather than the tablist the legacy template
+ * declared but never wired up.
  *
  * @module     block_timeline/nav/ViewSelector
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {useId} from 'react';
 import String from '@moodle/lms/core/String';
 import type {OrderName} from '../common/types';
 import {useAriaLabels} from '../common/useAriaLabels';
+import {useComposedLabel} from '../common/useComposedLabel';
 
-const SPAN_ID = 'timeline-view-selector-current-selection';
 
 interface ViewOption {
     name: OrderName;
@@ -51,19 +53,15 @@ interface ViewSelectorProps {
  * so the gap and outside-click behaviour match the original exactly.
  */
 export default function ViewSelector({activeOrder, onChange}: ViewSelectorProps) {
-    const uid = useId().replace(/:/g, '');
     const menuId = 'menusortby';
-    const datesId = `view_dates_${uid}`;
-    const coursesId = `view_courses_${uid}`;
 
-    const panelId: Record<OrderName, string> = {
-        sortbydates:   datesId,
-        sortbycourses: coursesId,
-    };
-
-    const {buttonLabel, itemLabels} = useAriaLabels('ariaviewselector', 'ariaviewselectoroption', VIEW_OPTIONS);
+    const {buttonLabel: menuLabel, itemLabels} = useAriaLabels(
+        'ariaviewselector', 'ariaviewselectoroption', VIEW_OPTIONS
+    );
 
     const activeOption = VIEW_OPTIONS.find(o => o.name === activeOrder) ?? VIEW_OPTIONS[0];
+
+    const toggleLabel = useComposedLabel('ariaviewselectorbutton', activeOption.labelKey);
 
     return (
         <div data-region="view-selector" className="dropdown mb-1">
@@ -72,19 +70,23 @@ export default function ViewSelector({activeOrder, onChange}: ViewSelectorProps)
                 className="btn btn-outline-secondary dropdown-toggle icon-no-margin"
                 data-bs-toggle="dropdown"
                 aria-haspopup="true"
-                aria-label={buttonLabel}
+                // Bootstrap's dropdown JS flips this to "true" on open and owns it from then
+                // on. The literal never changes between renders, so React's reconciler leaves
+                // the attribute alone and will not reset it while the menu is open.
+                aria-expanded="false"
+                aria-label={toggleLabel}
                 aria-controls={menuId}
-                title={buttonLabel}
-                aria-describedby={SPAN_ID}
+                title={menuLabel}
             >
-                <span id={SPAN_ID} data-active-item-text="">
+                <span data-active-item-text="">
                     <String identifier={activeOption.labelKey} component="block_timeline">{''}</String>
                 </span>
             </button>
 
             <div
                 id={menuId}
-                role="tablist"
+                role="menu"
+                aria-label={menuLabel}
                 className="dropdown-menu dropdown-menu-end"
                 data-show-active-item=""
             >
@@ -92,12 +94,11 @@ export default function ViewSelector({activeOrder, onChange}: ViewSelectorProps)
                     <a
                         key={option.name}
                         className={`dropdown-item${activeOrder === option.name ? ' active dropdown-item-active' : ''}`}
-                        href={`#${panelId[option.name]}`}
+                        href="#"
                         data-filtername={option.name}
                         aria-current={activeOrder === option.name ? 'true' : undefined}
                         aria-label={itemLabels[option.name]}
-                        aria-controls={panelId[option.name]}
-                        role="tab"
+                        role="menuitem"
                         onClick={(e) => {
                             e.preventDefault();
                             onChange(option.name);

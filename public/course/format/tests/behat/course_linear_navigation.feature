@@ -1,8 +1,8 @@
-@core @core_course @core_courseformat @format_topics @format_weeks @format_singleactivity
+@core @core_course @core_courseformat @format_topics @format_weeks @format_singleactivity @format_social
 Feature: Display the course linear navigation
   In order to quickly navigate through the course activities in a linear way
   As a user
-  I want to see the course linear navigation when the course format supports it and it is enabled in the course settings
+  I want to see the course linear navigation when the course format supports it and it is enabled site-wide
 
   Background:
     Given the following "users" exist:
@@ -12,9 +12,11 @@ Feature: Display the course linear navigation
 
   @javascript
   Scenario Outline: As a user I should see the course linear navigation when format allows it and it is enabled
-    Given the following "courses" exist:
-      | fullname | shortname | format    | enablelinearnav |
-      | Course1  | C1        | <format>  | <linearnav>     |
+    Given the following config values are set as admin:
+      | enablelinearnav | <linearnav> | format_<format> |
+    And the following "courses" exist:
+      | fullname | shortname | format    |
+      | Course1  | C1        | <format>  |
     And the following "course enrolments" exist:
       | user    | course | role           |
       | s1      | C1     | student        |
@@ -37,12 +39,16 @@ Feature: Display the course linear navigation
       | weeks          | 0         | t1   | should not be visible |
       | singleactivity | 1         | s1   | should not be visible |
       | singleactivity | 1         | t1   | should not be visible |
+      | social         | 1         | s1   | should not be visible |
+      | social         | 1         | t1   | should not be visible |
 
   @javascript
   Scenario Outline: Clicking Next navigates to the next activity
-    Given the following "courses" exist:
-      | fullname | shortname | format   | enablelinearnav | numsections |
-      | Course1  | C1        | <format> | 1               | 0           |
+    Given the following config values are set as admin:
+      | enablelinearnav | 1 | format_<format> |
+    And the following "courses" exist:
+      | fullname | shortname | format   | numsections |
+      | Course1  | C1        | <format> | 0           |
     And the following "course enrolments" exist:
       | user | course | role    |
       | s1   | C1     | student |
@@ -65,9 +71,11 @@ Feature: Display the course linear navigation
 
   @javascript
   Scenario Outline: Clicking Previous navigates to the previous activity
-    Given the following "courses" exist:
-      | fullname | shortname | format   | enablelinearnav |
-      | Course1  | C1        | <format> | 1               |
+    Given the following config values are set as admin:
+      | enablelinearnav | 1 | format_<format> |
+    And the following "courses" exist:
+      | fullname | shortname | format   |
+      | Course1  | C1        | <format> |
     And the following "course enrolments" exist:
       | user | course | role    |
       | s1   | C1     | student |
@@ -87,9 +95,11 @@ Feature: Display the course linear navigation
 
   @javascript
   Scenario: The manual completion control is relocated to the sticky footer with linear navigation
-    Given the following "courses" exist:
-      | fullname | shortname | format | enablelinearnav | enablecompletion |
-      | Course1  | C1        | topics | 1               | 1                |
+    Given the following config values are set as admin:
+      | enablelinearnav | 1 | format_topics |
+    And the following "courses" exist:
+      | fullname | shortname | format | enablecompletion |
+      | Course1  | C1        | topics | 1                |
     And the following "course enrolments" exist:
       | user | course | role    |
       | s1   | C1     | student |
@@ -110,9 +120,11 @@ Feature: Display the course linear navigation
 
   @javascript
   Scenario: The manual completion control stays in the header when linear navigation is disabled
-    Given the following "courses" exist:
-      | fullname | shortname | format | enablelinearnav | enablecompletion |
-      | Course1  | C1        | topics | 0               | 1                |
+    Given the following config values are set as admin:
+      | enablelinearnav | 0 | format_topics |
+    And the following "courses" exist:
+      | fullname | shortname | format | enablecompletion |
+      | Course1  | C1        | topics | 1                |
     And the following "course enrolments" exist:
       | user | course | role    |
       | s1   | C1     | student |
@@ -125,9 +137,11 @@ Feature: Display the course linear navigation
 
   @javascript
   Scenario: The automatic completion status is shown in the sticky footer with linear navigation
-    Given the following "courses" exist:
-      | fullname | shortname | format | enablelinearnav | enablecompletion |
-      | Course1  | C1        | topics | 1               | 1                |
+    Given the following config values are set as admin:
+      | enablelinearnav | 1 | format_topics |
+    And the following "courses" exist:
+      | fullname | shortname | format | enablecompletion |
+      | Course1  | C1        | topics | 1                |
     And the following "course enrolments" exist:
       | user | course | role    |
       | s1   | C1     | student |

@@ -102,11 +102,18 @@ class Job extends \Google\Collection
    */
   public const CURRENT_STATE_JOB_STATE_RESOURCE_CLEANING_UP = 'JOB_STATE_RESOURCE_CLEANING_UP';
   /**
-   * `JOB_STATE_PAUSING` is not implemented yet.
+   * `JOB_STATE_PAUSING` indicates that the job is in the process of pausing. A
+   * pausing job will stop processing, archive in-flight Shuffle data, and
+   * transition to `JOB_STATE_PAUSED`. Jobs in this state can transition to
+   * `JOB_STATE_CANCELLING` if cancellation is requested, or can transition back
+   * to `JOB_STATE_RUNNING` if the pause fails to complete.
    */
   public const CURRENT_STATE_JOB_STATE_PAUSING = 'JOB_STATE_PAUSING';
   /**
-   * `JOB_STATE_PAUSED` is not implemented yet.
+   * `JOB_STATE_PAUSED` indicates that the job is not currently processing. Jobs
+   * in this state can transition back to `JOB_STATE_RUNNING` to continue
+   * processing where they left off, or can transition to `JOB_STATE_CANCELLING`
+   * if cancellation is requested.
    */
   public const CURRENT_STATE_JOB_STATE_PAUSED = 'JOB_STATE_PAUSED';
   /**
@@ -192,11 +199,18 @@ class Job extends \Google\Collection
    */
   public const REQUESTED_STATE_JOB_STATE_RESOURCE_CLEANING_UP = 'JOB_STATE_RESOURCE_CLEANING_UP';
   /**
-   * `JOB_STATE_PAUSING` is not implemented yet.
+   * `JOB_STATE_PAUSING` indicates that the job is in the process of pausing. A
+   * pausing job will stop processing, archive in-flight Shuffle data, and
+   * transition to `JOB_STATE_PAUSED`. Jobs in this state can transition to
+   * `JOB_STATE_CANCELLING` if cancellation is requested, or can transition back
+   * to `JOB_STATE_RUNNING` if the pause fails to complete.
    */
   public const REQUESTED_STATE_JOB_STATE_PAUSING = 'JOB_STATE_PAUSING';
   /**
-   * `JOB_STATE_PAUSED` is not implemented yet.
+   * `JOB_STATE_PAUSED` indicates that the job is not currently processing. Jobs
+   * in this state can transition back to `JOB_STATE_RUNNING` to continue
+   * processing where they left off, or can transition to `JOB_STATE_CANCELLING`
+   * if cancellation is requested.
    */
   public const REQUESTED_STATE_JOB_STATE_PAUSED = 'JOB_STATE_PAUSED';
   /**
@@ -298,6 +312,12 @@ class Job extends \Google\Collection
    * @var string
    */
   public $name;
+  /**
+   * Output only. Indicates whether the job can be paused.
+   *
+   * @var bool
+   */
+  public $pausable;
   protected $pipelineDescriptionType = PipelineDescription::class;
   protected $pipelineDescriptionDataType = '';
   /**
@@ -620,6 +640,22 @@ class Job extends \Google\Collection
   public function getName()
   {
     return $this->name;
+  }
+  /**
+   * Output only. Indicates whether the job can be paused.
+   *
+   * @param bool $pausable
+   */
+  public function setPausable($pausable)
+  {
+    $this->pausable = $pausable;
+  }
+  /**
+   * @return bool
+   */
+  public function getPausable()
+  {
+    return $this->pausable;
   }
   /**
    * Preliminary field: The format of this data may change at any time. A

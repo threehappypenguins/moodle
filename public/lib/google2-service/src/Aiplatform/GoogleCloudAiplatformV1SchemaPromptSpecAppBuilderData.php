@@ -19,6 +19,18 @@ namespace Google\Service\Aiplatform;
 
 class GoogleCloudAiplatformV1SchemaPromptSpecAppBuilderData extends \Google\Collection
 {
+  /**
+   * Unspecified framework.
+   */
+  public const FRAMEWORK_FRAMEWORK_UNSPECIFIED = 'FRAMEWORK_UNSPECIFIED';
+  /**
+   * React framework.
+   */
+  public const FRAMEWORK_REACT = 'REACT';
+  /**
+   * Angular framework.
+   */
+  public const FRAMEWORK_ANGULAR = 'ANGULAR';
   protected $collection_key = 'linkedResources';
   /**
    * Serialized state of the code repository. This string will typically contain
@@ -29,6 +41,20 @@ class GoogleCloudAiplatformV1SchemaPromptSpecAppBuilderData extends \Google\Coll
    * @var string
    */
   public $codeRepositoryState;
+  /**
+   * Optional. The Cloud Run regions in which the application is currently
+   * deployed. Used to rediscover and redeploy the app in the regions it already
+   * runs in, which may differ from the prompt's location.
+   *
+   * @var string[]
+   */
+  public $deployedRegions;
+  /**
+   * Optional. Framework used to build the application.
+   *
+   * @var string
+   */
+  public $framework;
   protected $linkedResourcesType = GoogleCloudAiplatformV1SchemaPromptSpecAppBuilderDataLinkedResource::class;
   protected $linkedResourcesDataType = 'array';
 
@@ -50,6 +76,42 @@ class GoogleCloudAiplatformV1SchemaPromptSpecAppBuilderData extends \Google\Coll
   public function getCodeRepositoryState()
   {
     return $this->codeRepositoryState;
+  }
+  /**
+   * Optional. The Cloud Run regions in which the application is currently
+   * deployed. Used to rediscover and redeploy the app in the regions it already
+   * runs in, which may differ from the prompt's location.
+   *
+   * @param string[] $deployedRegions
+   */
+  public function setDeployedRegions($deployedRegions)
+  {
+    $this->deployedRegions = $deployedRegions;
+  }
+  /**
+   * @return string[]
+   */
+  public function getDeployedRegions()
+  {
+    return $this->deployedRegions;
+  }
+  /**
+   * Optional. Framework used to build the application.
+   *
+   * Accepted values: FRAMEWORK_UNSPECIFIED, REACT, ANGULAR
+   *
+   * @param self::FRAMEWORK_* $framework
+   */
+  public function setFramework($framework)
+  {
+    $this->framework = $framework;
+  }
+  /**
+   * @return self::FRAMEWORK_*
+   */
+  public function getFramework()
+  {
+    return $this->framework;
   }
   /**
    * Linked resources attached to the application by the user.

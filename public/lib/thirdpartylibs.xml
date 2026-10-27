@@ -12,12 +12,13 @@
       <copyright>2000-2013 John Lim (jlim#natsoft.com). All rights reserved.</copyright>
       <copyright>2014 Damien Regad, Mark Newnham and the ADOdb community</copyright>
     </copyrights>
+    <customised/>
   </library>
   <library>
     <location>behat/axe</location>
     <name>axe-core</name>
     <description>Accessibility testing engine for websites and other HTML-based user interfaces.</description>
-    <version>4.10.3</version>
+    <version>4.13.0</version>
     <license>MPL</license>
     <licenseversion>2.0</licenseversion>
     <repository>https://github.com/dequelabs/axe-core</repository>
@@ -100,7 +101,7 @@
     <location>htmlpurifier</location>
     <name>HTML Purifier</name>
     <description>Filters HTML.</description>
-    <version>4.18.0</version>
+    <version>4.19.0</version>
     <license>LGPL</license>
     <licenseversion>2.1+</licenseversion>
     <repository>https://github.com/ezyang/htmlpurifier</repository>
@@ -194,7 +195,7 @@
     <location>simplepie</location>
     <name>SimplePie</name>
     <description>Simple Pie helps with blogs.</description>
-    <version>1.8.1</version>
+    <version>1.9.0</version>
     <license>BSD</license>
     <repository>https://github.com/simplepie/simplepie</repository>
   </library>
@@ -288,7 +289,7 @@ All rights reserved.</copyright>
     <location>xhprof</location>
     <name>XHProf</name>
     <description>A Hierarchical Profiler for PHP.</description>
-    <version>2.3.9</version>
+    <version>2.3.10</version>
     <license>Apache</license>
     <licenseversion>2.0</licenseversion>
     <repository>https://github.com/longxinH/xhprof</repository>
@@ -301,7 +302,7 @@ All rights reserved.</copyright>
     <location>requirejs</location>
     <name>RequireJS</name>
     <description>RequireJS is a JavaScript file and module loader.</description>
-    <version>2.3.7</version>
+    <version>2.3.8</version>
     <license>MIT</license>
     <repository>https://github.com/requirejs/requirejs</repository>
     <copyrights>
@@ -381,7 +382,7 @@ All rights reserved.</copyright>
     <location>openspout</location>
     <name>OpenSpout</name>
     <description>Library to read and write spreadsheet files (CSV, XLSX and ODS).</description>
-    <version>4.28.5</version>
+    <version>4.32.0</version>
     <license>MIT</license>
     <repository>https://github.com/openspout/openspout</repository>
     <copyrights>
@@ -544,7 +545,7 @@ All rights reserved.</copyright>
     <location>emoji-data</location>
     <name>Emoji data</name>
     <description>Library to parse easily data and sprite sheets for emoji.</description>
-    <version>15.1.2</version>
+    <version>16.0.0</version>
     <license>MIT</license>
     <repository>https://github.com/iamcal/emoji-data/</repository>
     <copyrights>
@@ -556,7 +557,7 @@ All rights reserved.</copyright>
     <location>polyfills</location>
     <name>url-polyfill</name>
     <description>Polyfill URL and URLSearchParams to match last WHATWG specifications.</description>
-    <version>1.1.12</version>
+    <version>1.1.14</version>
     <license>MIT</license>
     <repository>https://github.com/lifaon74/url-polyfill</repository>
   </library>
@@ -757,28 +758,28 @@ All rights reserved.</copyright>
   <library>
       <location>laravel/serializable-closure</location>
       <name>Serializable Closure</name>
-      <version>2.0.10</version>
+      <version>2.0.16</version>
       <license>MIT</license>
       <repository>https://github.com/laravel/serializable-closure</repository>
   </library>
   <library>
       <location>php-di/php-di</location>
       <name>PHP Dependency Injector</name>
-      <version>7.0.8</version>
+      <version>7.1.1</version>
       <license>MIT</license>
       <repository>https://github.com/PHP-DI/PHP-DI</repository>
   </library>
   <library>
       <location>php-di/invoker</location>
       <name>PHP DI Invoker</name>
-      <version>2.3.6</version>
+      <version>2.3.7</version>
       <license>MIT</license>
       <repository>https://github.com/php-di/invoker</repository>
   </library>
   <library>
       <location>slim/slim</location>
       <name>Slim Framework</name>
-      <version>4.15.1</version>
+      <version>4.15.2</version>
       <license>MIT</license>
       <repository>https://github.com/slimphp/Slim</repository>
   </library>
@@ -824,7 +825,7 @@ All rights reserved.</copyright>
       <location>google2</location>
       <name>Google APIs</name>
       <description>Library Google APIs Client Library for PHP</description>
-      <version>2.18.4</version>
+      <version>2.19.4</version>
       <license>Apache</license>
       <licenseversion>2.0</licenseversion>
       <repository>https://github.com/googleapis/google-api-php-client</repository>
@@ -833,7 +834,7 @@ All rights reserved.</copyright>
       <location>google2-auth</location>
       <name>Google Auth</name>
       <description>Google Auth Library for PHP</description>
-      <version>1.49.0</version>
+      <version>1.53.0</version>
       <license>Apache</license>
       <licenseversion>2.0</licenseversion>
       <repository>https://github.com/googleapis/google-auth-library-php</repository>
@@ -842,7 +843,7 @@ All rights reserved.</copyright>
       <location>google2-service</location>
       <name>Google Client Services</name>
       <description>Google PHP API Client Services</description>
-      <version>0.424.0</version>
+      <version>0.457.0</version>
       <license>Apache</license>
       <licenseversion>2.0</licenseversion>
       <repository>https://github.com/googleapis/google-api-php-client-services</repository>

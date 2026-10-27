@@ -15,7 +15,6 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 use core_external\external_api;
-use core_courseformat\local\linearnavigationsettings;
 
 /**
  * External course functions unit tests
@@ -25,6 +24,8 @@ use core_courseformat\local\linearnavigationsettings;
  * @copyright  2012 Jerome Mouneyrac
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversFunction('get_course_contents')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\core_course_external::class, 'get_courses_by_field')]
 final class externallib_test extends \core_external\tests\externallib_testcase {
     /**
      * Tests set up
@@ -619,9 +620,8 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
      *
      * @param array $course
      * @param string $expectedemptyfield
-     *
-     * @dataProvider course_empty_field_provider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('course_empty_field_provider')]
     public function test_create_courses_empty_field(array $course, string $expectedemptyfield): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -639,9 +639,8 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
      *
      * @param array $course
      * @param string $expectedemptyfield
-     *
-     * @dataProvider course_empty_field_provider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('course_empty_field_provider')]
     public function test_update_courses_empty_field(array $course, string $expectedemptyfield): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -810,10 +809,6 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
             $this->assertEquals($course['enablecompletion'], $dbcourse->enablecompletion);
             if ($dbcourse->format === 'topics') {
                 $this->assertEquals($course['courseformatoptions'], [
-                    [
-                        'name' => linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV,
-                        'value' => $dbcourse->{linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV},
-                    ],
                     ['name' => 'hiddensections', 'value' => $dbcourse->hiddensections],
                     ['name' => 'coursedisplay', 'value' => $dbcourse->coursedisplay],
                 ]);
@@ -1887,8 +1882,6 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
 
     /**
      * Test get_course_contents for courses with sub-sections.
-     *
-     * @covers ::get_course_contents
      */
     public function test_get_course_contents_subsections(): void {
         global $DB, $PAGE;
@@ -2952,7 +2945,6 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
         $this->resetAfterTest(true);
 
         $this->setAdminUser();
-        set_config(linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV, 1, 'format_topics');
 
         $category1 = self::getDataGenerator()->create_category(array('name' => 'Cat 1'));
         $category2 = self::getDataGenerator()->create_category(array('parent' => $category1->id));
@@ -2962,7 +2954,6 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
             'shortname' => 'c1',
             'format' => 'topics',
             'numsections' => $numsections,
-            linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV => 0,
         ]);
 
         $fieldcategory = self::getDataGenerator()->create_custom_field_category(['name' => 'Other fields']);
@@ -3013,7 +3004,7 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
         // Expect to receive all the fields.
         $this->assertCount(42, $result['courses'][0]);
         // Check default values for course format topics.
-        $this->assertCount(4, $result['courses'][0]['courseformatoptions']);
+        $this->assertCount(3, $result['courses'][0]['courseformatoptions']);
         foreach ($result['courses'][0]['courseformatoptions'] as $option) {
             switch ($option['name']) {
                 case 'hiddensections':
@@ -3024,9 +3015,6 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
                     break;
                 case 'indentation':
                     $this->assertEquals(1, $option['value']);
-                    break;
-                case linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV:
-                    $this->assertEquals(0, $option['value']);
                     break;
                 default:
             }
@@ -3233,7 +3221,6 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
 
     /**
      * Test retrieving courses by field returning communication tools.
-     * @covers \core_course_external::get_courses_by_field
      */
     public function test_get_courses_by_field_communication(): void {
         $this->resetAfterTest();
@@ -3827,7 +3814,6 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
     /**
      * Test the get_enrolled_courses_by_timeline_classification function.
      *
-     * @dataProvider get_get_enrolled_courses_by_timeline_classification_test_cases
      * @param array $coursedata Courses to create
      * @param string $classification Timeline classification
      * @param int $limit Maximum number of results
@@ -3838,6 +3824,7 @@ final class externallib_test extends \core_external\tests\externallib_testcase {
      * @param string|null $expectedexception Expected exception string
      * @param string|null $searchvalue If we are searching, what do we need to look for?
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('get_get_enrolled_courses_by_timeline_classification_test_cases')]
     public function test_get_enrolled_courses_by_timeline_classification(
         $coursedata,
         $classification,

@@ -119,10 +119,24 @@ abstract class abstract_scope implements \League\OAuth2\Server\Entities\ScopeEnt
     /**
      * Determine if the provided scopes satisfy this scope.
      *
+     * A scope is satisfied if its own identifier is present in the provided scopes, or if the
+     * identifier of any of its (non-abstract) ancestor scope classes is present.
+     *
      * @param string[] $providedscopes The provided scopes
      * @return bool
      */
     final public function is_satisfied_by(array $providedscopes): bool {
-        return in_array(static::get_identifier(), $providedscopes, true);
+        $classname = static::class;
+
+        // Walk up the class hierarchy, checking the identifier of each ancestor scope class.
+        while ($classname && $classname !== self::class) {
+            $reflection = new \ReflectionClass($classname);
+            if (!$reflection->isAbstract() && in_array($classname::get_identifier(), $providedscopes, true)) {
+                return true;
+            }
+            $classname = get_parent_class($classname);
+        }
+
+        return false;
     }
 }

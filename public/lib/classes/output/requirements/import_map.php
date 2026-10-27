@@ -124,6 +124,32 @@ class import_map implements \JsonSerializable {
     }
 
     /**
+     * Return the bare specifiers explicitly opted in to modulepreload hinting.
+     *
+     * This is a closed allowlist, not a shape-based filter: only entries registered with
+     * `preload: true` (currently a handful of core, site-wide, single-file dependencies) are
+     * returned, regardless of specifier name. A plugin adding its own import via the
+     * before_import_map_config hook is never included here unless it explicitly opts in, so a
+     * plugin-only dependency is not fetched on every page that never uses it.
+     *
+     * The returned specifiers match the keys used in jsonSerialize()'s output (trailing slashes
+     * stripped for themable entries), so callers can look up the resolved URL directly from
+     * jsonSerialize()['imports'] without needing to re-derive theme resolution.
+     *
+     * @return string[]
+     */
+    public function get_preload_specifiers(): array {
+        $specifiers = [];
+        foreach ($this->imports as $specifier => $importdata) {
+            if (!$importdata->preload) {
+                continue;
+            }
+            $specifiers[] = rtrim($specifier, '/');
+        }
+        return $specifiers;
+    }
+
+    /**
      * Set the list of available themes by name.
      *
      * @param string[] $themes
@@ -169,11 +195,13 @@ class import_map implements \JsonSerializable {
             urlsuffix: '/index.js',
             // Allow theme designers to override the design system components.
             themable: true,
+            preload: true,
         );
         $this->add_import(
             'react',
             path: 'lib/bundles/react/react',
             themable: false,
+            preload: true,
         );
         $this->add_import(
             'react/',
@@ -184,6 +212,7 @@ class import_map implements \JsonSerializable {
             'react-dom',
             path: 'lib/bundles/react-dom/react-dom',
             themable: false,
+            preload: true,
         );
         $this->add_import(
             'react-dom/',
@@ -205,6 +234,7 @@ class import_map implements \JsonSerializable {
         $this->add_import(
             'tabbable',
             path: 'lib/bundles/tabbable/tabbable',
+            preload: true,
         );
 
         // Register the main Bootstrap bundle as a bare specifier, and the internal util and dom modules as subpath specifiers.
@@ -213,6 +243,7 @@ class import_map implements \JsonSerializable {
             path: 'lib/bundles/bootstrap/js',
             urlsuffix: '/bootstrap.js',
             allowedsuffixes: ['.js', '.js.map'],
+            preload: true,
         );
         $this->add_import(
             specifier: 'bootstrap/',
@@ -241,6 +272,11 @@ class import_map implements \JsonSerializable {
      *   Use this when the entry resolves to a directory's index file so that relative imports
      *   within the module resolve correctly (e.g. '/index.js' for a package-style module).
      * @param bool $themable Whether the import is themable.
+     * @param bool $preload Whether this entry is a foundational, single-file dependency worth
+     *   preloading with a modulepreload hint. Restricted to an explicit opt-in (rather than
+     *   inferred from the specifier shape) so that a plugin registering its own import via the
+     *   before_import_map_config hook is never preloaded on every page by default; core only
+     *   marks the handful of entries it knows are used site-wide on every ESM-using page.
      */
     public function add_import(
         string $specifier,
@@ -253,6 +289,7 @@ class import_map implements \JsonSerializable {
         array $allowedsuffixes = ['.js', '.js.map'],
         string $urlsuffix = '',
         bool $themable = false,
+        bool $preload = false,
     ): void {
         if (!in_array($suffix, $allowedsuffixes, true)) {
             $allowedsuffixes[] = $suffix;
@@ -272,6 +309,7 @@ class import_map implements \JsonSerializable {
             'modifier' => $modifier,
             'urlsuffix' => $urlsuffix,
             'themable' => $themable,
+            'preload' => $preload,
         ];
         $this->importssorted = false;
     }
