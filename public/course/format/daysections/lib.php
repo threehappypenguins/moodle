@@ -128,9 +128,11 @@ class format_daysections extends format_topics {
             ],
         ];
 
-        // Linear navigation settings exist in Moodle 5.3+ only.
-        $haslinearnav = class_exists(linearnavigationsettings::class);
-        if ($haslinearnav) {
+        // Per-course linear nav options existed briefly in Moodle 5.3; Moodle 6.0+
+        // (MDL-89406) moved this to a site-level format setting only.
+        $haslinearnavcourseoptions = class_exists(linearnavigationsettings::class)
+            && method_exists(linearnavigationsettings::class, 'get_course_format_options_default');
+        if ($haslinearnavcourseoptions) {
             $courseformatoptions = array_merge(
                 linearnavigationsettings::get_course_format_options_default($this->get_format()),
                 $courseformatoptions,
@@ -186,7 +188,10 @@ class format_daysections extends format_topics {
                 ],
             ];
 
-            if ($haslinearnav) {
+            if (
+                $haslinearnavcourseoptions
+                && method_exists(linearnavigationsettings::class, 'get_course_format_options_edit_form')
+            ) {
                 $courseformatoptions = array_merge_recursive(
                     $courseformatoptions,
                     linearnavigationsettings::get_course_format_options_edit_form($this->get_format()),

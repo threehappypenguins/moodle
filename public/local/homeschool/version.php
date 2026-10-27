@@ -30,5 +30,5 @@ $plugin->requires  = 2026041000;
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = '1.0.2';
 $plugin->dependencies = [
-    'format_daysections' => 2026090200,
+    'format_daysections' => 2026102701,
 ];

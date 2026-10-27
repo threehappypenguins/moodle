@@ -42,7 +42,7 @@ if ($ADMIN->fulltree) {
         1,
     ));
 
-    // Linear navigation settings exist in Moodle 5.3+ only.
+    // Site-level linear navigation (Moodle 5.3+).
     if (class_exists(\core_courseformat\local\linearnavigationsettings::class)) {
         $options = [
             1 => get_string('yes'),

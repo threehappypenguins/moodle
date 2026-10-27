@@ -122,12 +122,14 @@ final class format_daysections_test extends \advanced_testcase {
     }
 
     /**
-     * Tests linear navigation defaults use format_daysections config, not format_topics.
+     * Tests linear navigation uses format_daysections site config, not format_topics.
      *
      * Skipped on Moodle versions without core linear navigation settings (pre-5.3).
+     * Moodle 6.0+ (MDL-89406) keeps this as a site-level format setting only.
      */
-    public function test_course_format_options_use_daysections_linear_nav(): void {
-        if (!class_exists(\core_courseformat\local\linearnavigationsettings::class)) {
+    public function test_linear_navigation_uses_daysections_site_config(): void {
+        $linearnav = \core_courseformat\local\linearnavigationsettings::class;
+        if (!class_exists($linearnav) || !method_exists($linearnav, 'is_linear_navigation_enabled')) {
             $this->markTestSkipped('Linear navigation settings require Moodle 5.3+');
         }
 
@@ -140,11 +142,19 @@ final class format_daysections_test extends \advanced_testcase {
         $daycourse = $generator->create_course(['format' => 'daysections']);
         $topicscourse = $generator->create_course(['format' => 'topics']);
 
-        $dayoptions = course_get_format($daycourse)->course_format_options();
-        $topicsoptions = course_get_format($topicscourse)->course_format_options();
+        $this->assertFalse($linearnav::is_linear_navigation_enabled($daycourse));
+        $this->assertTrue($linearnav::is_linear_navigation_enabled($topicscourse));
 
-        $this->assertEquals(0, $dayoptions['enablelinearnav']['default']);
-        $this->assertEquals(1, $topicsoptions['enablelinearnav']['default']);
+        // On Moodle 5.3 only, per-course format options may still expose the default.
+        if (method_exists($linearnav, 'get_course_format_options_default')) {
+            $dayoptions = course_get_format($daycourse)->course_format_options();
+            $topicsoptions = course_get_format($topicscourse)->course_format_options();
+            $this->assertEquals(0, $dayoptions['enablelinearnav']['default']);
+            $this->assertEquals(1, $topicsoptions['enablelinearnav']['default']);
+        } else {
+            $dayoptions = course_get_format($daycourse)->course_format_options();
+            $this->assertArrayNotHasKey('enablelinearnav', $dayoptions);
+        }
     }
 
     /**

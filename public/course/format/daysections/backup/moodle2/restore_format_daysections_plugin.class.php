@@ -79,6 +79,36 @@ class restore_format_daysections_plugin extends restore_format_plugin {
     }
 
     /**
+     * Resolve the restored course section number for a backup section info object.
+     *
+     * Backup info stores sectionid + title (display name), not sectionnum. Day sections
+     * commonly have titles like "Day 1", so (int) $section->title cannot be used.
+     *
+     * @param stdClass $section Backup section info from moodle_backup.xml contents.
+     * @return int|null Section number, or null if it cannot be resolved.
+     */
+    protected function resolve_restored_section_number(stdClass $section): ?int {
+        global $DB;
+
+        if (!empty($section->sectionid)) {
+            $newsectionid = $this->get_mappingid('course_section', $section->sectionid);
+            if ($newsectionid) {
+                $sectionnum = $DB->get_field('course_sections', 'section', ['id' => $newsectionid], IGNORE_MISSING);
+                if ($sectionnum !== false) {
+                    return (int) $sectionnum;
+                }
+            }
+        }
+
+        // Empty-named sections store the numeric index in title (same as format_topics).
+        if (isset($section->title) && is_number($section->title)) {
+            return (int) $section->title;
+        }
+
+        return null;
+    }
+
+    /**
      * Executed after course restore is complete.
      *
      * @return void
@@ -98,14 +128,27 @@ class restore_format_daysections_plugin extends restore_format_plugin {
 
         $numsections = (int) $data['tags']['numsections'];
         foreach ($backupinfo->sections as $key => $section) {
-            if ($this->step->get_task()->get_setting_value($key . '_included')) {
-                $sectionnum = (int) $section->title;
-                if ($sectionnum > $numsections && $sectionnum > $this->originalnumsections) {
-                    $DB->execute(
-                        'UPDATE {course_sections} SET visible = 0 WHERE course = ? AND section = ?',
-                        [$this->step->get_task()->get_courseid(), $sectionnum],
-                    );
-                }
+            // For each section from the backup file check if it was restored and if was "orphaned" in the original
+            // course and mark it as hidden. This will leave all activities in it visible and available just as it was
+            // in the original course.
+            // Exception is when we restore with merging and the course already had a section with this section number,
+            // in this case we don't modify the visibility.
+            if (!$this->step->get_task()->get_setting_value($key . '_included')) {
+                continue;
+            }
+
+            // Backup section "title" is the task name: the section name when set (e.g. "Day 1"), otherwise the
+            // numeric section index. Casting named titles to int yields 0, so resolve via the restored mapping.
+            $sectionnum = $this->resolve_restored_section_number($section);
+            if ($sectionnum === null) {
+                continue;
+            }
+
+            if ($sectionnum > $numsections && $sectionnum > $this->originalnumsections) {
+                $DB->execute(
+                    'UPDATE {course_sections} SET visible = 0 WHERE course = ? AND section = ?',
+                    [$this->step->get_task()->get_courseid(), $sectionnum],
+                );
             }
         }
     }
