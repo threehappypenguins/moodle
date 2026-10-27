@@ -28,7 +28,6 @@ require_once($CFG->dirroot. '/course/format/lib.php');
 require_once($CFG->dirroot. '/course/lib.php');
 
 use core\lang_string;
-use core_courseformat\local\linearnavigationsettings;
 
 /**
  * Main class for the Weeks course format
@@ -232,7 +231,8 @@ class format_weeks extends core_courseformat\base {
         $modinfo = get_fast_modinfo($course);
         $renderer = $this->get_renderer($PAGE);
         if ($renderer && ($sections = $modinfo->get_section_info_all())) {
-            foreach ($sections as $number => $section) {
+            foreach ($sections as $section) {
+                $number = $section->section;
                 $titles[$number] = $renderer->section_title($section, $course);
                 if ($this->is_section_current($section)) {
                     $current = $number;
@@ -284,11 +284,6 @@ class format_weeks extends core_courseformat\base {
                     'type' => PARAM_BOOL,
                 ],
             ];
-            // Add linear navigation settings if enabled for the format.
-            $courseformatoptions = array_merge(
-                linearnavigationsettings::get_course_format_options_default(self::get_format()),
-                $courseformatoptions,
-            );
         }
         if ($foreditform && !isset($courseformatoptions['coursedisplay']['label'])) {
             $hiddensectionslist = new core\output\choicelist();
@@ -335,11 +330,6 @@ class format_weeks extends core_courseformat\base {
                     'element_type' => 'advcheckbox',
                 ],
             ];
-            // Add linear navigation settings if enabled for the format.
-            $courseformatoptions = array_merge_recursive(
-                $courseformatoptions,
-                linearnavigationsettings::get_course_format_options_edit_form(self::get_format()),
-            );
 
             // Edit form options should override default ones.
             $courseformatoptions = array_merge_recursive($courseformatoptions, $courseformatoptionsedit);
@@ -560,7 +550,7 @@ class format_weeks extends core_courseformat\base {
 
         if (!($section instanceof section_info)) {
             $modinfo = course_modinfo::instance($this->courseid);
-            $section = $modinfo->get_section_info($section->section);
+            $section = $modinfo->get_section_info_by_id($section->id);
         }
         $elementclass = $this->get_output_classname('content\\section\\availability');
         $availability = new $elementclass($this, $section);

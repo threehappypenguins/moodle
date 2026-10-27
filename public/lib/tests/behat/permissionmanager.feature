@@ -15,9 +15,14 @@ Feature: Override permissions on a context
       | user      | course | role           |
       | teacher1  | C1     | editingteacher |
 
+  @accessibility
   Scenario: Default system capabilities modification
     Given I am on the "C1" "permissions" page logged in as "admin"
     When I click on "Allow" "link" in the "mod/forum:addnews" "table_row"
+    # The role picker is a YUI dialogue, so a theme styles its surface, header, borders and close button with
+    # its own rules rather than following the modal component. A narrowed tag set, for the reasons given in
+    # lib/tests/behat/exception_dialogue.feature. Checked in whichever colour mode the run is using.
+    And the "Allow role:" "dialogue" should meet "wcag131, wcag143, wcag412" accessibility standards
     And I press "Student"
     Then "Add announcementsmod/forum:addnews" row "Roles with permission" column of "permissions" table should contain "Student"
     When I reload the page

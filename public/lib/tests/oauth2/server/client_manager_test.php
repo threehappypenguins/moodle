@@ -182,7 +182,7 @@ final class client_manager_test extends \advanced_testcase {
             ],
             $client->get_grant_types(),
         );
-        $this->assertTrue($client->is_pkce_enabled());
+        $this->assertTrue($client->is_pkce_required());
 
         $record = $DB->get_record(
             'oauth2_server_clients',
@@ -337,6 +337,80 @@ final class client_manager_test extends \advanced_testcase {
     }
 
     /**
+     * Test updating the administrative metadata of a client.
+     *
+     * @return void
+     */
+    public function test_update_client_with_pkce(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+        $this->assertSame(1, (int) $record->ispkcerequired);
+
+        $manager->update_client((int) $record->id, [
+            'name' => 'Renamed client',
+            'description' => 'A new description',
+            'ispkcerequired' => 0,
+        ]);
+
+        $updated = $DB->get_record('oauth2_server_clients', ['id' => $record->id], '*', MUST_EXIST);
+        $this->assertSame('Renamed client', $updated->name);
+        $this->assertSame('A new description', $updated->description);
+        $this->assertSame(self::NOW, (int) $updated->timemodified);
+        $this->assertSame(0, (int) $updated->ispkcerequired);
+    }
+
+    /**
+     * Test that update_client updates the scopes when a 'scopes' key is supplied.
+     *
+     * @return void
+     */
+    public function test_update_client_with_scopes(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+        $this->assertSame('', $record->scopes);
+
+        $manager->update_client((int) $record->id, [
+            'scopes' => ['profile', 'email'],
+        ]);
+
+        $updated = $DB->get_record('oauth2_server_clients', ['id' => $record->id], '*', MUST_EXIST);
+        $this->assertSame('profile email', $updated->scopes);
+        $this->assertSame(self::NOW, (int) $updated->timemodified);
+    }
+
+    /**
+     * Test that update_client leaves the scopes untouched when no 'scopes' key is supplied.
+     *
+     * This is a regression test: update_client() must not overwrite the scopes with an empty
+     * value whenever an update omits the 'scopes' key entirely.
+     *
+     * @return void
+     */
+    public function test_update_client_without_scopes_leaves_scopes_unchanged(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+
+        $manager->update_client((int) $record->id, ['scopes' => ['profile']]);
+        $manager->update_client((int) $record->id, ['name' => 'Renamed client']);
+
+        $updated = $DB->get_record('oauth2_server_clients', ['id' => $record->id], '*', MUST_EXIST);
+        $this->assertSame('Renamed client', $updated->name);
+        $this->assertSame('profile', $updated->scopes);
+    }
+
+    /**
      * Test that update_client refuses to change anything but the name and the description.
      *
      * @return void
@@ -352,7 +426,7 @@ final class client_manager_test extends \advanced_testcase {
         $manager->update_client((int) $record->id, [
             'clientidentifier' => 'hijacked',
             'ownercontext' => 1,
-            'status' => client_entity::STATUS_REVOKED,
+            'status' => client_entity::STATUS_DISABLED,
             'isconfidential' => 0,
         ]);
 
@@ -364,7 +438,7 @@ final class client_manager_test extends \advanced_testcase {
     }
 
     /**
-     * Test that revoking a client cascades to every credential it holds.
+     * Test that revoking a client cascades to every credential it holds apart from secrets.
      *
      * @return void
      */
@@ -383,13 +457,13 @@ final class client_manager_test extends \advanced_testcase {
         $manager->create_secret((int) $other->id);
         $this->issue_credentials($other->clientidentifier);
 
-        $manager->revoke_client((int) $record->id);
+        $manager->disable_client((int) $record->id);
 
         $this->assertSame(
-            client_entity::STATUS_REVOKED,
+            client_entity::STATUS_DISABLED,
             (int) $DB->get_field('oauth2_server_clients', 'status', ['id' => $record->id]),
         );
-        $this->assertSame(1, $DB->count_records('oauth2_server_client_secrets', [
+        $this->assertSame(0, $DB->count_records('oauth2_server_client_secrets', [
             'clientidentifier' => $record->clientidentifier,
             'revoked' => client_entity::SECRET_REVOKED_YES,
         ]));
@@ -439,7 +513,7 @@ final class client_manager_test extends \advanced_testcase {
         $manager->create_secret((int) $record->id);
         $this->issue_credentials($record->clientidentifier);
 
-        $manager->revoke_client((int) $record->id);
+        $manager->disable_client((int) $record->id);
         $manager->reactivate_client((int) $record->id);
 
         $this->assertSame(client_entity::STATUS_ACTIVE, (int) $DB->get_field(
@@ -448,8 +522,10 @@ final class client_manager_test extends \advanced_testcase {
             ['id' => $record->id],
         ));
 
-        // Every credential revoked alongside the client stays revoked.
-        $this->assertEmpty($manager->get_secrets((int) $record->id));
+        // Revoking a client does not revoke its secrets, ensure they remain preserved upon re-activation.
+        $this->assertNotEmpty($manager->get_secrets((int) $record->id));
+
+        // Every other credential revoked alongside the client stays revoked.
         $this->assertSame(0, $DB->count_records('oauth2_server_client_access_tokens', [
             'clientidentifier' => $record->clientidentifier,
             'revoked' => access_token_entity::REVOKED_NO,
@@ -482,7 +558,7 @@ final class client_manager_test extends \advanced_testcase {
             $manager->delete_client((int) $record->id);
             $this->fail('A moodle_exception was expected.');
         } catch (moodle_exception $e) {
-            $this->assertSame('oauth2clientnotrevoked', $e->errorcode);
+            $this->assertSame('oauth2clientnotdisabled', $e->errorcode);
         }
 
         $this->assertTrue($DB->record_exists('oauth2_server_clients', ['id' => $record->id]));
@@ -507,7 +583,7 @@ final class client_manager_test extends \advanced_testcase {
         $manager->create_secret((int) $other->id);
         $this->issue_credentials($other->clientidentifier);
 
-        $manager->revoke_client((int) $record->id);
+        $manager->disable_client((int) $record->id);
         $manager->delete_client((int) $record->id);
 
         $params = ['clientidentifier' => $record->clientidentifier];
@@ -675,25 +751,20 @@ final class client_manager_test extends \advanced_testcase {
     }
 
     /**
-     * Test that a revoked client cannot be issued a new secret.
+     * Test that a revoked client can issue a new secret.
      *
      * @return void
      */
-    public function test_create_secret_rejects_revoked_client(): void {
+    public function test_create_secret_does_not_reject_revoked_client(): void {
         $this->resetAfterTest();
 
         $manager = $this->get_manager();
         $record = $this->create_fixture_client($manager);
-        $manager->revoke_client((int) $record->id);
+        $manager->disable_client((int) $record->id);
 
-        try {
-            $manager->create_secret((int) $record->id);
-            $this->fail('A moodle_exception was expected.');
-        } catch (moodle_exception $e) {
-            $this->assertSame('oauth2clientrevoked', $e->errorcode);
-        }
+        $manager->create_secret((int) $record->id);
 
-        $this->assertEmpty($manager->get_secrets((int) $record->id, true));
+        $this->assertNotEmpty($manager->get_secrets((int) $record->id));
     }
 
     /**
@@ -966,5 +1037,192 @@ final class client_manager_test extends \advanced_testcase {
         $manager = $this->get_manager();
 
         $this->assertFalse($manager->validate_redirect_uri('no-such-client', 'https://example.com/callback'));
+    }
+
+    /**
+     * Get the config log entries recorded under a name, oldest first, with their values decoded.
+     *
+     * @param string $name The config log name.
+     * @return \stdClass[] The config log entries.
+     */
+    private function get_config_log(string $name): array {
+        global $DB;
+
+        $entries = array_values($DB->get_records('config_log', ['name' => $name], 'id ASC'));
+        foreach ($entries as $entry) {
+            $entry->oldvalue = $entry->oldvalue === null ? null : json_decode($entry->oldvalue, true);
+            $entry->value = $entry->value === null ? null : json_decode($entry->value, true);
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Test that creating a client is logged with the client as created.
+     *
+     * @return void
+     */
+    public function test_create_client_is_logged(): void {
+        global $USER;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager, ['https://example.com/callback']);
+
+        $entries = $this->get_config_log('oauth2serverclient');
+        $this->assertCount(1, $entries);
+        $this->assertSame('core', $entries[0]->plugin);
+        $this->assertEquals($USER->id, $entries[0]->userid);
+        $this->assertNull($entries[0]->oldvalue);
+        $this->assertSame($record->clientidentifier, $entries[0]->value['clientidentifier']);
+        $this->assertSame('Test client', $entries[0]->value['name']);
+        $this->assertSame(client_entity::STATUS_ACTIVE, $entries[0]->value['status']);
+        $this->assertSame(['https://example.com/callback'], $entries[0]->value['redirecturis']);
+    }
+
+    /**
+     * Test that updating a client is logged with its state before and after.
+     *
+     * @return void
+     */
+    public function test_update_client_is_logged(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+
+        $manager->update_client((int) $record->id, ['name' => 'Renamed client']);
+
+        $entries = $this->get_config_log('oauth2serverclient');
+        $this->assertCount(2, $entries);
+        $this->assertSame('Test client', $entries[1]->oldvalue['name']);
+        $this->assertSame('Renamed client', $entries[1]->value['name']);
+    }
+
+    /**
+     * Test that saving a client without changing anything is not logged.
+     *
+     * @return void
+     */
+    public function test_update_client_without_changes_is_not_logged(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+
+        $manager->update_client((int) $record->id, ['name' => 'Test client']);
+
+        $entries = $this->get_config_log('oauth2serverclient');
+        $this->assertCount(1, $entries);
+        $this->assertNull($entries[0]->oldvalue);
+    }
+
+    /**
+     * Test that disabling and reactivating a client are each logged as a status change.
+     *
+     * @return void
+     */
+    public function test_client_status_changes_are_logged(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+
+        $manager->disable_client((int) $record->id);
+        $manager->reactivate_client((int) $record->id);
+
+        $entries = $this->get_config_log('oauth2serverclient');
+        $this->assertCount(3, $entries);
+        $this->assertSame(client_entity::STATUS_ACTIVE, $entries[1]->oldvalue['status']);
+        $this->assertSame(client_entity::STATUS_DISABLED, $entries[1]->value['status']);
+        $this->assertSame(client_entity::STATUS_DISABLED, $entries[2]->oldvalue['status']);
+        $this->assertSame(client_entity::STATUS_ACTIVE, $entries[2]->value['status']);
+    }
+
+    /**
+     * Test that deleting a client is logged with the client as it was before deletion.
+     *
+     * @return void
+     */
+    public function test_delete_client_is_logged(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+        $manager->disable_client((int) $record->id);
+
+        $manager->delete_client((int) $record->id);
+
+        $entries = $this->get_config_log('oauth2serverclient');
+        $this->assertCount(3, $entries);
+        $this->assertSame($record->clientidentifier, $entries[2]->oldvalue['clientidentifier']);
+        $this->assertNull($entries[2]->value);
+    }
+
+    /**
+     * Test that adding and removing redirect URIs is logged, and that no-op changes are not.
+     *
+     * @return void
+     */
+    public function test_redirect_uri_changes_are_logged(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager, ['https://example.com/first']);
+        $clientid = (int) $record->id;
+
+        $manager->add_redirect_uri($clientid, 'https://example.com/second');
+        $manager->add_redirect_uri($clientid, 'https://example.com/second');
+        $manager->remove_redirect_uri($clientid, 'https://example.com/first');
+        $manager->remove_redirect_uri($clientid, 'https://example.com/never-registered');
+
+        $entries = $this->get_config_log('oauth2serverclient');
+        $this->assertCount(3, $entries);
+        $this->assertSame(['https://example.com/first'], $entries[1]->oldvalue['redirecturis']);
+        $this->assertSame(
+            ['https://example.com/first', 'https://example.com/second'],
+            $entries[1]->value['redirecturis'],
+        );
+        $this->assertSame(['https://example.com/second'], $entries[2]->value['redirecturis']);
+    }
+
+    /**
+     * Test that creating and revoking a secret is logged without the secret or its hash.
+     *
+     * @return void
+     */
+    public function test_secret_changes_are_logged_without_the_secret(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $manager = $this->get_manager();
+        $record = $this->create_fixture_client($manager);
+
+        $secret = $manager->create_secret((int) $record->id);
+        $secretrecord = $DB->get_record('oauth2_server_client_secrets', ['clientidentifier' => $record->clientidentifier]);
+        $manager->revoke_secret((int) $secretrecord->id);
+        $manager->revoke_secret((int) $secretrecord->id);
+
+        $entries = $this->get_config_log('oauth2serverclientsecret');
+        $this->assertCount(2, $entries);
+        $this->assertNull($entries[0]->oldvalue);
+        $this->assertSame($record->clientidentifier, $entries[0]->value['clientidentifier']);
+        $this->assertSame((int) $secretrecord->id, $entries[0]->value['secretid']);
+        $this->assertSame(client_entity::SECRET_REVOKED_NO, $entries[0]->value['revoked']);
+        $this->assertSame(client_entity::SECRET_REVOKED_NO, $entries[1]->oldvalue['revoked']);
+        $this->assertSame(client_entity::SECRET_REVOKED_YES, $entries[1]->value['revoked']);
+
+        $rawlog = json_encode($DB->get_records('config_log', ['name' => 'oauth2serverclientsecret']));
+        $this->assertStringNotContainsString($secret, $rawlog);
+        $this->assertStringNotContainsString(json_encode($secretrecord->secret), $rawlog);
     }
 }

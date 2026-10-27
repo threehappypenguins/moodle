@@ -118,11 +118,9 @@ class forum_actionbar implements renderable, templatable {
         if ($cansubscribe) {
             $subscribed = \mod_forum\subscriptions::is_subscribed($USER->id, $forumobject);
             $label = get_string('subscribe', 'mod_forum');
-            if ($subscribed) {
-                $arialabel = get_string('unsubscribefromforum', 'mod_forum', $forumobject->name);
-            } else {
-                $arialabel = get_string('subscribetoforum', 'mod_forum', $forumobject->name);
-            }
+            // No aria-label here: the toggle's own <label> already gives it an accessible name that is
+            // consistent for sighted and screen reader users, and the checked state conveys subscription
+            // status (WCAG SC 2.5.3 Label in Name).
             $extraattributes = [
                 ['name' => 'data-type', 'value' => 'forum-subscription-toggle'],
                 ['name' => 'data-action', 'value' => 'toggle'],
@@ -130,7 +128,6 @@ class forum_actionbar implements renderable, templatable {
                 ['name' => 'data-forumname', 'value' => $forumobject->name],
                 ['name' => 'data-username', 'value' => fullname($USER)],
                 ['name' => 'data-targetstate', 'value' => !$subscribed],
-                ['name' => 'aria-label', 'value' => $arialabel],
             ];
 
             $data['subscribetoggle'] = [

@@ -88,6 +88,7 @@ Feature: Testing overview integration in mod_forum
     And I should not see "Forum type" in the "forum_overview_collapsible" "region"
     # Check Subscribe toggle works.
     And I click on "input[data-type=forum-subscription-toggle]" "css_element" in the "No discussions" "table_row"
+    And I should see "Username 1 will NOT be notified of new posts in 'No discussions'"
     And I follow "No discussions"
     And I should see "Subscribe to forum"
     And I am on the "Course 1" "course > activities > forum" page

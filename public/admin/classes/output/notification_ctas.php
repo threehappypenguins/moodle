@@ -90,7 +90,8 @@ class notification_ctas implements renderable, templatable {
     /**
      * Return the definitions of the four "From Moodle" CTA cards.
      *
-     * Card copy is final content agreed in MDL-89290 and must not be treated as placeholder text.
+     * Card copy is agreed content and must not be treated as placeholder text; see MDL-89290 for the
+     * original cards and MDL-89756 for the current copy and link corrections.
      *
      * Each card's brand colours are not here: they are keyed off the card's 'data-cta-key' attribute in
      * theme/boost/scss/moodle/admin.scss. Colours emitted from here would land in a style attribute, which
@@ -145,7 +146,7 @@ class notification_ctas implements renderable, templatable {
                 ],
                 'cta' => get_string('notificationctapartnerscta', 'admin'),
                 'caption' => get_string('notificationctapartnerscaption', 'admin'),
-                'url' => 'https://moodle.com/services/certified-service-providers/',
+                'url' => 'https://moodle.com/get-moodle/',
                 'internal' => false,
             ],
             'feedback' => [
@@ -173,12 +174,14 @@ class notification_ctas implements renderable, templatable {
      * (see tool_installaddon_installer::get_external_service_url()), so the marketplace can
      * match on site URL instead of relying on a new registration-based lookup.
      *
-     * A minimal utm_source/utm_campaign pair is also kept for on-site analytics; utm_medium,
-     * version and a separate site-identifier hash are no longer sent, since the site param
-     * already carries the site URL and Moodle version.
+     * The utm_source/utm_medium/utm_campaign/utm_content parameters follow Moodle HQ's
+     * marketing team's standard tracking convention for ad hoc, non-campaign CTA links
+     * (source = where, medium = how, campaign = what): utm_source identifies the referring
+     * site, utm_medium and utm_campaign are fixed for this kind of link, and utm_content
+     * identifies which CTA was clicked.
      *
      * @param string $url The base CTA URL.
-     * @param string $ctakey The CTA key, used as the utm_campaign value.
+     * @param string $ctakey The CTA key, used as the utm_content value.
      * @return moodle_url
      */
     protected function build_tracked_cta_url(string $url, string $ctakey): moodle_url {
@@ -192,8 +195,10 @@ class notification_ctas implements renderable, templatable {
 
         return new moodle_url($url, [
             'site' => $site,
-            'utm_source' => 'moodle_admin',
-            'utm_campaign' => $ctakey,
+            'utm_source' => parse_url($CFG->wwwroot, PHP_URL_HOST),
+            'utm_medium' => 'lms_referral',
+            'utm_campaign' => '000_lms_cta',
+            'utm_content' => $ctakey,
         ]);
     }
 }

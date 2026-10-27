@@ -1131,6 +1131,8 @@ audio.mediaplugin_html5audio {
     padding: $modal-header-padding;
     margin: (-$modal-header-padding-y) (-$modal-header-padding-x) (-$modal-header-padding-y) auto;
     position: relative;
+    // Inherited for the same reason as the header above, so the glyph follows the colour mode.
+    color: inherit;
     background-color: transparent;
     border: 0;
     background-image: none;
@@ -1184,7 +1186,7 @@ audio.mediaplugin_html5audio {
 }
 
 .moodle-dialogue-exception .param-stacktrace .stacktrace-line {
-    color: map-get($theme-colors, 'warning');
+    color: $dialogue-exception-line-color;
     font-size: $font-size-sm;
 }
 

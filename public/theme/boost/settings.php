@@ -119,6 +119,10 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_configcheckbox($name, $title, $description, 0);
     $page->add($setting);
 
+    // Light while colour modes are experimental. Following the device would put everyone whose device asks for dark
+    // into dark mode the moment a site ticks the setting above, including the guests and users who are not logged in
+    // who never get the switcher to change it back. MDL-89379 restores the device default once the components have
+    // all been converted.
     $name = 'theme_boost/defaultcolourmode';
     $title = get_string('defaultcolourmode', 'theme_boost');
     $description = get_string('defaultcolourmode_desc', 'theme_boost');
@@ -126,7 +130,7 @@ if ($ADMIN->fulltree) {
     foreach (\theme_boost\colour_mode::get_modes() as $mode) {
         $choices[$mode] = get_string('colourmode:' . $mode, 'theme_boost');
     }
-    $setting = new admin_setting_configselect($name, $title, $description, \theme_boost\colour_mode::AUTO, $choices);
+    $setting = new admin_setting_configselect($name, $title, $description, \theme_boost\colour_mode::LIGHT, $choices);
     $page->add($setting);
     // The dependency goes on the tabs page rather than the tab: admin/settings.php reads the dependencies from the
     // top level page, and theme_boost_admin_settingspage_tabs::add_tab() copies a tab's settings up but not its

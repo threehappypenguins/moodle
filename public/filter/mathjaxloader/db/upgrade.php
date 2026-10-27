@@ -65,5 +65,21 @@ function xmldb_filter_mathjaxloader_upgrade($oldversion) {
     // Automatically generated Moodle v5.2.0 release upgrade line.
     // Put any upgrade step following this.
 
+    if ($oldversion < 2026092200) {
+        $originalurl = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.js';
+        $newurl = 'https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-mml-chtml.js';
+        $currenturl = get_config('filter_mathjaxloader', 'httpsurl');
+        if ($currenturl == $originalurl) {
+            // Set value of "httpsurl" to the latest MathJax cdn version 4.1.3.
+            set_config('httpsurl', $newurl, 'filter_mathjaxloader');
+        }
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2026092200, 'filter', 'mathjaxloader');
+    }
+
+    // Automatically generated Moodle v5.3.0 release upgrade line.
+    // Put any upgrade step following this.
+
     return true;
 }

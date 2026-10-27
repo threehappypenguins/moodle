@@ -41,10 +41,11 @@ require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
  * @category   test
  * @copyright  2018 Shamim Rezaie <shamim@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers     \restore_qtype_plugin
- * @covers     \restore_create_categories_and_questions
- * @covers     \restore_move_module_questions_categories
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\restore_qtype_plugin::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\restore_create_categories_and_questions::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\restore_move_module_questions_categories::class)]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\restore_controller::class, 'execute_plan')]
 final class backup_test extends \advanced_testcase {
 
     /**
@@ -725,7 +726,6 @@ final class backup_test extends \advanced_testcase {
      * then we need to restore the categories and questions to the qbank and quiz modules included in the backup on the new course.
      *
      * @return void
-     * @covers \restore_controller::execute_plan()
      */
     public function test_bank_and_quiz_activity_restore_to_new_course(): void {
         // Create a new course.
@@ -789,7 +789,6 @@ final class backup_test extends \advanced_testcase {
      * The quiz included in the backup uses a question in each category.
      *
      * @return void
-     * @covers \restore_controller::execute_plan()
      */
     public function test_pre_46_course_restore_to_new_course(): void {
         global $DB, $USER;
@@ -866,6 +865,47 @@ final class backup_test extends \advanced_testcase {
         $this->assertCount(1, $quizcatqs);
         $quizcatq = reset($quizcatqs);
         $this->assertEquals($expectedidentifiers[$i], $quizcatq->name);
+    }
+
+    /**
+     * Restore a deleted earlier question version to its existing question bank entry.
+     */
+    public function test_restore_backup_containing_deleted_earlier_version(): void {
+        global $DB;
+
+        self::setAdminUser();
+        $this->resetAfterTest();
+        $questiongenerator = self::getDataGenerator()->get_plugin_generator('core_question');
+        $testdata = $this->add_course_quiz_and_qbank();
+        $questionv1 = $testdata->qbankquestion;
+        $questionv2 = $questiongenerator->update_question($questionv1, null, ['name' => 'Version 2']);
+
+        // Reference version 2 explicitly, so version 1 can be deleted while version 2 remains mapped during restore.
+        $quizsettings = quiz_settings::create($testdata->quiz->id);
+        $structure = $quizsettings->get_structure();
+        $structure->update_slot_version($structure->get_slot_id_for_slot(1), 2);
+        $this->assertEquals($questionv2->id, $structure->get_question_in_slot(1)->questionid);
+
+        $backupid = $this->backup_course_module($testdata->quiz->cmid);
+        $qbe = get_question_bank_entry($questionv2->id);
+
+        question_delete_question($questionv1->id);
+        $this->assertFalse($DB->record_exists('question', ['id' => $questionv1->id]));
+        $this->assertFalse($DB->record_exists('question_versions', ['questionid' => $questionv1->id]));
+
+        $this->restore_to_course($backupid, $testdata->course->id);
+
+        $versions = $DB->get_records('question_versions', ['questionbankentryid' => $qbe->id], 'version', 'version, questionid');
+        $this->assertCount(2, $versions);
+        $this->assertEquals($questionv1->name, $DB->get_field('question', 'name', ['id' => $versions[1]->questionid]));
+        $this->assertEquals($questionv2->id, $versions[2]->questionid);
+        $this->assertEquals(1, $DB->count_records('question_bank_entries', ['questioncategoryid' => $qbe->questioncategoryid]));
+        $this->assertEquals(2, $DB->count_records('question_references', [
+            'questionbankentryid' => $qbe->id,
+            'component' => 'mod_quiz',
+            'questionarea' => 'slot',
+            'version' => 2,
+        ]));
     }
 
     /**

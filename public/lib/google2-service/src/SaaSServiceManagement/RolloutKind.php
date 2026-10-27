@@ -19,10 +19,6 @@ namespace Google\Service\SaaSServiceManagement;
 
 class RolloutKind extends \Google\Model
 {
-  public const MAINTENANCE_POLICY_ENFORCEMENT_MAINTENANCE_POLICY_ENFORCEMENT_UNSPECIFIED = 'MAINTENANCE_POLICY_ENFORCEMENT_UNSPECIFIED';
-  public const MAINTENANCE_POLICY_ENFORCEMENT_MAINTENANCE_POLICY_ENFORCEMENT_STRICT = 'MAINTENANCE_POLICY_ENFORCEMENT_STRICT';
-  public const MAINTENANCE_POLICY_ENFORCEMENT_MAINTENANCE_POLICY_ENFORCEMENT_IGNORED = 'MAINTENANCE_POLICY_ENFORCEMENT_IGNORED';
-  public const MAINTENANCE_POLICY_ENFORCEMENT_MAINTENANCE_POLICY_ENFORCEMENT_SKIPPED = 'MAINTENANCE_POLICY_ENFORCEMENT_SKIPPED';
   /**
    * Strategy unspecified.
    */
@@ -67,14 +63,6 @@ class RolloutKind extends \Google\Model
    * @var string[]
    */
   public $labels;
-  /**
-   * Optional. Value among strict (enforcing maintenance policy and only looking
-   * at Units with maintenance policy), ignore (ignoring maintenance policy) and
-   * skip (skipping Units with maintenance policy)
-   *
-   * @var string
-   */
-  public $maintenancePolicyEnforcement;
   /**
    * Identifier. The resource name (full URI of the resource) following the
    * standard naming scheme:
@@ -122,6 +110,8 @@ class RolloutKind extends \Google\Model
    * @var string
    */
   public $unitKind;
+  protected $unitUpdatePacingType = UnitUpdatePacing::class;
+  protected $unitUpdatePacingDataType = '';
   /**
    * Output only. The timestamp when the resource was last updated. Any change
    * to the resource made by users must refresh this value. Changes to a
@@ -228,29 +218,6 @@ class RolloutKind extends \Google\Model
     return $this->labels;
   }
   /**
-   * Optional. Value among strict (enforcing maintenance policy and only looking
-   * at Units with maintenance policy), ignore (ignoring maintenance policy) and
-   * skip (skipping Units with maintenance policy)
-   *
-   * Accepted values: MAINTENANCE_POLICY_ENFORCEMENT_UNSPECIFIED,
-   * MAINTENANCE_POLICY_ENFORCEMENT_STRICT,
-   * MAINTENANCE_POLICY_ENFORCEMENT_IGNORED,
-   * MAINTENANCE_POLICY_ENFORCEMENT_SKIPPED
-   *
-   * @param self::MAINTENANCE_POLICY_ENFORCEMENT_* $maintenancePolicyEnforcement
-   */
-  public function setMaintenancePolicyEnforcement($maintenancePolicyEnforcement)
-  {
-    $this->maintenancePolicyEnforcement = $maintenancePolicyEnforcement;
-  }
-  /**
-   * @return self::MAINTENANCE_POLICY_ENFORCEMENT_*
-   */
-  public function getMaintenancePolicyEnforcement()
-  {
-    return $this->maintenancePolicyEnforcement;
-  }
-  /**
    * Identifier. The resource name (full URI of the resource) following the
    * standard naming scheme:
    * "projects/{project}/locations/{location}/rolloutKinds/{rollout_kind_id}"
@@ -346,6 +313,23 @@ class RolloutKind extends \Google\Model
   public function getUnitKind()
   {
     return $this->unitKind;
+  }
+  /**
+   * Optional. Settings for controlling the pacing of rollouts i.e. the number
+   * of units to be rolled out in parallel in a region.
+   *
+   * @param UnitUpdatePacing $unitUpdatePacing
+   */
+  public function setUnitUpdatePacing(UnitUpdatePacing $unitUpdatePacing)
+  {
+    $this->unitUpdatePacing = $unitUpdatePacing;
+  }
+  /**
+   * @return UnitUpdatePacing
+   */
+  public function getUnitUpdatePacing()
+  {
+    return $this->unitUpdatePacing;
   }
   /**
    * Output only. The timestamp when the resource was last updated. Any change

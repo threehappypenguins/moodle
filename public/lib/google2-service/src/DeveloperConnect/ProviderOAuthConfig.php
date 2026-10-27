@@ -62,6 +62,10 @@ class ProviderOAuthConfig extends \Google\Collection
    * Dynatrace provider.
    */
   public const SYSTEM_PROVIDER_ID_DYNATRACE = 'DYNATRACE';
+  /**
+   * Bitbucket Cloud provider.
+   */
+  public const SYSTEM_PROVIDER_ID_BITBUCKET_CLOUD = 'BITBUCKET_CLOUD';
   protected $collection_key = 'scopes';
   /**
    * Required. User selected scopes to apply to the Oauth config In the event of
@@ -72,7 +76,7 @@ class ProviderOAuthConfig extends \Google\Collection
    */
   public $scopes;
   /**
-   * Immutable. Developer Connect provided OAuth.
+   * Optional. Immutable. Developer Connect provided OAuth.
    *
    * @var string
    */
@@ -97,10 +101,10 @@ class ProviderOAuthConfig extends \Google\Collection
     return $this->scopes;
   }
   /**
-   * Immutable. Developer Connect provided OAuth.
+   * Optional. Immutable. Developer Connect provided OAuth.
    *
    * Accepted values: SYSTEM_PROVIDER_UNSPECIFIED, GITHUB, GITLAB, GOOGLE,
-   * SENTRY, ROVO, NEW_RELIC, DATASTAX, DYNATRACE
+   * SENTRY, ROVO, NEW_RELIC, DATASTAX, DYNATRACE, BITBUCKET_CLOUD
    *
    * @param self::SYSTEM_PROVIDER_ID_* $systemProviderId
    */

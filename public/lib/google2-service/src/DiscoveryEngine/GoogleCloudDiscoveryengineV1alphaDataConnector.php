@@ -34,7 +34,7 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
   /**
    * The connector is in error. The error details can be found in
    * DataConnector.errors. If the error is unfixable, the DataConnector can be
-   * deleted by [CollectionService.DeleteCollection] API.
+   * deleted by CollectionService.DeleteCollection API.
    */
   public const ACTION_STATE_FAILED = 'FAILED';
   /**
@@ -105,6 +105,22 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
    */
   public const CONNECTOR_TYPE_GCNV = 'GCNV';
   /**
+   * Google Chat connector.
+   */
+  public const CONNECTOR_TYPE_GOOGLE_CHAT = 'GOOGLE_CHAT';
+  /**
+   * Google Sites connector.
+   */
+  public const CONNECTOR_TYPE_GOOGLE_SITES = 'GOOGLE_SITES';
+  /**
+   * Remote MCP based connector.
+   */
+  public const CONNECTOR_TYPE_REMOTE_MCP = 'REMOTE_MCP';
+  /**
+   * Google Workspace connector.
+   */
+  public const CONNECTOR_TYPE_GOOGLE_WORKSPACE = 'GOOGLE_WORKSPACE';
+  /**
    * Default value.
    */
   public const REALTIME_STATE_STATE_UNSPECIFIED = 'STATE_UNSPECIFIED';
@@ -119,7 +135,7 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
   /**
    * The connector is in error. The error details can be found in
    * DataConnector.errors. If the error is unfixable, the DataConnector can be
-   * deleted by [CollectionService.DeleteCollection] API.
+   * deleted by CollectionService.DeleteCollection API.
    */
   public const REALTIME_STATE_FAILED = 'FAILED';
   /**
@@ -155,7 +171,7 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
   /**
    * The connector is in error. The error details can be found in
    * DataConnector.errors. If the error is unfixable, the DataConnector can be
-   * deleted by [CollectionService.DeleteCollection] API.
+   * deleted by CollectionService.DeleteCollection API.
    */
   public const STATE_FAILED = 'FAILED';
   /**
@@ -227,6 +243,8 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
    * @var string[]
    */
   public $blockingReasons;
+  protected $cliConfigType = GoogleCloudDiscoveryengineV1alphaCliConfig::class;
+  protected $cliConfigDataType = '';
   /**
    * Optional. The modes enabled for this connector. Default state is
    * CONNECTOR_MODE_UNSPECIFIED.
@@ -234,6 +252,13 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
    * @var string[]
    */
   public $connectorModes;
+  /**
+   * Optional. If set, this value instead of `data_source` is used to fetch the
+   * corresponding connector source.
+   *
+   * @var string
+   */
+  public $connectorSourceId;
   /**
    * Output only. The type of connector. Each source can only map to one type.
    * For example, salesforce, confluence and jira have THIRD_PARTY connector
@@ -254,15 +279,29 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
    * @var string
    */
   public $createTime;
+  protected $dataProtectionPolicyType = GoogleCloudDiscoveryengineV1alphaDataProtectionPolicy::class;
+  protected $dataProtectionPolicyDataType = '';
   /**
-   * Required. The name of the data source. Supported values: `salesforce`,
-   * `jira`, `confluence`, `bigquery`.
+   * Required. The identifier for the data source. For the full, up-to-date list
+   * of supported connectors and their values, see [Connect a third-party data s
+   * ource](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/conn
+   * ect-third-party-data-source#sources-by-launch-stage).
    *
    * @var string
    */
   public $dataSource;
   protected $destinationConfigsType = GoogleCloudDiscoveryengineV1alphaDestinationConfig::class;
   protected $destinationConfigsDataType = 'array';
+  protected $dynamicToolsType = GoogleCloudDiscoveryengineV1alphaDynamicTool::class;
+  protected $dynamicToolsDataType = 'array';
+  /**
+   * Output only. The list of FQDNs of the data connector can egress to. This
+   * includes both FQDN derived from the customer provided instance URL and
+   * default per connector type FQDNs.
+   *
+   * @var string[]
+   */
+  public $egressFqdns;
   protected $endUserConfigType = GoogleCloudDiscoveryengineV1alphaDataConnectorEndUserConfig::class;
   protected $endUserConfigDataType = '';
   protected $entitiesType = GoogleCloudDiscoveryengineV1alphaDataConnectorSourceEntity::class;
@@ -345,8 +384,10 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
    * @var string
    */
   public $latestPauseTime;
+  protected $metadataType = GoogleCloudDiscoveryengineV1alphaDataConnectorConnectorMetadata::class;
+  protected $metadataDataType = '';
   /**
-   * Output only. The full resource name of the Data Connector. Format:
+   * Identifier. The full resource name of the Data Connector. Format:
    * `projects/locations/collections/dataConnector`.
    *
    * @var string
@@ -354,6 +395,16 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
   public $name;
   protected $nextSyncTimeType = GoogleTypeDateTime::class;
   protected $nextSyncTimeDataType = '';
+  /**
+   * Output only. The static IP addresses used by this connector for OAuth APIs
+   * (e.g. end user authentication). These are surfaced separately from
+   * `static_ip_addresses` so that customers can apply granular firewall
+   * settings for OAuth endpoints. Only populated for connectors that have
+   * static IP enabled and are used for actions and/or federated search.
+   *
+   * @var string[]
+   */
+  public $oauthStaticIpAddresses;
   /**
    * Required data connector parameters in structured json format.
    *
@@ -421,11 +472,29 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
    */
   public $syncMode;
   /**
+   * Optional. Immutable. User-facing, version-independent label for this
+   * connector. May be shared by multiple connectors under the same (project,
+   * location, collection, data_source); tag-based lookup returns the one with
+   * the greatest create_time. Optional at Create time. Agent Designer resolves
+   * connectors via (data_source, tag) when set, falling back to the legacy
+   * resource-name lookup when unset, so connectors created before the tag-write
+   * launch continue to work without a backfill.
+   *
+   * @var string
+   */
+  public $tag;
+  /**
    * Output only. Timestamp the DataConnector was last updated.
    *
    * @var string
    */
   public $updateTime;
+  /**
+   * Output only. Whether the connector is created with VPC-SC enabled.
+   *
+   * @var bool
+   */
+  public $vpcscEnabled;
 
   /**
    * Optional. Whether the connector will be created with an ACL config.
@@ -549,6 +618,22 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
     return $this->blockingReasons;
   }
   /**
+   * Optional. The configuration for establishing a CLI connection.
+   *
+   * @param GoogleCloudDiscoveryengineV1alphaCliConfig $cliConfig
+   */
+  public function setCliConfig(GoogleCloudDiscoveryengineV1alphaCliConfig $cliConfig)
+  {
+    $this->cliConfig = $cliConfig;
+  }
+  /**
+   * @return GoogleCloudDiscoveryengineV1alphaCliConfig
+   */
+  public function getCliConfig()
+  {
+    return $this->cliConfig;
+  }
+  /**
    * Optional. The modes enabled for this connector. Default state is
    * CONNECTOR_MODE_UNSPECIFIED.
    *
@@ -566,13 +651,31 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
     return $this->connectorModes;
   }
   /**
+   * Optional. If set, this value instead of `data_source` is used to fetch the
+   * corresponding connector source.
+   *
+   * @param string $connectorSourceId
+   */
+  public function setConnectorSourceId($connectorSourceId)
+  {
+    $this->connectorSourceId = $connectorSourceId;
+  }
+  /**
+   * @return string
+   */
+  public function getConnectorSourceId()
+  {
+    return $this->connectorSourceId;
+  }
+  /**
    * Output only. The type of connector. Each source can only map to one type.
    * For example, salesforce, confluence and jira have THIRD_PARTY connector
    * type. It is not mutable once set by system.
    *
    * Accepted values: CONNECTOR_TYPE_UNSPECIFIED, THIRD_PARTY, GCP_FHIR,
    * BIG_QUERY, GCS, GOOGLE_MAIL, GOOGLE_CALENDAR, GOOGLE_DRIVE,
-   * NATIVE_CLOUD_IDENTITY, THIRD_PARTY_FEDERATED, THIRD_PARTY_EUA, GCNV
+   * NATIVE_CLOUD_IDENTITY, THIRD_PARTY_FEDERATED, THIRD_PARTY_EUA, GCNV,
+   * GOOGLE_CHAT, GOOGLE_SITES, REMOTE_MCP, GOOGLE_WORKSPACE
    *
    * @param self::CONNECTOR_TYPE_* $connectorType
    */
@@ -620,8 +723,26 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
     return $this->createTime;
   }
   /**
-   * Required. The name of the data source. Supported values: `salesforce`,
-   * `jira`, `confluence`, `bigquery`.
+   * Optional. Specifies the data protection policy for the connector.
+   *
+   * @param GoogleCloudDiscoveryengineV1alphaDataProtectionPolicy $dataProtectionPolicy
+   */
+  public function setDataProtectionPolicy(GoogleCloudDiscoveryengineV1alphaDataProtectionPolicy $dataProtectionPolicy)
+  {
+    $this->dataProtectionPolicy = $dataProtectionPolicy;
+  }
+  /**
+   * @return GoogleCloudDiscoveryengineV1alphaDataProtectionPolicy
+   */
+  public function getDataProtectionPolicy()
+  {
+    return $this->dataProtectionPolicy;
+  }
+  /**
+   * Required. The identifier for the data source. For the full, up-to-date list
+   * of supported connectors and their values, see [Connect a third-party data s
+   * ource](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/conn
+   * ect-third-party-data-source#sources-by-launch-stage).
    *
    * @param string $dataSource
    */
@@ -651,6 +772,40 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
   public function getDestinationConfigs()
   {
     return $this->destinationConfigs;
+  }
+  /**
+   * Output only. The dynamic tools fetched for this connector.
+   *
+   * @param GoogleCloudDiscoveryengineV1alphaDynamicTool[] $dynamicTools
+   */
+  public function setDynamicTools($dynamicTools)
+  {
+    $this->dynamicTools = $dynamicTools;
+  }
+  /**
+   * @return GoogleCloudDiscoveryengineV1alphaDynamicTool[]
+   */
+  public function getDynamicTools()
+  {
+    return $this->dynamicTools;
+  }
+  /**
+   * Output only. The list of FQDNs of the data connector can egress to. This
+   * includes both FQDN derived from the customer provided instance URL and
+   * default per connector type FQDNs.
+   *
+   * @param string[] $egressFqdns
+   */
+  public function setEgressFqdns($egressFqdns)
+  {
+    $this->egressFqdns = $egressFqdns;
+  }
+  /**
+   * @return string[]
+   */
+  public function getEgressFqdns()
+  {
+    return $this->egressFqdns;
   }
   /**
    * Optional. Any params and credentials used specifically for EUA connectors.
@@ -891,7 +1046,24 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
     return $this->latestPauseTime;
   }
   /**
-   * Output only. The full resource name of the Data Connector. Format:
+   * Optional. User-facing metadata for the connector. Populated from the
+   * connector's generated metadata / registry `ConnectorSource`.
+   *
+   * @param GoogleCloudDiscoveryengineV1alphaDataConnectorConnectorMetadata $metadata
+   */
+  public function setMetadata(GoogleCloudDiscoveryengineV1alphaDataConnectorConnectorMetadata $metadata)
+  {
+    $this->metadata = $metadata;
+  }
+  /**
+   * @return GoogleCloudDiscoveryengineV1alphaDataConnectorConnectorMetadata
+   */
+  public function getMetadata()
+  {
+    return $this->metadata;
+  }
+  /**
+   * Identifier. The full resource name of the Data Connector. Format:
    * `projects/locations/collections/dataConnector`.
    *
    * @param string $name
@@ -927,6 +1099,26 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
   public function getNextSyncTime()
   {
     return $this->nextSyncTime;
+  }
+  /**
+   * Output only. The static IP addresses used by this connector for OAuth APIs
+   * (e.g. end user authentication). These are surfaced separately from
+   * `static_ip_addresses` so that customers can apply granular firewall
+   * settings for OAuth endpoints. Only populated for connectors that have
+   * static IP enabled and are used for actions and/or federated search.
+   *
+   * @param string[] $oauthStaticIpAddresses
+   */
+  public function setOauthStaticIpAddresses($oauthStaticIpAddresses)
+  {
+    $this->oauthStaticIpAddresses = $oauthStaticIpAddresses;
+  }
+  /**
+   * @return string[]
+   */
+  public function getOauthStaticIpAddresses()
+  {
+    return $this->oauthStaticIpAddresses;
   }
   /**
    * Required data connector parameters in structured json format.
@@ -1107,6 +1299,28 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
     return $this->syncMode;
   }
   /**
+   * Optional. Immutable. User-facing, version-independent label for this
+   * connector. May be shared by multiple connectors under the same (project,
+   * location, collection, data_source); tag-based lookup returns the one with
+   * the greatest create_time. Optional at Create time. Agent Designer resolves
+   * connectors via (data_source, tag) when set, falling back to the legacy
+   * resource-name lookup when unset, so connectors created before the tag-write
+   * launch continue to work without a backfill.
+   *
+   * @param string $tag
+   */
+  public function setTag($tag)
+  {
+    $this->tag = $tag;
+  }
+  /**
+   * @return string
+   */
+  public function getTag()
+  {
+    return $this->tag;
+  }
+  /**
    * Output only. Timestamp the DataConnector was last updated.
    *
    * @param string $updateTime
@@ -1121,6 +1335,22 @@ class GoogleCloudDiscoveryengineV1alphaDataConnector extends \Google\Collection
   public function getUpdateTime()
   {
     return $this->updateTime;
+  }
+  /**
+   * Output only. Whether the connector is created with VPC-SC enabled.
+   *
+   * @param bool $vpcscEnabled
+   */
+  public function setVpcscEnabled($vpcscEnabled)
+  {
+    $this->vpcscEnabled = $vpcscEnabled;
+  }
+  /**
+   * @return bool
+   */
+  public function getVpcscEnabled()
+  {
+    return $this->vpcscEnabled;
   }
 }
 

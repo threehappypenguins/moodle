@@ -24,7 +24,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import {parseSpecifier, loadComponents} from './utils.mjs';
+import {parseSpecifier, loadComponents, detectComponentExport, toIdentifier} from './utils.mjs';
 
 /**
  * Derive the absolute path to a component's source file from its specifier.
@@ -47,8 +47,6 @@ function resolveSourceFile(specifier, rootDir) {
         const candidates = [
             path.join(base, `${module}.tsx`),
             path.join(base, `${module}.ts`),
-            path.join(base, module, 'index.tsx'),
-            path.join(base, module, 'index.ts'),
         ];
         return candidates.find(f => fs.existsSync(f)) ?? null;
     }
@@ -62,20 +60,8 @@ function resolveSourceFile(specifier, rootDir) {
     const candidates = [
         path.join(rootDir, componentPath, 'js', 'esm', 'src', `${module}.tsx`),
         path.join(rootDir, componentPath, 'js', 'esm', 'src', `${module}.ts`),
-        path.join(rootDir, componentPath, 'js', 'esm', 'src', module, 'index.tsx'),
-        path.join(rootDir, componentPath, 'js', 'esm', 'src', module, 'index.ts'),
     ];
     return candidates.find(f => fs.existsSync(f)) ?? null;
-}
-
-/**
- * True when a resolved source file is the index of a directory-based module.
- *
- * @param {string|null} filePath
- * @returns {boolean}
- */
-function isDirectoryBasedFile(filePath) {
-    return Boolean(filePath) && path.basename(filePath).replace(/\.(ts|tsx)$/, '') === 'index';
 }
 
 /**
@@ -91,24 +77,40 @@ function resolveSourceFiles(specifier, rootDir) {
         return null;
     }
 
-    if (isDirectoryBasedFile(primary)) {
-        const dir = path.dirname(primary);
-        const extras = fs.readdirSync(dir)
-            .filter(name => path.join(dir, name) !== primary)
-            .map(name => path.join(dir, name));
-        return {primary, extras};
+    return {primary, extras: siblingsWithStem(primary)};
+}
+
+/**
+ * Return files beside the given file that share its stem.
+ *
+ * @param {string} filePath
+ * @returns {string[]}
+ */
+function siblingsWithStem(filePath) {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+        return [];
     }
+    const stem = filePath.slice(0, filePath.lastIndexOf('.'));
+    return fs.readdirSync(dir)
+        .map(name => path.join(dir, name))
+        .filter(full => full !== filePath && full.startsWith(`${stem}.`));
+}
 
-    const stem = primary.slice(0, primary.lastIndexOf('.'));
-    const dir = path.dirname(primary);
-    const extras = fs.readdirSync(dir)
-        .filter(name => {
-            const full = path.join(dir, name);
-            return full !== primary && full.startsWith(`${stem}.`);
-        })
-        .map(name => path.join(dir, name));
-
-    return {primary, extras};
+/**
+ * Remove files a previous eject left beside an override being replaced by a wrap.
+ *
+ * @param {string} destFile
+ * @param {string} rootDir
+ * @returns {string[]} Relative paths of removed files.
+ */
+function removeStaleFiles(destFile, rootDir) {
+    const removed = [];
+    for (const full of siblingsWithStem(destFile)) {
+        fs.unlinkSync(full);
+        removed.push(path.relative(rootDir, full));
+    }
+    return removed;
 }
 
 /**
@@ -121,23 +123,9 @@ function resolveSourceFiles(specifier, rootDir) {
  */
 export function resolveDestFile(specifier, target, rootDir) {
     const {component, module} = parseSpecifier(specifier);
-    const isDirectoryBased = isDirectoryBasedFile(resolveSourceFile(specifier, rootDir));
     const base = path.join(rootDir, 'public', 'theme', target.name, 'js', 'esm', 'src', 'overrides');
 
-    if (isDirectoryBased) {
-        return path.join(base, component, module, 'index.tsx');
-    }
     return path.join(base, component, `${module}.tsx`);
-}
-
-/**
- * Convert snake_case or kebab-case to PascalCase.
- *
- * @param {string} str
- * @returns {string}
- */
-function toPascalCase(str) {
-    return str.replace(/(?:^|[_-])([a-z])/g, (_, c) => c.toUpperCase());
 }
 
 /**
@@ -216,9 +204,10 @@ function resolveParentImport(specifier, target, rootDir) {
  * @param {string} specifier
  * @param {{type: 'theme', name: string}} target
  * @param {string} parentImport
+ * @param {{kind: 'default'}|{kind: 'named', name: string}} componentExport
  * @returns {string}
  */
-function generateWrapScaffold(specifier, target, parentImport) {
+function generateWrapScaffold(specifier, target, parentImport, componentExport) {
     const {component, module} = parseSpecifier(specifier);
 
     const isNamedParent = !parentImport.includes('/theme-original/');
@@ -231,14 +220,27 @@ function generateWrapScaffold(specifier, target, parentImport) {
     const moduleTag = `theme_${target.name}/${component}/${module}`;
     const label = `${target.name} theme`;
 
+    // Mirror the original's export shape, so importers of the specifier are
+    // unaffected by the override.
+    const isDefault = componentExport.kind === 'default';
+    const originalImport = isDefault
+        ? `import OriginalComponent from '${parentImport}';`
+        : `import {${componentExport.name} as OriginalComponent} from '${parentImport}';`;
+    const identifier = isDefault ? toIdentifier(module) : componentExport.name;
+    const declaration = isDefault
+        ? `export default function ${identifier}`
+        : `export function ${identifier}`;
+
     return `// This file was generated by \`node scripts/swizzle.mjs\`.
 // It wraps the original component — edit freely.
 ${importComment}
 //
 // To revert to the original, delete this file and rebuild.
 
-import type {Props} from '${parentImport}';
-import OriginalComponent from '${parentImport}';
+import type {ComponentProps} from 'react';
+${originalImport}
+
+type Props = ComponentProps<typeof OriginalComponent>;
 
 /**
  * ${label} wrapper for ${module}.
@@ -250,7 +252,7 @@ import OriginalComponent from '${parentImport}';
  *
  * @module     ${moduleTag}
  */
-export default function ${toPascalCase(module)}(props: Props) {
+${declaration}(props: Props) {
     return (
         <>
             {/* TODO: add your customisation around the original */}
@@ -288,29 +290,6 @@ export function discoverTargets(rootDir) {
 }
 
 /**
- * Remove stale override files from a directory-based component's override dir.
- *
- * @param {string} destDir
- * @param {string} destFile
- * @param {string} rootDir
- * @returns {string[]} Relative paths of removed files.
- */
-function removeStaleFiles(destDir, destFile, rootDir) {
-    if (!fs.existsSync(destDir)) {
-        return [];
-    }
-    const removed = [];
-    for (const name of fs.readdirSync(destDir)) {
-        const full = path.join(destDir, name);
-        if (full !== destFile) {
-            fs.unlinkSync(full);
-            removed.push(path.relative(rootDir, full));
-        }
-    }
-    return removed;
-}
-
-/**
  * Perform the eject action: copy the original source into the target theme.
  *
  * @param {string} specifier
@@ -344,17 +323,30 @@ export function performEject(specifier, destFile, rootDir) {
  * @param {string} destFile
  * @param {string} rootDir
  * @returns {{parentImport: string, staleRemoved: string[]}}
+ * @throws {Error} When the source cannot be located, or exports no recognisable component.
  */
 export function performWrap(specifier, target, destFile, rootDir) {
-    const isDirectoryBased = isDirectoryBasedFile(resolveSourceFile(specifier, rootDir));
+    const sourceFile = resolveSourceFile(specifier, rootDir);
+    if (!sourceFile) {
+        throw new Error(`Could not locate source file for ${specifier}`);
+    }
 
-    const staleRemoved = isDirectoryBased
-        ? removeStaleFiles(path.dirname(destFile), destFile, rootDir)
-        : [];
+    // Detect before touching the filesystem, so a component we cannot wrap
+    // leaves any existing override intact.
+    const {module} = parseSpecifier(specifier);
+    const componentExport = detectComponentExport(sourceFile, module);
+    if (!componentExport) {
+        throw new Error(
+            `Cannot determine the component export for ${specifier}. ` +
+            `A swizzleable component needs a default export, or one named after the module ` +
+            `(${module.split('/').pop()}).`
+        );
+    }
 
     const parentImport = resolveParentImport(specifier, target, rootDir);
-    const scaffold = generateWrapScaffold(specifier, target, parentImport);
+    const scaffold = generateWrapScaffold(specifier, target, parentImport, componentExport);
     fs.mkdirSync(path.dirname(destFile), {recursive: true});
+    const staleRemoved = removeStaleFiles(destFile, rootDir);
     fs.writeFileSync(destFile, scaffold);
     return {parentImport, staleRemoved};
 }

@@ -88,9 +88,7 @@ class YouTube extends \Google\Service
   public $videoTrainability;
   public $videos;
   public $watermarks;
-  public $youtube_v3;
   public $youtube_v3_liveChat_messages;
-  public $youtube_v3_videos;
   public $rootUrlTemplate;
 
   /**
@@ -1817,6 +1815,10 @@ class YouTube extends \Google\Service
                   'location' => 'query',
                   'type' => 'string',
                 ],
+                'onBehalfOfContentOwnerChannel' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
               ],
             ],
           ]
@@ -2017,7 +2019,26 @@ class YouTube extends \Google\Service
         'videos',
         [
           'methods' => [
-            'delete' => [
+            'batchGetStats' => [
+              'path' => 'youtube/v3/videos:batchGetStats',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'id' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                  'repeated' => true,
+                ],
+                'onBehalfOfContentOwner' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'part' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                  'repeated' => true,
+                ],
+              ],
+            ],'delete' => [
               'path' => 'youtube/v3/videos',
               'httpMethod' => 'DELETE',
               'parameters' => [
@@ -2218,26 +2239,6 @@ class YouTube extends \Google\Service
           ]
         ]
     );
-    $this->youtube_v3 = new YouTube\Resource\YoutubeV3(
-        $this,
-        $this->serviceName,
-        'v3',
-        [
-          'methods' => [
-            'updateCommentThreads' => [
-              'path' => 'youtube/v3/commentThreads',
-              'httpMethod' => 'PUT',
-              'parameters' => [
-                'part' => [
-                  'location' => 'query',
-                  'type' => 'string',
-                  'repeated' => true,
-                ],
-              ],
-            ],
-          ]
-        ]
-    );
     $this->youtube_v3_liveChat_messages = new YouTube\Resource\YoutubeV3LiveChatMessages(
         $this,
         $this->serviceName,
@@ -2272,35 +2273,6 @@ class YouTube extends \Google\Service
                 'profileImageSize' => [
                   'location' => 'query',
                   'type' => 'integer',
-                ],
-              ],
-            ],
-          ]
-        ]
-    );
-    $this->youtube_v3_videos = new YouTube\Resource\YoutubeV3Videos(
-        $this,
-        $this->serviceName,
-        'videos',
-        [
-          'methods' => [
-            'batchGetStats' => [
-              'path' => 'youtube/v3/videos:batchGetStats',
-              'httpMethod' => 'GET',
-              'parameters' => [
-                'onBehalfOfContentOwner' => [
-                  'location' => 'query',
-                  'type' => 'string',
-                ],
-                'part' => [
-                  'location' => 'query',
-                  'type' => 'string',
-                  'repeated' => true,
-                ],
-                'videoIds' => [
-                  'location' => 'query',
-                  'type' => 'string',
-                  'repeated' => true,
                 ],
               ],
             ],

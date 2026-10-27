@@ -56,7 +56,7 @@ class client_management {
 
         $this->setup_admin_page(null, \core\router\util::get_path_for_callable([self::class, 'list_clients']));
 
-        $PAGE->requires->js_call_amd('core_admin/oauth2/server/client/actions/client_revoke', 'init');
+        $PAGE->requires->js_call_amd('core_admin/oauth2/server/client/actions/client_disable', 'init');
         $PAGE->requires->js_call_amd('core_admin/oauth2/server/client/actions/client_reactivate', 'init');
         $PAGE->requires->js_call_amd('core_admin/oauth2/server/client/actions/client_delete', 'init');
 
@@ -109,7 +109,7 @@ class client_management {
 
         $PAGE->set_pagetype('admin-oauth2server-client-create');
 
-        $mform = new \core_admin\form\oauth2\server\create_client_form();
+        $mform = \core\di::make(\core_admin\form\oauth2\server\create_client_form::class);
 
         // Handle form cancellation.
         if ($mform->is_cancelled()) {
@@ -138,6 +138,8 @@ class client_management {
                 $granttypes[] = client_entity::GRANT_TYPE_CLIENT_CREDENTIALS;
             }
 
+            $scopes = $mform->get_submitted_scopes((array) $data);
+
             $clientmanager = \core\di::get(\core\oauth2\server\client_manager::class);
             $cliententity = $clientmanager->create_client(
                 $data->name,
@@ -146,7 +148,8 @@ class client_management {
                 $redirecturis,
                 $data->description,
                 (int) $data->clienttype === client_entity::TYPE_CONFIDENTIAL,
-                $ispublicclient || !empty($data->enablepkce),
+                ($ispublicclient || !empty($data->ispkcerequired)),
+                $scopes,
             );
 
             if ($cliententity->isConfidential()) {
@@ -207,23 +210,32 @@ class client_management {
 
         $clientmanager = \core\di::get(\core\oauth2\server\client_manager::class);
 
-        $mform = new \core_admin\form\oauth2\server\edit_client_form(null, ['cliententity' => $cliententity]);
+        $mform = \core\di::make(\core_admin\form\oauth2\server\edit_client_form::class, [
+            'customdata' => [
+                'cliententity' => $cliententity,
+            ],
+        ]);
 
         // Handle form cancellation.
         if ($mform->is_cancelled()) {
             redirect(\core\router\util::get_path_for_callable([self::class, 'list_clients']));
         }
-
         // Process the form data.
         if ($data = $mform->get_data()) {
+            $updates = [
+                'name' => $data->name,
+                'description' => $data->description,
+                'scopes' => $mform->get_submitted_scopes((array) $data),
+            ];
+
+            if ($cliententity->isConfidential() && $cliententity->supportsGrantType(client_entity::GRANT_TYPE_AUTHORIZATION_CODE)) {
+                $updates['ispkcerequired'] = empty($data->ispkcerequired) ? 0 : 1;
+            }
             $transaction = $DB->start_delegated_transaction();
 
             $clientmanager->update_client(
                 $cliententity->get_id(),
-                [
-                    'name' => $data->name,
-                    'description' => $data->description,
-                ],
+                $updates,
             );
 
             // Sanitize the redirect URIs by trimming whitespace and removing empty entries.
@@ -273,7 +285,7 @@ class client_management {
 
         if ($cliententity->isConfidential()) {
             $clientactivesecrets = $clientmanager->get_secrets($cliententity->get_id());
-            $templatedata['activesecretscount'] = count($clientactivesecrets);
+            $templatedata['activesecretscount'] = $isclientactive ? count($clientactivesecrets) : 0;
             $templatedata['managesecretsurl'] = \core\router\util::get_path_for_callable(
                 [self::class, 'manage_client_secrets'],
                 ['client' => $cliententity->get_id()],
@@ -322,10 +334,6 @@ class client_management {
             throw new \moodle_exception('oauth2server_secretsnotavailablepublicclient', 'admin');
         }
 
-        if ($cliententity->get_status() !== client_entity::STATUS_ACTIVE) {
-            throw new \moodle_exception('oauth2server_secretsnotavailablerevokedclient', 'admin');
-        }
-
         $this->setup_admin_page(
             get_string('oauth2server_managesecrets', 'admin'),
             \core\router\util::get_path_for_callable(
@@ -337,11 +345,10 @@ class client_management {
         $response->getBody()->write($OUTPUT->header());
 
         $clientmanager = \core\di::get(\core\oauth2\server\client_manager::class);
-        // Secrets can be created if the client is active and the total number of currently active secrets is not
-        // exceeding the defined limit.
         $isclientactive = $cliententity->get_status() === client_entity::STATUS_ACTIVE;
         $clientactivesecrets = $clientmanager->get_secrets($cliententity->get_id());
-        $cancreatesecret = $isclientactive && (count($clientactivesecrets) < $clientmanager::MAX_ACTIVE_SECRETS);
+        // Secrets can be created if the total number of currently active secrets is not exceeding the defined limit.
+        $cancreatesecret = count($clientactivesecrets) < $clientmanager::MAX_ACTIVE_SECRETS;
 
         // Generate the OAuth2 client secrets table.
         $report = \core_reportbuilder\system_report_factory::create(
@@ -358,7 +365,7 @@ class client_management {
                 'id' => $cliententity->get_id(),
                 'title' => $cliententity->getName(),
                 'clientidentifier' => $cliententity->getIdentifier(),
-                'isactive' => $isclientactive,
+                'isclientactive' => $isclientactive,
                 'backurl' => \core\router\util::get_path_for_callable([self::class, 'list_clients'])->out(),
                 'clientsecretstable' => $report->output(),
                 'cancreatesecret' => $cancreatesecret,
@@ -372,7 +379,10 @@ class client_management {
         $PAGE->requires->js_call_amd(
             'core_admin/oauth2/server/client/client_secrets',
             'init',
-            [$clientmanager::MAX_ACTIVE_SECRETS],
+            [
+                $clientmanager::MAX_ACTIVE_SECRETS,
+                $isclientactive,
+            ],
         );
 
         $PAGE->requires->js_call_amd('core_admin/oauth2/server/client/actions/client_secret_revoke', 'init');

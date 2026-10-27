@@ -100,7 +100,7 @@
     <location>amd/src/beautify</location>
     <name>js-beautify</name>
     <description>Beautifier for javascript.</description>
-    <version>1.15.3</version>
+    <version>2.0.3</version>
     <license>MIT</license>
     <repository>https://github.com/beautifier/js-beautify/</repository>
   </library>

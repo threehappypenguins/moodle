@@ -6,7 +6,48 @@ More detailed information on key changes can be found in the [Developer update n
 
 The format of this change log follows the advice given at [Keep a CHANGELOG](https://keepachangelog.com).
 
-## 5.3dev
+## 6.0dev
+
+### core
+
+#### Added
+
+- A new `\core\hook\output\before_help_icon_rendered` hook is dispatched when a help icon is rendered. Callbacks can modify the template context (e.g. the popover `text`), add HTML before or after the icon using `add_before_icon()` and `add_after_icon()`, or replace the whole help icon output using `set_replacement()`.
+
+  For more information see [MDL-88319](https://tracker.moodle.org/browse/MDL-88319)
+
+#### Changed
+
+- Admin settings now dispatch the `core\hook\admin_setting_notification` hook when rendering each setting row. Plugins can implement a listener for this hook to add custom `\core\output\notification` messages (info, warning, success, or error).
+
+  For more information see [MDL-87756](https://tracker.moodle.org/browse/MDL-87756)
+
+#### Deprecated
+
+- The `deletecheckfull` language string has been deprecated and should no longer be used. It has been replaced by the `deleteuserdatawarning` language string.
+
+  For more information see [MDL-62843](https://tracker.moodle.org/browse/MDL-62843)
+- The `override` and `warning` context variables of the `core_admin/setting` template are deprecated and are no longer rendered by core. Use the new `notifications` context variable instead. Theme and plugin overrides of this template should be updated; the old variables are still provided until their final deprecation.
+
+  For more information see [MDL-87756](https://tracker.moodle.org/browse/MDL-87756)
+
+### core_completion
+
+#### Fixed
+
+- update_state() now accepts COMPLETION_COMPLETE_PASS when overriding, and a later automatic call (e.g. a grade change) recomputes the complete/complete-pass substate for an overridden activity instead of leaving it frozen.
+
+  For more information see [MDL-87084](https://tracker.moodle.org/browse/MDL-87084)
+
+### core_user
+
+#### Added
+
+- A new hook, \core_user\hook\before_deletion_confirmation_html_generation, has been added to allow plugins to extend user deletion confirmation messaging. The hook is dispatched by \core\user::get_deletion_confirmation_text(). Plugins can append HTML to the confirmation dialog by registering a callback in db/hooks.php and calling $hook->add_html($html).
+
+  For more information see [MDL-62843](https://tracker.moodle.org/browse/MDL-62843)
+
+## 5.3
 
 ### core
 
@@ -19,6 +60,9 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - `email_to_user()` now emits a hook `before_email_to_user`. This hook allows any subscriber to modify the email contents, add additional headers, or add reasons to block the email. If any block reasons are added, the email is stopped from being sent and the reasons are output.
 
   For more information see [MDL-69724](https://tracker.moodle.org/browse/MDL-69724)
+- A new Behat step `I set the focus on the "<element>" "<selector>"` has been added to move keyboard focus onto an element without activating it.
+
+  For more information see [MDL-84065](https://tracker.moodle.org/browse/MDL-84065)
 - Token endpoint security improvements: earlier service validation, GET parameter sanitization. The 'appsitecheck' parameter has been removed from the token endpoint.
 
   For more information see [MDL-87010](https://tracker.moodle.org/browse/MDL-87010)
@@ -145,6 +189,9 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - New `flexible_table::set_columnheadersattributes(...)` method for tables to define additional attributes ('class', 'data-X', etc.) for column headers
 
   For more information see [MDL-89384](https://tracker.moodle.org/browse/MDL-89384)
+- Closes an operational-visibility gap: available-updates check requests could not previously be attributed to a specific registered site, which limited abuse detection and support diagnostics on the hub side. \core\update\checker now sends two optional parameters with the available updates check: siteidentifier, the md5() of the site's registration secret, sent only when the site is registered with the sites directory, and countrycode, the configured $CFG->country, sent whenever it is set. Either parameter is omitted when it cannot be determined and the update check is never blocked by them.
+
+  For more information see [MDL-89513](https://tracker.moodle.org/browse/MDL-89513)
 - Support for Attribute-based Dependency Injection has been added:
 
   ```php
@@ -189,9 +236,15 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - The `\core\task\manager::set_scheduled_task_nextruntime()` method now returns a boolean indicating whether the next run time was updated. It returns `false` when the scheduled task is already running.
 
   For more information see [MDL-89200](https://tracker.moodle.org/browse/MDL-89200)
+- Uninstalling a block plugin no longer deletes its instances synchronously. \core\plugininfo\block::uninstall_cleanup() now queues the new \core\task\delete_block_instances_task ad-hoc task, which deletes the instances and their related data (contexts, positions, user preferences and search index entries) in batches. This makes block removal upgrade steps and plugin uninstallation effectively instant on large sites. Remaining instances are not displayed anywhere once the block record has been deleted.
+
+  For more information see [MDL-89289](https://tracker.moodle.org/browse/MDL-89289)
 - The primary navigation in the Boost navbar is now rendered by the `core/nav/PrimaryNav` React component via the new `core/primarymoremenu` template, replacing `core/moremenu`. With JavaScript enabled the markup no longer includes the `.moremenu` wrapper, and navigation items are rendered as `a.mds-nav-pill` (selected items carry `.mds-nav-pill--selected` and `aria-current="page"`) instead of `a.nav-link.active`. Themes and plugins that style or script `.primary-navigation .moremenu` or `.primary-navigation .nav-link` need updating. A server-rendered `core/moremenu_children` fallback is still emitted inside the mount point for non-JavaScript clients.
 
   For more information see [MDL-89294](https://tracker.moodle.org/browse/MDL-89294)
+- The Edit mode switch in the navbar now renders using the design system Switch component instead of a hand-rolled Bootstrap .form-switch, to meet WCAG SC 1.4.11 contrast requirements. Theme developers overriding the edit switch markup (core/editswitch template, primarynavigation.scss) should review their overrides against the new DOM structure and CSS classes.
+
+  For more information see [MDL-89814](https://tracker.moodle.org/browse/MDL-89814)
 
 #### Deprecated
 
@@ -241,6 +294,9 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - The `core_course` scope classes for course content and course structure now resolve their summary and description language strings. The string identifiers in `lang/en/course.php` were missing the leading `course_` identifier segment, so `\core\router\scope\abstract_scope::get_summary()` failed for six scopes.
 
   For more information see [MDL-87706](https://tracker.moodle.org/browse/MDL-87706)
+- Fixes an operational-visibility gap: a registered site whose reporting to the hub silently stopped previously gave administrators no indication of the failure. This is now surfaced to administrators. A new scheduled task core\task\registration_reporting_check_task runs daily and sends a notification through the new registrationreportingpaused message provider when reporting pauses, either because new registration fields await confirmation or because the Site registration scheduled task is disabled. \core\hub\registration gains get_reporting_paused_reason(), get_registration_page_notification() and check_reporting_paused_notification(); registration_reminder() is now also called from /my/index.php and /my/courses.php; and core_admin_renderer::registration_warning() renders a warning for a registered site whose reporting is paused because the task is disabled.
+
+  For more information see [MDL-89463](https://tracker.moodle.org/browse/MDL-89463)
 
 ### core_admin
 
@@ -508,9 +564,6 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 
 #### Changed
 
-- The section collapse/expand-all toggle (collapsemenu) is no longer part of core_courseformat\output\local\content\section's exported data or the core_courseformat/local/content/section template. It has moved to core_courseformat\output\local\content and the core_courseformat/local/content template, and is now rendered once above the section list instead of as part of the first section. Course formats or themes that override these classes/templates to customise the toggle will need to update accordingly.
-
-  For more information see [MDL-88410](https://tracker.moodle.org/browse/MDL-88410)
 - The course index tree semantics for subsections have moved from the delegated section wrapper to the activity that delegates it.
 
   * The `li[role="treeitem"]` in `core_courseformat/local/courseindex/cm` should add the following attributes when the activity has a delegated section:
@@ -522,6 +575,23 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
   Note that the `core_courseformat/local/courseindex/section` JS keeps `aria-expanded` up to date by writing to the closest `[role="treeitem"]` ancestor, so the element carrying the role is the one that receives the state. Plugins overriding either template should update both, as the two are no longer independent.
 
   For more information see [MDL-88949](https://tracker.moodle.org/browse/MDL-88949)
+- The collapse/expand-all toggle rendered by the core_courseformat/local/content template no longer has the collapsesections id. Use the [data-toggle="toggleall"] selector to target it instead.
+
+  For more information see [MDL-89496](https://tracker.moodle.org/browse/MDL-89496)
+
+#### Deprecated
+
+- The section collapse/expand-all toggle (collapsemenu) in core_courseformat\output\local\content\section and in the core_courseformat/local/content/section/content template is deprecated. It is still exported and rendered so that course formats and themes overriding the core_courseformat/local/content template keep working, but the toggle is now part of core_courseformat\output\local\content and the core_courseformat/local/content template, which suppresses the deprecated markup by overriding the core_courseformat/local/content/section/collapsemenu block. Course formats and themes overriding core_courseformat/local/content should update their copy to render the toggle above the section list.
+
+  For more information see [MDL-89496](https://tracker.moodle.org/browse/MDL-89496)
+
+### core_customfield
+
+#### Changed
+
+- MDL-88176 changed `\core_customfield\handler::create()` to cache every handler instance and advised extending handlers to remove their own `create()` implementations. That advice is superseded. The inherited `create()` method again returns a new handler instance by default. Handlers that removed their `create()` implementation following MDL-88176 and require caching can opt in by declaring `protected const CACHE_HANDLER_INSTANCES = true;`.
+
+  For more information see [MDL-89238](https://tracker.moodle.org/browse/MDL-89238)
 
 ### core_external
 
@@ -565,6 +635,14 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 
   For more information see [MDL-87554](https://tracker.moodle.org/browse/MDL-87554)
 
+### core_form
+
+#### Changed
+
+- The `duration` form element type now more strictly enforces units as defined by the caller, to avoid undefined behaviour during submission. An exception will be thrown where `defaultunit` is not part of the element `units` array
+
+  For more information see [MDL-89434](https://tracker.moodle.org/browse/MDL-89434)
+
 ### core_grades
 
 #### Added
@@ -579,12 +657,29 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
         `lib/templates/action_bar.mustache` to enable usage across multiple components.
 
   For more information see [MDL-81096](https://tracker.moodle.org/browse/MDL-81096)
+- Courses containing a grade with a penalty deducted from it are now frozen on upgrade to prevent existing grades from being changed unexpectedly by a regrade (see MDL-88407). Courses with no grades identified as affected are not frozen. The pre-MDL-88407 calculation is retained until a user with the `moodle/grade:manage` capability reviews the affected grades and chooses whether to keep the existing grades or apply the fix. When the fix is applied, Assignment grades are used as the authoritative source to restore the affected `rawgrade` values before normal gradebook processing recalculates the final grades. Grades from other activity modules cannot be confidently identified as affected but are still recalculated with the fixed formula once the fix is applied, as every grade item in the course is regraded at that point.
+
+  For more information see [MDL-89497](https://tracker.moodle.org/browse/MDL-89497)
 
 #### Deprecated
 
 - The `grade_item::update_deducted_mark()` method has been deprecated and will be removed in a future release (See MDL-88663 for the final deprecation). Penalties are now applied directly in `penalty_manager` via `adjust_raw_grade()`. There is no replacement for this method.
 
   For more information see [MDL-88407](https://tracker.moodle.org/browse/MDL-88407)
+
+### core_hub
+
+#### Fixed
+
+- Fixes a data-integrity bug: adding a new site registration field previously stopped ALL registration updates from being sent while that field awaited administrator confirmation, including fields the administrator had already confirmed. \core\hub\registration::update_cron() no longer returns early in that case; it now sends the previously confirmed field set, omitting only the fields returned by get_new_registration_fields(), until the administrator confirms them on the registration form. \core\hub\registration::get_site_info() accepts a new optional $excludefields parameter listing site info keys to omit from the payload, used to implement this.
+
+  For more information see [MDL-89464](https://tracker.moodle.org/browse/MDL-89464)
+- Fixes a data-integrity bug: initial site registration truncated at 2000 characters when the site info was spread across the redirect to the hub, silently dropping the remainder. \core\hub\registration::register() now sends only the token, site URL, privacy policy agreement, contact email and language, and \core\hub\registration::confirm_registration() always sends the full site info afterwards. confirm_registration() now returns a bool indicating whether that full payload reached the hub; when it did not, a new \core\task\complete_hub_registration_task adhoc task is queued to retry it. \core\hub\api::call_rest() now throws a moodle_exception when the hub responds with a non-200 status, an empty body or a body that is not valid JSON, instead of silently treating such responses as success and losing the update.
+
+  For more information see [MDL-89474](https://tracker.moodle.org/browse/MDL-89474)
+- Fixes a security gap: previously a registration secret alone was sufficient to submit registration updates for a site, so a leaked or stolen secret could be replayed by anyone holding it. \core\hub\api::update_registration() now signs each registration update: it sends additional timestamp and signature parameters with hub_update_site_info, where the signature is an HMAC-SHA256 over the site URL and timestamp keyed on md5() of the site's registration secret, proving control of the site rather than just possession of the secret. Signing is best effort; if a signature cannot be computed the update is still sent unsigned.
+
+  For more information see [MDL-89512](https://tracker.moodle.org/browse/MDL-89512)
 
 ### core_question
 
@@ -736,22 +831,6 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 
   For more information see [MDL-89439](https://tracker.moodle.org/browse/MDL-89439)
 
-### format_topics
-
-#### Added
-
-- The `enablelinearnav` setting has been introduced to control course linear navigation at the course level. A corresponding site-wide admin setting is also available to define the default value for newly created courses.
-
-  For more information see [MDL-87302](https://tracker.moodle.org/browse/MDL-87302)
-
-### format_weeks
-
-#### Added
-
-- The `enablelinearnav` setting has been introduced to control course linear navigation at the course level. A corresponding site-wide admin setting is also available to define the default value for newly created courses.
-
-  For more information see [MDL-87302](https://tracker.moodle.org/browse/MDL-87302)
-
 ### gradereport_user
 
 #### Changed
@@ -767,6 +846,9 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - Assignment override logic has been refactored and put in a new override_manager class. There are 3 new web services for managing assignment overrides: - mod_assign_save_overrides - mod_assign_get_overrides - mod_assign_delete_overrides
 
   For more information see [MDL-86513](https://tracker.moodle.org/browse/MDL-86513)
+- mod_assign_get_submission_status now returns an optional feedback.markerfeedback array with per-marker feedback (marker id, position, workflow state, and plugin data) when the assignment uses marking workflow with marking allocation.
+
+  For more information see [MDL-89346](https://tracker.moodle.org/browse/MDL-89346)
 
 #### Changed
 
@@ -805,6 +887,15 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - Add new mod_forum_set_read_state web service to allow clients to manually mark individual forum posts as read or unread (when manual read tracking is enabled), returning a simple status and warnings structure.
 
   For more information see [MDL-87887](https://tracker.moodle.org/browse/MDL-87887)
+- The view and manage subscribers selector of the `mod_forum/forum_subscription_action` template is now rendered as a tertiary navigation selector (`core/tertiary_navigation_selector`) using the new `viewandmanageselectmenu` context variable, which holds `core\output\select_menu` data. Theme overrides of this template should be updated to use it.
+
+  For more information see [MDL-89890](https://tracker.moodle.org/browse/MDL-89890)
+
+#### Deprecated
+
+- The `viewandmanageselect` context variable of the `mod_forum/forum_subscription_action` template has been deprecated in favour of `viewandmanageselectmenu`. It is still exported with its `url_select` data, but is no longer used by the core template.
+
+  For more information see [MDL-89890](https://tracker.moodle.org/browse/MDL-89890)
 
 ### mod_quiz
 
@@ -824,6 +915,9 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - A new duedate field added to 'quiz' and 'quiz_overrides' tables
 
   For more information see [MDL-82521](https://tracker.moodle.org/browse/MDL-82521)
+- The external function mod_quiz_get_users_in_report now also returns a new 'extrafieldsdisplay' array, containing the resolved display name label for each field listed in 'extrafields' (in the same order), including custom user profile fields.
+
+  For more information see [MDL-89765](https://tracker.moodle.org/browse/MDL-89765)
 
 #### Changed
 
@@ -835,6 +929,12 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
   If your report enforces its own capability check instead of `mod/quiz:viewreports`, override `has_permission(context $context): void` (see `quiz_grading_report` for an example) rather than calling `require_capability()` directly in `display()`, since `has_permission()` is also called by the `mod_quiz_get_users_in_report` web service before it builds your report's data.
 
   For more information see [MDL-81096](https://tracker.moodle.org/browse/MDL-81096)
+
+#### Deprecated
+
+- override_manager::get_effective_open_close_times() has been restored as a deprecated wrapper around override_manager::get_effective_times(), preserving its original 'timeopen'/'timeclose'-only return contract. It had been renamed without a backwards-compatible shim; call sites still using the old name should migrate to get_effective_times().
+
+  For more information see [MDL-89711](https://tracker.moodle.org/browse/MDL-89711)
 
 ### mod_workshop
 
@@ -886,6 +986,12 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
   time, and was not tested or validated.
 
   For more information see [MDL-89196](https://tracker.moodle.org/browse/MDL-89196)
+- The YUI dialogue variables in `theme_boost` now default to the design system's custom properties rather than literal colours, so that the dialogue chrome follows the colour mode:
+  * `$dialogue-base-bg` * `$dialogue-base-border-color` * `$dialogue-base-hd-border-color` * `$dialogue-exception-label-bg` * `$dialogue-exception-label-border-color` * `$dialogue-exception-pre-bg` * `$dialogue-exception-pre-border-color` * `$dialogue-exception-file-color` * `$dialogue-exception-call-color` * `$dialogue-exception-call-border-color` * `$dialogue-lightbox-bg`
+  A preset overriding any of these should set a colour which the dark mode can re-point, or override the custom property directly.
+  A new `$dialogue-exception-line-color` has been added for the stack trace line numbers, which previously took the warning theme colour directly. Light mode values are unchanged apart from those line numbers,  which were too pale to meet contrast on the dialogue surface.
+
+  For more information see [MDL-89735](https://tracker.moodle.org/browse/MDL-89735)
 
 #### Deprecated
 

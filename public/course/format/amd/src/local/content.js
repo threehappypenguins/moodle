@@ -131,6 +131,10 @@ export default class Component extends BaseComponent {
                 toggleAllSelector: this.selectors.TOGGLEALL,
                 collapseSelector: this.selectors.COLLAPSE,
                 onToggleAll,
+                // Delegated sections (subsections) must not drive the toggler state (see
+                // _refreshAllSectionsToggler), so this component keeps the toggler in sync itself
+                // via the section.contentcollapsed watcher below.
+                autoRefresh: false,
             });
             this._refreshAllSectionsToggler(state);
         }
@@ -310,6 +314,9 @@ export default class Component extends BaseComponent {
     /**
      * Refresh the collapse/expand all sections element.
      *
+     * Delegated sections, like subsections, are nested inside a regular section, so they are only
+     * visible when their parent section is expanded. They must not drive the toggler state.
+     *
      * @param {Object} state The state data
      */
     _refreshAllSectionsToggler(state) {
@@ -319,26 +326,15 @@ export default class Component extends BaseComponent {
         }
 
         const sectionIsCollapsible = this._getCollapsibleSections();
-
-        // Check if we have all sections collapsed/expanded.
-        let allcollapsed = true;
-        let allexpanded = true;
-        state.section.forEach(
-            section => {
-                if (sectionIsCollapsible[section.id]) {
-                    allcollapsed = allcollapsed && section.contentcollapsed;
-                    allexpanded = allexpanded && !section.contentcollapsed;
-                }
-            }
+        const sections = [...state.section.values()].filter(
+            section => sectionIsCollapsible[section.id] && section.component === null
         );
-        if (allcollapsed) {
-            target.classList.add(this.classes.COLLAPSED);
-            target.setAttribute('aria-expanded', false);
-        }
-        if (allexpanded) {
-            target.classList.remove(this.classes.COLLAPSED);
-            target.setAttribute('aria-expanded', true);
-        }
+
+        // The toggler only offers to expand all when every listed section is collapsed.
+        const allcollapsed = sections.length > 0 && sections.every(section => section.contentcollapsed);
+
+        target.classList.toggle(this.classes.COLLAPSED, allcollapsed);
+        target.setAttribute('aria-expanded', !allcollapsed);
     }
 
     /**
@@ -696,6 +692,7 @@ export default class Component extends BaseComponent {
             promise.then((html, js) => {
                 Templates.replaceNode(sectionitem, html, js);
                 this._indexContents();
+                this._refreshAllSectionsToggler(this.reactive.state);
                 pendingReload.resolve();
             }).catch(() => {
                 pendingReload.resolve();

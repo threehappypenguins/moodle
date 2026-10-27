@@ -283,6 +283,10 @@ class manager {
      *  4. If matching legacy tasks are found when $checkforexisting = true, the oldest one is assigned the identity
      *     hash and the rest are left unchanged.
      *
+     *  If task_adhoc.identityhash does not exist yet (for example, an upgrade step queues a task
+     *  before a later upgrade step has added the column), $checkforexisting is treated as false and
+     *  no identity hash is stored, so the task is queued without duplicate detection.
+     *
      * @param \core\task\adhoc_task $task - The new adhoc task information to store.
      * @param bool $checkforexisting - If set to true and the task with the same user, classname, component and customdata
      *     is already scheduled and has not exhausted retries then it will not schedule a new task.
@@ -305,8 +309,17 @@ class manager {
             \core_user::require_active_user(\core_user::get_user($userid, '*', MUST_EXIST), true, true);
         }
 
+        // An upgrade step earlier in the same run may queue a task before a later step has added the
+        // task_adhoc.identityhash column. Duplicate detection and identity hashing both depend
+        // entirely on that column, so degrade to queueing a plain task without an identity hash when
+        // it is not yet present, rather than failing on an unknown column (see MDL-89876).
+        $hasidentityhash = self::task_adhoc_has_identityhash_column();
+        if (!$hasidentityhash) {
+            $checkforexisting = false;
+        }
+
         $record = self::record_from_adhoc_task($task, $checkforexisting);
-        if (!$checkforexisting) {
+        if (!$checkforexisting && $hasidentityhash) {
             // Ensure intentionally duplicated tasks cannot be mistaken for legacy tasks.
             $record->identityhash = bin2hex(random_bytes(20));
         }
@@ -390,6 +403,24 @@ class manager {
             throw $e;
         }
         return $result;
+    }
+
+    /**
+     * Check whether task_adhoc.identityhash can be relied on yet.
+     *
+     * The column is added by the 2026081800.06 upgrade step, and $CFG->version tracks the
+     * upgrade savepoint reached so far (see {@see upgrade_main_savepoint()}), so a version below
+     * that savepoint means the column has not been added yet in this upgrade run (see MDL-89876).
+     *
+     * @todo MDL-89899 Remove this check, and the degraded queueing path in
+     *     {@see queue_adhoc_task()} it gates, once Moodle no longer supports upgrading from
+     *     before 5.3.
+     * @return bool
+     */
+    private static function task_adhoc_has_identityhash_column(): bool {
+        global $CFG;
+
+        return $CFG->version >= 2026081800.06;
     }
 
     /**
@@ -1198,8 +1229,6 @@ class manager {
             }
 
             if ($lock = $cronlockfactory->get_lock(($record->classname), 0)) {
-                $classname = '\\' . $record->classname;
-
                 $task->set_lock($lock);
 
                 // See if the component is disabled.

@@ -36,6 +36,11 @@ require_once($CFG->dirroot . '/mod/assign/tests/generator.php');
  * @copyright  2024 Catalyst IT Australia Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversFunction('assign_supports')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\mod_assign\penalty\helper::class, 'apply_penalty_to_submission')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\mod_assign\penalty\helper::class, 'apply_penalty_to_user')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\grade_item::class, 'update_raw_grade')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\assign::class, 'calculate_penalised_grade')]
 final class penalty_test extends \advanced_testcase {
     // Use the generator helper.
     use mod_assign_test_generator;
@@ -72,8 +77,6 @@ final class penalty_test extends \advanced_testcase {
 
     /**
      * Test penalty support.
-     *
-     * @covers ::assign_supports
      */
     public function test_penalty_support(): void {
         $this->resetAfterTest();
@@ -124,9 +127,7 @@ final class penalty_test extends \advanced_testcase {
     /**
      * Test for hook_listener class.
      *
-     * @dataProvider apply_penalty_provider
      *
-     * @covers \mod_assign\penalty\helper::apply_penalty_to_submission
      *
      * @param float $usergrade the grade given to user.
      * @param int $submissiondate The submission date.
@@ -138,6 +139,7 @@ final class penalty_test extends \advanced_testcase {
      * @param float $expectedgrade The expected final grade.
      *
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('apply_penalty_provider')]
     public function test_apply_penalty(
         $usergrade,
         $submissiondate,
@@ -218,7 +220,6 @@ final class penalty_test extends \advanced_testcase {
     /**
      * Test recalculation.
      *
-     * @covers \mod_assign\penalty\helper::apply_penalty_to_submission
      *
      */
     public function test_recalculate_penalty(): void {
@@ -280,9 +281,6 @@ final class penalty_test extends \advanced_testcase {
     /**
      * Test that the penalty in assign_grades is calculated from rawgrade,
      * and that opening a new attempt preserves the existing penalty.
-     *
-     * @covers \mod_assign\penalty\helper::apply_penalty_to_user
-     * @covers \grade_item::update_raw_grade
      */
     public function test_assign_grades_penalty_uses_rawgrade(): void {
         global $DB, $USER;
@@ -387,8 +385,6 @@ final class penalty_test extends \advanced_testcase {
      * Test that calculate_penalised_grade applies grade-item multfactor/plusfactor,
      * both when a penalty is deducted and when the submission is on time.
      *
-     * @dataProvider calculate_penalised_grade_provider
-     * @covers \assign::calculate_penalised_grade
      *
      * @param int $submissiontime Submission timemodified (controls late vs on-time).
      * @param array $debugmessages Expected debugging messages from the penalty plugin.
@@ -396,6 +392,7 @@ final class penalty_test extends \advanced_testcase {
      * @param float $expectedfinalgrade Expected gradebook finalgrade.
      * @param float $expecteddeducted Expected deducted mark returned by calculate_penalised_grade.
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('calculate_penalised_grade_provider')]
     public function test_calculate_penalised_grade(
         int $submissiontime,
         array $debugmessages,
@@ -481,5 +478,74 @@ final class penalty_test extends \advanced_testcase {
             0.001,
             'calculate_penalised_grade result must match the gradebook finalgrade.'
         );
+    }
+
+    /**
+     * Test that calculate_penalised_grade() applies grade-item factors to a verified grade while the
+     * course is frozen.
+     *
+     * A course-level freeze can contain both legacy and correctly calculated grades, so correctly
+     * calculated grades must continue to use the normal factor application.
+     */
+    public function test_calculate_penalised_grade_applies_factors_for_verified_grade_while_frozen(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [$course, $student] = $this->set_up_test();
+
+        $generator = $this->getDataGenerator();
+        $assignmentgenerator = $generator->get_plugin_generator('mod_assign');
+
+        $duedate = DAYSECS;
+        $instance = $assignmentgenerator->create_instance([
+            'course' => $course->id,
+            'duedate' => $duedate,
+            'assignsubmission_onlinetext_enabled' => 1,
+            'gradepenalty' => 1,
+            'grade' => 200,
+        ]);
+
+        $cm = get_coursemodule_from_instance('assign', $instance->id);
+        $context = \context_module::instance($cm->id);
+        $assign = new mod_assign_testable_assign($context, $cm, $course);
+
+        grade_update(
+            source: 'mod/assign',
+            courseid: $course->id,
+            itemtype: 'mod',
+            itemmodule: 'assign',
+            iteminstance: $instance->id,
+            itemnumber: 0,
+            grades: null,
+            itemdetails: ['multfactor' => 2.0, 'plusfactor' => 5.0],
+        );
+
+        $this->add_submission($student, $assign, 'Sample text');
+        $this->submit_for_grading($student, $assign);
+
+        // Submit one day after due date so a penalty applies.
+        $DB->set_field('assign_submission', 'timemodified', $duedate + 1, ['userid' => $student->id]);
+
+        // Teacher grades at 60/200 while the course is not frozen: (60 - 20) * 2 + 5 = 85.
+        $assign->testable_apply_grade_to_user((object)['grade' => 60.0], $student->id, 0);
+        $this->assertDebuggingCalledCount(2);
+
+        $gradeitem = grade_item::fetch([
+            'courseid' => $course->id,
+            'itemtype' => 'mod',
+            'itemmodule' => 'assign',
+            'iteminstance' => $instance->id,
+            'itemnumber' => 0,
+        ]);
+        $this->assertEquals(85.0, (float) $gradeitem->get_final($student->id)->finalgrade);
+
+        // Freeze the course, as if the upgrade had found unrelated legacy corruption elsewhere in it.
+        set_config('gradebook_calculations_freeze_' . $course->id, 20260808);
+
+        // The authoritative Assignment grade matches rawgrade, so the grade is not legacy-corrupted.
+        $assigngrade = $DB->get_record('assign_grades', ['assignment' => $instance->id, 'userid' => $student->id]);
+        [$penalisedgrade, $deductedmark] = $assign->calculate_penalised_grade($assigngrade);
+        $this->assertEqualsWithDelta(20.0, $deductedmark, 0.001);
+        $this->assertEqualsWithDelta(85.0, $penalisedgrade, 0.001, 'Grade-item factors must still be applied.');
     }
 }

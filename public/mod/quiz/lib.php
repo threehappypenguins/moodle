@@ -143,6 +143,9 @@ function quiz_update_instance($quiz, $mform) {
     // Get the current value, so we can see what changed.
     $oldquiz = $DB->get_record('quiz', ['id' => $quiz->instance]);
 
+    // If an older plugin omits duedate from an update, preserve the quiz's existing due date stored in the database.
+    $quiz->duedate ??= $oldquiz->duedate;
+
     // We need two values from the existing DB record that are not in the form,
     // in some of the function calls below.
     $quiz->sumgrades = $oldquiz->sumgrades;
@@ -1232,7 +1235,9 @@ function quiz_update_events($quiz, $override = null) {
         $userid    = isset($current->userid)? $current->userid : 0;
         $timeopen  = isset($current->timeopen)?  $current->timeopen : $quiz->timeopen;
         $timeclose = isset($current->timeclose)? $current->timeclose : $quiz->timeclose;
-        $duedate = isset($current->duedate) ? $current->duedate : $quiz->duedate;
+
+        // When creating a quiz, older plugins may omit duedate; use the database default of 0 (no due date).
+        $duedate = $current->duedate ?? $quiz->duedate ?? 0;
 
         // Only add open/close/duedate events for an override if they differ from the quiz default.
         $addopen  = empty($current->id) || !empty($current->timeopen);

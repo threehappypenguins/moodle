@@ -114,6 +114,7 @@ class swagger_controller {
             window.ui.initOAuth({
                 clientId: "openapi",
                 appName: "{$oauthtitle}",
+                usePkceWithAuthorizationCodeGrant: true,
             });
         JS;
 

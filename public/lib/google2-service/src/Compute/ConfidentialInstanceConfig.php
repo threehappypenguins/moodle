@@ -20,6 +20,14 @@ namespace Google\Service\Compute;
 class ConfidentialInstanceConfig extends \Google\Model
 {
   /**
+   * Bare Metal Secure AI.
+   */
+  public const CONFIDENTIAL_INSTANCE_TYPE_BMSAI = 'BMSAI';
+  /**
+   * Arm Confidential Compute Architecture.
+   */
+  public const CONFIDENTIAL_INSTANCE_TYPE_CCA = 'CCA';
+  /**
    * No type specified. Do not use this value.
    */
   public const CONFIDENTIAL_INSTANCE_TYPE_CONFIDENTIAL_INSTANCE_TYPE_UNSPECIFIED = 'CONFIDENTIAL_INSTANCE_TYPE_UNSPECIFIED';
@@ -51,7 +59,8 @@ class ConfidentialInstanceConfig extends \Google\Model
   /**
    * Defines the type of technology used by the confidential instance.
    *
-   * Accepted values: CONFIDENTIAL_INSTANCE_TYPE_UNSPECIFIED, SEV, SEV_SNP, TDX
+   * Accepted values: BMSAI, CCA, CONFIDENTIAL_INSTANCE_TYPE_UNSPECIFIED, SEV,
+   * SEV_SNP, TDX
    *
    * @param self::CONFIDENTIAL_INSTANCE_TYPE_* $confidentialInstanceType
    */

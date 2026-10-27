@@ -106,7 +106,7 @@ Feature: Attempt a quiz
 
     And I press "Submit all and finish"
     And I click on "Submit all and finish" "button" in the "Submit all your answers and finish?" "dialogue"
-    And I should see "Attempt submitted."
+    And I should see "Attempt submitted." in the ".alert-success" "css_element"
     And I should see "1.00 out of 6.00 (16.67%)" in the "Grade" "table_row"
     And I should see question "1" in section "Section 1" in the quiz navigation
     And I should see question "2" in section "Section 1" in the quiz navigation

@@ -30,6 +30,7 @@ require_once($CFG->dirroot . '/search/tests/fixtures/mock_search_area.php');
  * @copyright   2016 David Monllao {@link http://www.davidmonllao.com}
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversFunction('execute_query')]
 final class engine_test extends \advanced_testcase {
 
     /**
@@ -441,11 +442,10 @@ final class engine_test extends \advanced_testcase {
     /**
      * Tests fulltext matching behaviour for course names across supported DB families.
      *
-     * @covers ::execute_query
-     * @dataProvider prefix_matching_using_fulltext_search_provider
      * @param string $query Query text to search for
      * @param int $expectedcount Expected result count
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('prefix_matching_using_fulltext_search_provider')]
     public function test_prefix_matching_using_fulltext_search(
         string $query,
         int $expectedcount
@@ -494,6 +494,69 @@ final class engine_test extends \advanced_testcase {
             'typographic apostrophe query term' => ["adventurer’s", 1],
             'apostrophe truncation still matches by prefix' => ["should've", 1],
             'non-matching control query' => ['notfoundterm', 0],
+        ];
+    }
+
+    /**
+     * Tests that common stopwords included in a multi-word query do not cause fulltext search to
+     * return zero results on databases whose fulltext index does not index them.
+     *
+     * MDL-89881: MySQL and MSSQL do not index fulltext stopwords (e.g. "is", "a", "the"). Building
+     * the query as an AND of per-term required matches meant any stopword in the query collapsed
+     * the whole search to zero results, even though the rest of the phrase was present.
+     *
+     * @param string $query Query text to search for
+     * @param int $expectedcount Expected result count
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('stopword_query_provider')]
+    public function test_stopword_terms_are_excluded_from_fulltext_search(
+        string $query,
+        int $expectedcount
+    ): void {
+        global $DB;
+
+        if (
+            !in_array($DB->get_dbfamily(), ['mysql', 'mssql']) ||
+            !$DB->is_fulltext_search_supported()
+        ) {
+            $this->markTestSkipped('This test is specific to fulltext search stopword handling for MySQL and MSSQL.');
+        }
+
+        // Generate some courses, including the exact phrase reported on MDL-89881.
+        $generator = $this->getDataGenerator();
+        $generator->create_course(['fullname' => 'Moodle is cool', 'shortname' => 'c1']);
+        $generator->create_course(['fullname' => 'Totally unrelated content', 'shortname' => 'c2']);
+
+        // Index our content.
+        $this->search->index(true);
+        $this->update_index();
+
+        // Build our query.
+        $querydata = new \stdClass();
+        $querydata->areaids = [\core_search\manager::generate_areaid('core_course', 'course')];
+        $querydata->q = $query;
+
+        $this->assertCount($expectedcount, $this->search->search($querydata));
+    }
+
+    /**
+     * Data provider for test_stopword_terms_are_excluded_from_fulltext_search.
+     *
+     * @return array[]
+     */
+    public static function stopword_query_provider(): array {
+        return [
+            'phrase with an embedded stopword still matches' => ['Moodle is cool', 1],
+            'phrase with a leading stopword still matches' => ['is cool', 1],
+            'query of only stopwords matches nothing' => ['is a', 0],
+            'non-matching control query' => ['notfoundterm', 0],
+            // Unlike the short stopwords above, "about" is long enough to pass the MySQL
+            // innodb_ft_min_token_size guard on its own, so this is the only case here that actually
+            // exercises the MySQL-side stopword filter rather than the pre-existing short-token guard.
+            // "about" is part of MySQL's hardcoded default InnoDB stopword list (engine::
+            // MYSQL_DEFAULT_STOPWORDS) and MSSQL's built-in English system stoplist, so this case
+            // does not depend on any elevated database privilege.
+            'phrase with a longer stopword still matches' => ['about cool', 1],
         ];
     }
 }

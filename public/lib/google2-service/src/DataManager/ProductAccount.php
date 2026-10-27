@@ -44,6 +44,14 @@ class ProductAccount extends \Google\Model
    */
   public const ACCOUNT_TYPE_GOOGLE_ANALYTICS_PROPERTY = 'GOOGLE_ANALYTICS_PROPERTY';
   /**
+   * Google Ad Manager audience link.
+   */
+  public const ACCOUNT_TYPE_GOOGLE_AD_MANAGER_AUDIENCE_LINK = 'GOOGLE_AD_MANAGER_AUDIENCE_LINK';
+  /**
+   * Floodlight configuration.
+   */
+  public const ACCOUNT_TYPE_FLOODLIGHT_CONFIG = 'FLOODLIGHT_CONFIG';
+  /**
    * Unspecified product. Should never be used.
    */
   public const PRODUCT_PRODUCT_UNSPECIFIED = 'PRODUCT_UNSPECIFIED';
@@ -70,7 +78,7 @@ class ProductAccount extends \Google\Model
    */
   public $accountId;
   /**
-   * Optional. The type of the account. For example, `GOOGLE_ADS`. Either
+   * Required. The type of the account. For example, `GOOGLE_ADS`. Either
    * `account_type` or the deprecated `product` is required. If both are set,
    * the values must match.
    *
@@ -102,13 +110,14 @@ class ProductAccount extends \Google\Model
     return $this->accountId;
   }
   /**
-   * Optional. The type of the account. For example, `GOOGLE_ADS`. Either
+   * Required. The type of the account. For example, `GOOGLE_ADS`. Either
    * `account_type` or the deprecated `product` is required. If both are set,
    * the values must match.
    *
    * Accepted values: ACCOUNT_TYPE_UNSPECIFIED, GOOGLE_ADS,
    * DISPLAY_VIDEO_PARTNER, DISPLAY_VIDEO_ADVERTISER, DATA_PARTNER,
-   * GOOGLE_ANALYTICS_PROPERTY
+   * GOOGLE_ANALYTICS_PROPERTY, GOOGLE_AD_MANAGER_AUDIENCE_LINK,
+   * FLOODLIGHT_CONFIG
    *
    * @param self::ACCOUNT_TYPE_* $accountType
    */

@@ -26,6 +26,8 @@ class GoogleCloudAiplatformV1Tool extends \Google\Collection
   protected $computerUseDataType = '';
   protected $enterpriseWebSearchType = GoogleCloudAiplatformV1EnterpriseWebSearch::class;
   protected $enterpriseWebSearchDataType = '';
+  protected $exaAiSearchType = GoogleCloudAiplatformV1ToolExaAiSearch::class;
+  protected $exaAiSearchDataType = '';
   protected $functionDeclarationsType = GoogleCloudAiplatformV1FunctionDeclaration::class;
   protected $functionDeclarationsDataType = 'array';
   protected $googleMapsType = GoogleCloudAiplatformV1GoogleMaps::class;
@@ -34,6 +36,8 @@ class GoogleCloudAiplatformV1Tool extends \Google\Collection
   protected $googleSearchDataType = '';
   protected $googleSearchRetrievalType = GoogleCloudAiplatformV1GoogleSearchRetrieval::class;
   protected $googleSearchRetrievalDataType = '';
+  protected $parallelAiSearchType = GoogleCloudAiplatformV1ToolParallelAiSearch::class;
+  protected $parallelAiSearchDataType = '';
   protected $retrievalType = GoogleCloudAiplatformV1Retrieval::class;
   protected $retrievalDataType = '';
   protected $urlContextType = GoogleCloudAiplatformV1UrlContext::class;
@@ -90,6 +94,24 @@ class GoogleCloudAiplatformV1Tool extends \Google\Collection
   public function getEnterpriseWebSearch()
   {
     return $this->enterpriseWebSearch;
+  }
+  /**
+   * Optional. Uses Exa.ai to search for information to answer user queries. The
+   * search results will be grounded on Exa.ai and presented to the model for
+   * response generation
+   *
+   * @param GoogleCloudAiplatformV1ToolExaAiSearch $exaAiSearch
+   */
+  public function setExaAiSearch(GoogleCloudAiplatformV1ToolExaAiSearch $exaAiSearch)
+  {
+    $this->exaAiSearch = $exaAiSearch;
+  }
+  /**
+   * @return GoogleCloudAiplatformV1ToolExaAiSearch
+   */
+  public function getExaAiSearch()
+  {
+    return $this->exaAiSearch;
   }
   /**
    * Optional. Function tool type. One or more function declarations to be
@@ -163,6 +185,24 @@ class GoogleCloudAiplatformV1Tool extends \Google\Collection
   public function getGoogleSearchRetrieval()
   {
     return $this->googleSearchRetrieval;
+  }
+  /**
+   * Optional. If specified, Vertex AI will use Parallel.ai to search for
+   * information to answer user queries. The search results will be grounded on
+   * Parallel.ai and presented to the model for response generation
+   *
+   * @param GoogleCloudAiplatformV1ToolParallelAiSearch $parallelAiSearch
+   */
+  public function setParallelAiSearch(GoogleCloudAiplatformV1ToolParallelAiSearch $parallelAiSearch)
+  {
+    $this->parallelAiSearch = $parallelAiSearch;
+  }
+  /**
+   * @return GoogleCloudAiplatformV1ToolParallelAiSearch
+   */
+  public function getParallelAiSearch()
+  {
+    return $this->parallelAiSearch;
   }
   /**
    * Optional. Retrieval tool type. System will always execute the provided

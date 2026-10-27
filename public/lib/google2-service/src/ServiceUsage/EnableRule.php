@@ -43,43 +43,36 @@ class EnableRule extends \Google\Collection
   public const ENABLE_TYPE_V1_COMPATIBLE = 'V1_COMPATIBLE';
   protected $collection_key = 'values';
   /**
-   * Client and resource project enable type.
+   * Deprecated: EnableType is not supported.
    *
+   * @deprecated
    * @var string
    */
   public $enableType;
   /**
-   * DEPRECATED: Please use field `values`. Service group should have prefix
-   * `groups/`. The names of the service groups that are enabled (Not
-   * Implemented). Example: `groups/googleServices`.
+   * The names of the services that are enabled. Example:
+   * `services/storage.googleapis.com`.
    *
-   * @deprecated
-   * @var string[]
-   */
-  public $groups;
-  /**
-   * DEPRECATED: Please use field `values`. Service should have prefix
-   * `services/`. The names of the services that are enabled. Example:
-   * `storage.googleapis.com`.
-   *
-   * @deprecated
    * @var string[]
    */
   public $services;
   /**
-   * The names of the services or service groups that are enabled. Example:
+   * Deprecated: Use the `services` field instead. The names of the services or
+   * service groups that are enabled. Example:
    * `services/storage.googleapis.com`, `groups/googleServices`,
    * `groups/allServices`.
    *
+   * @deprecated
    * @var string[]
    */
   public $values;
 
   /**
-   * Client and resource project enable type.
+   * Deprecated: EnableType is not supported.
    *
    * Accepted values: ENABLE_TYPE_UNSPECIFIED, CLIENT, RESOURCE, V1_COMPATIBLE
    *
+   * @deprecated
    * @param self::ENABLE_TYPE_* $enableType
    */
   public function setEnableType($enableType)
@@ -87,6 +80,7 @@ class EnableRule extends \Google\Collection
     $this->enableType = $enableType;
   }
   /**
+   * @deprecated
    * @return self::ENABLE_TYPE_*
    */
   public function getEnableType()
@@ -94,31 +88,9 @@ class EnableRule extends \Google\Collection
     return $this->enableType;
   }
   /**
-   * DEPRECATED: Please use field `values`. Service group should have prefix
-   * `groups/`. The names of the service groups that are enabled (Not
-   * Implemented). Example: `groups/googleServices`.
+   * The names of the services that are enabled. Example:
+   * `services/storage.googleapis.com`.
    *
-   * @deprecated
-   * @param string[] $groups
-   */
-  public function setGroups($groups)
-  {
-    $this->groups = $groups;
-  }
-  /**
-   * @deprecated
-   * @return string[]
-   */
-  public function getGroups()
-  {
-    return $this->groups;
-  }
-  /**
-   * DEPRECATED: Please use field `values`. Service should have prefix
-   * `services/`. The names of the services that are enabled. Example:
-   * `storage.googleapis.com`.
-   *
-   * @deprecated
    * @param string[] $services
    */
   public function setServices($services)
@@ -126,7 +98,6 @@ class EnableRule extends \Google\Collection
     $this->services = $services;
   }
   /**
-   * @deprecated
    * @return string[]
    */
   public function getServices()
@@ -134,10 +105,12 @@ class EnableRule extends \Google\Collection
     return $this->services;
   }
   /**
-   * The names of the services or service groups that are enabled. Example:
+   * Deprecated: Use the `services` field instead. The names of the services or
+   * service groups that are enabled. Example:
    * `services/storage.googleapis.com`, `groups/googleServices`,
    * `groups/allServices`.
    *
+   * @deprecated
    * @param string[] $values
    */
   public function setValues($values)
@@ -145,6 +118,7 @@ class EnableRule extends \Google\Collection
     $this->values = $values;
   }
   /**
+   * @deprecated
    * @return string[]
    */
   public function getValues()

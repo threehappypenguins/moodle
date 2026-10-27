@@ -34,10 +34,15 @@ use Google\Client;
  */
 class Backupdr extends \Google\Service
 {
+  /** See, edit, configure, and delete your Google Cloud Backup and DR data and see the email address for your Google Account. */
+  const CLOUD_BACKUPDR =
+      "https://www.googleapis.com/auth/cloud-backupdr";
   /** See, edit, configure, and delete your Google Cloud data and see the email address for your Google Account.. */
   const CLOUD_PLATFORM =
       "https://www.googleapis.com/auth/cloud-platform";
 
+  public $folders_locations_resourceBackupConfigs;
+  public $organizations_locations_resourceBackupConfigs;
   public $projects_locations;
   public $projects_locations_backupPlanAssociations;
   public $projects_locations_backupPlans;
@@ -70,6 +75,78 @@ class Backupdr extends \Google\Service
     $this->version = 'v1';
     $this->serviceName = 'backupdr';
 
+    $this->folders_locations_resourceBackupConfigs = new Backupdr\Resource\FoldersLocationsResourceBackupConfigs(
+        $this,
+        $this->serviceName,
+        'resourceBackupConfigs',
+        [
+          'methods' => [
+            'fetch' => [
+              'path' => 'v1/{+parent}/resourceBackupConfigs:fetch',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'filter' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'orderBy' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->organizations_locations_resourceBackupConfigs = new Backupdr\Resource\OrganizationsLocationsResourceBackupConfigs(
+        $this,
+        $this->serviceName,
+        'resourceBackupConfigs',
+        [
+          'methods' => [
+            'fetch' => [
+              'path' => 'v1/{+parent}/resourceBackupConfigs:fetch',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'filter' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'orderBy' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
     $this->projects_locations = new Backupdr\Resource\ProjectsLocations(
         $this,
         $this->serviceName,
@@ -1097,7 +1174,33 @@ class Backupdr extends \Google\Service
         'resourceBackupConfigs',
         [
           'methods' => [
-            'list' => [
+            'fetch' => [
+              'path' => 'v1/{+parent}/resourceBackupConfigs:fetch',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'filter' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'orderBy' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'list' => [
               'path' => 'v1/{+parent}/resourceBackupConfigs',
               'httpMethod' => 'GET',
               'parameters' => [

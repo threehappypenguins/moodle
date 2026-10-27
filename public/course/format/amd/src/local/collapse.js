@@ -31,6 +31,9 @@ import {Collapse} from 'bootstrap';
  * @param {string} options.toggleAllSelector Selector for the all-sections toggle.
  * @param {string} options.collapseSelector Selector for collapsible sections.
  * @param {Function|null} options.onToggleAll Callback receiving the event and collapse state.
+ * @param {boolean} options.autoRefresh Whether this module should keep the toggler state in sync by
+ * itself, listening to every collapse/expand event. Callers that already recompute and apply the
+ * toggler state themselves must pass false here.
  * @returns {Object|null} Collapse controls, or null when no toggle exists.
  */
 export const init = (root, options = {}) => {
@@ -38,6 +41,7 @@ export const init = (root, options = {}) => {
         toggleAllSelector = '[data-toggle="toggleall"]',
         collapseSelector = '[data-bs-toggle="collapse"]',
         onToggleAll = null,
+        autoRefresh = true,
     } = options;
 
     const toggleAll = root.querySelector(toggleAllSelector);
@@ -94,10 +98,12 @@ export const init = (root, options = {}) => {
         }
     });
 
-    getCollapseElements().forEach(element => {
-        element.addEventListener('shown.bs.collapse', refresh);
-        element.addEventListener('hidden.bs.collapse', refresh);
-    });
+    if (autoRefresh) {
+        getCollapseElements().forEach(element => {
+            element.addEventListener('shown.bs.collapse', refresh);
+            element.addEventListener('hidden.bs.collapse', refresh);
+        });
+    }
 
     refresh();
     return {refresh};

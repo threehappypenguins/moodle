@@ -20,7 +20,11 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__.'/../extlib/OTPHP/OTPInterface.php');
 require_once(__DIR__.'/../extlib/OTPHP/TOTPInterface.php');
-require_once(__DIR__.'/../extlib/OTPHP/ParameterTrait.php');
+require_once(__DIR__ . '/../extlib/OTPHP/Exception/OTPExceptionInterface.php');
+require_once(__DIR__ . '/../extlib/OTPHP/Exception/InvalidLabelException.php');
+require_once(__DIR__ . '/../extlib/OTPHP/Exception/InvalidParameterException.php');
+require_once(__DIR__ . '/../extlib/OTPHP/Exception/ParameterNotFoundException.php');
+require_once(__DIR__ . '/../extlib/OTPHP/Exception/SecretDecodingException.php');
 require_once(__DIR__.'/../extlib/OTPHP/InternalClock.php');
 require_once(__DIR__.'/../extlib/OTPHP/OTP.php');
 require_once(__DIR__.'/../extlib/OTPHP/TOTP.php');
@@ -32,12 +36,13 @@ require_once(__DIR__.'/../extlib/ParagonIE/ConstantTime/Base32.php');
 /**
  * Tests for TOTP factor.
  *
- * @covers      \factor_totp\factor
  * @package     factor_totp
  * @author      Peter Burnett <peterburnett@catalyst-au.net>
  * @copyright   Catalyst IT
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(\factor_totp\factor::class)]
+#[\PHPUnit\Framework\Attributes\CoversFunction('setup_user_factor')]
 final class factor_test extends \advanced_testcase {
 
     /**
@@ -114,8 +119,6 @@ final class factor_test extends \advanced_testcase {
 
     /**
      * Do not store the TOTP secret + user combination more than once
-     *
-     * @covers ::setup_user_factor
      */
     public function test_wont_store_same_secret_twice(): void {
         global $DB;

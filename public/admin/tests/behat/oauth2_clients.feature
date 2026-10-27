@@ -13,11 +13,15 @@ Feature: Create OAuth2 clients
     And I set the field "Name" to "Test Confidential Client"
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
-    And I set the field "Authorization Code" to "1"
-    And I set the field "Client Credentials" to "1"
+    And the field "Authorization Code" matches value "1"
+    And the field "Client credentials" matches value "0"
+    And I should not see "The client credentials flow enables direct, non-interactive API access without requiring a user login step. Anyone with the client ID and secret will be granted system/admin permissions. Enable this flow only for trusted machine-to-machine integrations."
+    And I set the field "Client credentials" to "1"
+    And I should see "The client credentials flow enables direct, non-interactive API access without requiring a user login step. Anyone with the client ID and secret will be granted system/admin permissions. Enable this flow only for trusted machine-to-machine integrations."
     And I should see "Callback URIs"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
     And the "Proof Key for Code Exchange" "checkbox" should be enabled
+    And I set the field "View courses and course categories" to "1"
     When I press "Create client"
     Then "Test Confidential Client" "heading" should exist
     And "Secrets" "heading" should exist
@@ -28,7 +32,7 @@ Feature: Create OAuth2 clients
       | Test Confidential Client | Confidential | Active |
     And "Edit" "link" should exist in the "Test Confidential Client" "table_row"
     And "Manage secrets" "link" should exist in the "Test Confidential Client" "table_row"
-    And "Revoke" "button" should exist in the "Test Confidential Client" "table_row"
+    And "Disable" "button" should exist in the "Test Confidential Client" "table_row"
     And "Delete" "button" should not exist in the "Test Confidential Client" "table_row"
 
   Scenario: Create a confidential OAuth2 client supporting client credentials flow only
@@ -37,9 +41,11 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "0"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
+    And I should see "The client credentials flow enables direct, non-interactive API access without requiring a user login step. Anyone with the client ID and secret will be granted system/admin permissions. Enable this flow only for trusted machine-to-machine integrations."
     And I should not see "Callback URIs"
     And "Proof Key for Code Exchange" "field" should not be visible
+    And I set the field "View courses and course categories" to "1"
     When I press "Create client"
     Then "Test Confidential Client" "heading" should exist
     And "Secrets" "heading" should exist
@@ -50,7 +56,7 @@ Feature: Create OAuth2 clients
       | Test Confidential Client | Confidential | Active |
     And "Edit" "link" should exist in the "Test Confidential Client" "table_row"
     And "Manage secrets" "link" should exist in the "Test Confidential Client" "table_row"
-    And "Revoke" "button" should exist in the "Test Confidential Client" "table_row"
+    And "Disable" "button" should exist in the "Test Confidential Client" "table_row"
     And "Delete" "button" should not exist in the "Test Confidential Client" "table_row"
 
   Scenario: Create a confidential OAuth2 client supporting authorization code flow only
@@ -59,9 +65,11 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "1"
-    And I set the field "Client Credentials" to "0"
+    And I set the field "Client credentials" to "0"
+    And I should not see "The client credentials flow enables direct, non-interactive API access without requiring a user login step. Anyone with the client ID and secret will be granted system/admin permissions. Enable this flow only for trusted machine-to-machine integrations."
     And I should see "Callback URIs"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
+    And I set the field "View courses and course categories" to "1"
     And the "Proof Key for Code Exchange" "checkbox" should be enabled
     When I press "Create client"
     Then "Test Confidential Client" "heading" should exist
@@ -73,19 +81,23 @@ Feature: Create OAuth2 clients
       | Test Confidential Client | Confidential | Active |
     And "Edit" "link" should exist in the "Test Confidential Client" "table_row"
     And "Manage secrets" "link" should exist in the "Test Confidential Client" "table_row"
-    And "Revoke" "button" should exist in the "Test Confidential Client" "table_row"
+    And "Disable" "button" should exist in the "Test Confidential Client" "table_row"
     And "Delete" "button" should not exist in the "Test Confidential Client" "table_row"
 
   Scenario: Create a public OAuth2 client
     Given I click on "Create client" "link"
     And I set the field "Name" to "Test Public Client"
     And I set the field "Description" to "A test public OAuth2 client"
+    And I set the field "Client credentials" to "1"
+    And I should see "The client credentials flow enables direct, non-interactive API access without requiring a user login step. Anyone with the client ID and secret will be granted system/admin permissions. Enable this flow only for trusted machine-to-machine integrations."
     And I click on "Public" "radio"
-    And "Client Credentials" "field" should not be visible
+    And "Client credentials" "field" should not be visible
+    And I should not see "The client credentials flow enables direct, non-interactive API access without requiring a user login step. Anyone with the client ID and secret will be granted system/admin permissions. Enable this flow only for trusted machine-to-machine integrations."
     And the "Authorization Code" "field" should be disabled
     And I should see "Callback URIs"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
-    And the "Proof Key for Code Exchange" "checkbox" should be disabled
+    And the "Proof Key for Code Exchange" "field" should be disabled
+    And I set the field "View courses and course categories" to "1"
     When I press "Create client"
     Then "OAuth 2 clients" "heading" should exist
     And "Secrets" "heading" should not exist
@@ -93,7 +105,7 @@ Feature: Create OAuth2 clients
       | Name               | Type   | Status |
       | Test Public Client | Public | Active |
     And "Edit" "link" should exist in the "Test Public Client" "table_row"
-    And "Revoke" "button" should exist in the "Test Public Client" "table_row"
+    And "Disable" "button" should exist in the "Test Public Client" "table_row"
     And "Manage secrets" "link" should not exist in the "Test Public Client" "table_row"
     And "Delete" "button" should not exist in the "Test Public Client" "table_row"
 
@@ -104,7 +116,7 @@ Feature: Create OAuth2 clients
     And I click on "Confidential" "radio"
     # Primary flow is not selected.
     And I set the field "Authorization Code" to "0"
-    And I set the field "Client Credentials" to "0"
+    And I set the field "Client credentials" to "0"
     When I press "Create client"
     Then I should see "You must supply a value here." in the "Name" "form_row"
     And I should see "You must select at least one primary flow." in the "Primary flows" "form_row"
@@ -112,7 +124,7 @@ Feature: Create OAuth2 clients
     And I set the field "Name" to "Test Client"
     And I set the field "Authorization Code" to "1"
     And I press "Create client"
-    And I should see "At least one valid Callback URI is required." in the "Callback URIs" "form_row"
+    And I should see "At least one valid callback URI is required." in the "Callback URIs" "form_row"
     # Invalid callback URI is provided.
     And I set the field "redirecturi[0]" to "invalid-uri"
     And I press "Create client"
@@ -121,6 +133,16 @@ Feature: Create OAuth2 clients
     And I set the field "redirecturi[0]" to "http://example.com/callback"
     And I press "Create client"
     And I should see "Must be a valid HTTPS URL (e.g., https://example.com/callback). HTTP is only allowed for loopback addresses." in the "Callback URIs" "form_row"
+    And I set the field "redirecturi[0]" to "http://localhost/callback"
+    And I press "Create client"
+    And I should see "You must select at least one scope." in the "Scopes" "form_row"
+    # The scopes checkboxes sit in a fieldset so the error names the group as a unit, rather
+    # than any single checkbox, to a screen reader: it is part of the legend, the fieldset's
+    # accessible name, which every screen reader announces on focus.
+    And "#id_scopesfieldset" "css_element" should exist
+    And the "aria-invalid" attribute of "#id_scopesfieldset" "css_element" should contain "true"
+    And I should see "You must select at least one scope." in the "#id_scopesfieldset legend" "css_element"
+    And the "class" attribute of "#id_scopesfieldset" "css_element" should contain "border-danger"
 
   Scenario: Generate secrets for a confidential OAuth2 client
     Given I click on "Create client" "link"
@@ -128,11 +150,12 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "0"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     And "Test Confidential Client" "heading" should exist
     And "Secrets" "heading" should exist
-    And I should see "No active client secrets are currently configured."
+    And I should see "No client secrets are currently configured."
     And "Generate secret" "button" should be visible
     And "reportbuilder-table" "table" should not exist
     When I press "Generate secret"
@@ -155,7 +178,8 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "0"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     And I press "Generate secret"
     And I click on "Close" "button" in the "Secret generated" "dialogue"
@@ -167,7 +191,7 @@ Feature: Create OAuth2 clients
     And I should see "Any external applications or active integrations using this specific credential will instantly lose API access. This action is permanent and cannot be undone." in the "Revoke client secret?" "dialogue"
     And I click on "Revoke" "button" in the "Revoke client secret?" "dialogue"
     And "reportbuilder-table" "table" should not exist
-    And I should see "No active client secrets are currently configured."
+    And I should see "No client secrets are currently configured."
 
   Scenario: More than 2 secrets cannot be generated for a confidential OAuth2 client
     Given I click on "Create client" "link"
@@ -175,7 +199,8 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "0"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     # Generate the first secret.
     And I press "Generate secret"
@@ -188,11 +213,13 @@ Feature: Create OAuth2 clients
       | Active | Revoke  |
       | Active | Revoke  |
     And "Generate secret" "button" should not be visible
-    And I should see "Maximum of 2 active secrets reached. Revoke one before generating another."
+    And I should see "Maximum of 2 secrets reached."
+    And I should see "To generate a new secret, you must first revoke one of the existing Active secrets."
     And I click on "Revoke" "button" in the "reportbuilder-table" "table"
     And I click on "Revoke" "button" in the "Revoke client secret?" "dialogue"
     And "Generate secret" "button" should be visible
-    And I should not see "Maximum of 2 active secrets reached. Revoke one before generating another."
+    And I should not see "Maximum of 2 secrets reached."
+    And I should not see "To generate a new secret, you must first revoke one of the existing Active secrets."
 
   Scenario: Edit confidential OAuth2 client that supports client credentials flow only
     Given I click on "Create client" "link"
@@ -200,7 +227,8 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "0"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     And I click on "Go back to OAuth 2 clients" "link"
     And I click on "Edit" "link" in the "Test Confidential Client" "table_row"
@@ -214,21 +242,24 @@ Feature: Create OAuth2 clients
     And "#client-active-secrets" "css_element" should exist
     And I should see "Active" in the "#client-status" "css_element"
     And I should see "Confidential" in the "#client-type" "css_element"
-    And I should see "Client Credentials" in the "#client-flows" "css_element"
+    And I should see "Client credentials" in the "#client-flows" "css_element"
     And I should see "0" in the "#client-active-secrets" "css_element"
     And "Manage secrets" "link" should exist in the "#client-active-secrets" "css_element"
     And the following fields match these values:
-      | Name        | Test Confidential Client |
-      | Description | A test confidential OAuth2 client |
+      | Name                               | Test Confidential Client          |
+      | Description                        | A test confidential OAuth2 client |
+      | View courses and course categories | 1                                 |
+      | Restore courses                    | 0                                 |
     And "Confidential" "radio" should not exist
     And "Public" "radio" should not exist
     And "Authorization Code" "field" should not exist
-    And "Client Credentials" "field" should not exist
+    And "Client credentials" "field" should not exist
     And "Callback URIs" "field" should not exist
     And "Proof Key for Code Exchange" "field" should not exist
     # Edit the client name and description.
     And I set the field "Name" to "Updated Confidential Client"
     And I set the field "Description" to "Updated confidential OAuth2 client"
+    And I set the field "Restore courses" to "1"
     When I press "Save changes"
     Then the following should exist in the "reportbuilder-table" table:
       | Name                             |
@@ -247,8 +278,9 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "1"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     And I click on "Go back to OAuth 2 clients" "link"
     And I click on "Edit" "link" in the "Test Confidential Client" "table_row"
@@ -263,19 +295,21 @@ Feature: Create OAuth2 clients
     And I should see "Active" in the "#client-status" "css_element"
     And I should see "Confidential" in the "#client-type" "css_element"
     And I should see "Authorization Code" in the "#client-flows" "css_element"
-    And I should see "Client Credentials" in the "#client-flows" "css_element"
+    And I should see "Client credentials" in the "#client-flows" "css_element"
     And I should see "0" in the "#client-active-secrets" "css_element"
     And "Manage secrets" "link" should exist in the "#client-active-secrets" "css_element"
     And the following fields match these values:
-      | Name           | Test Confidential Client          |
-      | Description    | A test confidential OAuth2 client |
-      | redirecturi[0] | https://example.com/callback      |
+      | Name                        | Test Confidential Client          |
+      | Description                 | A test confidential OAuth2 client |
+      | redirecturi[0]              | https://example.com/callback      |
+      | Proof Key for Code Exchange | 1                                 |
     And "Confidential" "radio" should not exist
     And "Public" "radio" should not exist
     And "Authorization Code" "field" should not exist
-    And "Client Credentials" "field" should not exist
+    And "Client credentials" "field" should not exist
     And "redirecturi[0]" "field" should exist
-    And "Proof Key for Code Exchange" "field" should not exist
+    And "Proof Key for Code Exchange" "field" should exist
+    And the "Proof Key for Code Exchange" "field" should be enabled
     # Edit the client name, description and redirect URIs.
     And I set the field "Name" to "Updated Confidential Client"
     And I set the field "Description" to "Updated confidential OAuth2 client"
@@ -302,6 +336,7 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test public OAuth2 client"
     And I click on "Public" "radio"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     And I click on "Edit" "link" in the "Test Public Client" "table_row"
     # Validate the layout of the edit client page.
@@ -322,7 +357,7 @@ Feature: Create OAuth2 clients
     And "Confidential" "radio" should not exist
     And "Public" "radio" should not exist
     And "Authorization Code" "field" should not exist
-    And "Client Credentials" "field" should not exist
+    And "Client credentials" "field" should not exist
     And "redirecturi[0]" "field" should exist
     And "Proof Key for Code Exchange" "field" should not exist
     # Edit the client name, description and redirect URIs.
@@ -345,15 +380,16 @@ Feature: Create OAuth2 clients
       | redirecturi[0] | https://example.com/callback-updated |
       | redirecturi[1] | https://example.com/another-callback |
 
-  Scenario: Revoke OAuth2 client
+  Scenario: Disable OAuth2 client
     # Create a confidential OAuth2 client supporting authorization code and client credentials flows.
     Given I click on "Create client" "link"
     And I set the field "Name" to "Test Confidential Client"
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "1"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     # Generate a secret for the client.
     And I press "Generate secret"
@@ -362,19 +398,31 @@ Feature: Create OAuth2 clients
       | Status  | Actions |
       | Active  | Revoke  |
     And I click on "Go back to OAuth 2 clients" "link"
-    # Revoke the client.
-    And I click on "Revoke" "button" in the "Test Confidential Client" "table_row"
-    And "Revoke \"Test Confidential Client\"?" "dialogue" should exist
-    And I should see "This immediately revokes all active secrets and stops the client from authenticating. The client and its configuration are kept, and it can be re-enabled later. To permanently remove it instead, revoke it first, then delete." in the "Revoke \"Test Confidential Client\"?" "dialogue"
-    When I click on "Revoke" "button" in the "Revoke \"Test Confidential Client\"?" "dialogue"
+    # Disable the client.
+    And I click on "Disable" "button" in the "Test Confidential Client" "table_row"
+    And "Disable \"Test Confidential Client\"?" "dialogue" should exist
+    And I should see "Disabling the client immediately deactivates all of its secrets, preventing it from authenticating. The client, its configuration, and secrets are preserved, so it can be re-enabled later." in the "Disable \"Test Confidential Client\"?" "dialogue"
+    When I click on "Disable" "button" in the "Disable \"Test Confidential Client\"?" "dialogue"
     Then the following should exist in the "reportbuilder-table" table:
-      | Name                     | Status  |
-      | Test Confidential Client | Revoked |
-    And "Revoke" "button" should not exist in the "Test Confidential Client" "table_row"
-    # Client secrets should be revoked and not longer managed when the client is revoked and cannot be .
-    And "Manage secrets" "link" should not exist in the "Test Confidential Client" "table_row"
+      | Name                     | Status   |
+      | Test Confidential Client | Disabled |
+    And "Disable" "button" should not exist in the "Test Confidential Client" "table_row"
+    # Client secrets should not be revoked when the client is disabled, but marked as inactive.
+    And "Manage secrets" "link" should exist in the "Test Confidential Client" "table_row"
     And I click on "Edit" "link" in the "Test Confidential Client" "table_row"
-    And "#client-active-secrets" "css_element" should not exist
+    And "#client-active-secrets" "css_element" should exist
+    And I should see "0" in the "#client-active-secrets" "css_element"
+    And I click on "Manage secrets" "link" in the "#client-active-secrets" "css_element"
+    And I should see "This client is currently disabled."
+    And I should see "Secrets cannot be used for authentication until the client is re-enabled."
+    And the following should exist in the "reportbuilder-table" table:
+      | Status   | Actions |
+      | Inactive | Revoke  |
+    And I press "Generate secret"
+    And I click on "Close" "button" in the "Secret generated" "dialogue"
+    And "Generate secret" "button" should not be visible
+    And I should see "Maximum of 2 secrets reached."
+    And I should see "To generate a new secret, you must first revoke one of the existing Inactive secrets."
 
   Scenario: Enable OAuth2 client
     # Create a confidential OAuth2 client supporting authorization code and client credentials flows.
@@ -383,8 +431,9 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test confidential OAuth2 client"
     And I click on "Confidential" "radio"
     And I set the field "Authorization Code" to "1"
-    And I set the field "Client Credentials" to "1"
+    And I set the field "Client credentials" to "1"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     # Generate a secret for the client.
     And I press "Generate secret"
@@ -393,9 +442,9 @@ Feature: Create OAuth2 clients
       | Status  | Actions |
       | Active  | Revoke  |
     And I click on "Go back to OAuth 2 clients" "link"
-    # Revoke the client.
-    And I click on "Revoke" "button" in the "Test Confidential Client" "table_row"
-    And I click on "Revoke" "button" in the "Revoke \"Test Confidential Client\"?" "dialogue"
+    # Disable the client.
+    And I click on "Disable" "button" in the "Test Confidential Client" "table_row"
+    And I click on "Disable" "button" in the "Disable \"Test Confidential Client\"?" "dialogue"
     # Enable the client.
     And "Enable" "button" should exist in the "Test Confidential Client" "table_row"
     And I click on "Enable" "button" in the "Test Confidential Client" "table_row"
@@ -405,13 +454,16 @@ Feature: Create OAuth2 clients
     Then the following should exist in the "reportbuilder-table" table:
       | Name                     | Status  |
       | Test Confidential Client | Active  |
-    And "Revoke" "button" should exist in the "Test Confidential Client" "table_row"
+    And "Disable" "button" should exist in the "Test Confidential Client" "table_row"
     And "Manage secrets" "link" should exist in the "Test Confidential Client" "table_row"
     And I click on "Edit" "link" in the "Test Confidential Client" "table_row"
     And "#client-active-secrets" "css_element" should exist
+    And I should see "1" in the "#client-active-secrets" "css_element"
     And I click on "Manage secrets" "link" in the "#client-active-secrets" "css_element"
-    # Revoked secrets cannot be re-enabled and must be regenerated.
-    And I should see "No active client secrets are currently configured."
+    # The secret should be active again after the client is re-enabled.
+    And the following should exist in the "reportbuilder-table" table:
+      | Status  | Actions |
+      | Active  | Revoke  |
 
   Scenario: Delete OAuth2 client
     # Create a public OAuth2 client.
@@ -420,6 +472,7 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "A test public OAuth2 client"
     And I click on "Public" "radio"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     # Create another public OAuth2 client.
     Given I click on "Create client" "link"
@@ -427,16 +480,17 @@ Feature: Create OAuth2 clients
     And I set the field "Description" to "Another public OAuth2 client"
     And I click on "Public" "radio"
     And I set the field "redirecturi[0]" to "https://example.com/callback"
+    And I set the field "View courses and course categories" to "1"
     And I press "Create client"
     And "Delete" "button" should not exist in the "Test Public Client" "table_row"
-    # Revoke the client.
-    And I click on "Revoke" "button" in the "Test Public Client" "table_row"
-    And I click on "Revoke" "button" in the "Revoke \"Test Public Client\"?" "dialogue"
+    # Disable the client.
+    And I click on "Disable" "button" in the "Test Public Client" "table_row"
+    And I click on "Disable" "button" in the "Disable \"Test Public Client\"?" "dialogue"
     # Delete the client.
     And "Delete" "button" should exist in the "Test Public Client" "table_row"
     And I click on "Delete" "button" in the "Test Public Client" "table_row"
     And "Delete \"Test Public Client\"?" "dialogue" should exist
-    And I should see "This permanently removes the client, its secrets, and its redirect URIs. Unlike revoking, this can't be undone. Any integration using this client will stop working immediately." in the "Delete \"Test Public Client\"?" "dialogue"
+    And I should see "This permanently removes the client, its secrets, and its redirect URIs. Unlike disabling, this can't be undone. Any integration using this client will stop working immediately." in the "Delete \"Test Public Client\"?" "dialogue"
     When I click on "Delete" "button" in the "Delete \"Test Public Client\"?" "dialogue"
     Then the following should not exist in the "reportbuilder-table" table:
       | Name               |
@@ -444,3 +498,69 @@ Feature: Create OAuth2 clients
     And the following should exist in the "reportbuilder-table" table:
       | Name                  |
       | Another Public Client |
+
+  Scenario: A non-admin user with "moodle/site:manageoauth2clients" capability can create OAuth2 clients
+    Given the following "users" exist:
+      | username | firstname | lastname | email             |
+      | user     | Test      | User     | user@example.com |
+    And the following "roles" exist:
+      | name                  | shortname     | description          | archetype |
+      | Oauth2 client manager | oauth2manager | OAuth 2 manager role |           |
+    And the following "permission overrides" exist:
+      | capability                      | permission | role          | contextlevel | reference |
+      | moodle/site:manageoauth2clients | Allow      | oauth2manager | System       |           |
+      | moodle/site:configview          | Allow      | oauth2manager | System       |           |
+    And the following "role assigns" exist:
+      | user    | role          | contextlevel | reference |
+      | user    | oauth2manager | System       |           |
+    And I log in as "user"
+    And I click on "Site administration" "link"
+    And "OAuth 2 clients" "link" should exist
+    And I click on "OAuth 2 clients" "link"
+    And I click on "Create client" "link"
+    And I set the field "Name" to "Test Confidential Client"
+    And I set the field "Description" to "A test confidential OAuth2 client"
+    And I click on "Confidential" "radio"
+    And I set the field "Authorization Code" to "0"
+    And I set the field "Client credentials" to "1"
+    And I set the field "View site configuration settings" to "1"
+    When I press "Create client"
+    Then "Test Confidential Client" "heading" should exist
+    And "Secrets" "heading" should exist
+    And I click on "Go back to OAuth 2 clients" "link"
+    And "OAuth 2 clients" "heading" should exist
+    And the following should exist in the "reportbuilder-table" table:
+      | Name                     | Type         | Status |
+      | Test Confidential Client | Confidential | Active |
+    # Verify that the user can no longer access OAuth 2 clients page if "moodle/site:manageoauth2clients" is prohibited.
+    And the following "permission overrides" exist:
+      | capability                      | permission | role          | contextlevel | reference |
+      | moodle/site:manageoauth2clients | Prohibit   | oauth2manager | System       |           |
+    And I log in as "user"
+    And I click on "Site administration" "link"
+    And "OAuth 2 clients" "link" should not exist
+
+  Scenario: Generating a secret notifies everyone who can manage OAuth2 clients
+    Given the following "users" exist:
+      | username | firstname | lastname | email             |
+      | maria    | Maria     | Manager  | maria@example.com |
+    And the following "role assigns" exist:
+      | user  | role    | contextlevel | reference |
+      | maria | manager | System       |           |
+    And I click on "Create client" "link"
+    And I set the field "Name" to "Reporting service"
+    And I click on "Confidential" "radio"
+    And I set the field "Authorization Code" to "0"
+    And I set the field "Client credentials" to "1"
+    And I set the field "View courses and course categories" to "1"
+    And I press "Create client"
+    And I press "Generate secret"
+    And I click on "Close" "button" in the "Secret generated" "dialogue"
+    # Only tasks queued before the current second are due, so give the notice's task a second.
+    And I wait "1" seconds
+    And I run all adhoc tasks
+    And I log in as "maria"
+    When I open the notification popover
+    And I click on "View full notification" "link" in the ".popover-region-notifications" "css_element"
+    Then I should see "New secret created for OAuth 2 client \"Reporting service\""
+    And I should see "Admin User created a new secret for the OAuth 2 client \"Reporting service\""

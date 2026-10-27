@@ -65,10 +65,13 @@ abstract class exception_response extends \core\router\schema\response\response 
         return new payload_response(
             payload: static::get_payload_data($exception, ...$extra),
             request: $request,
-            response: new Response(
-                status: static::get_exception_status_code(),
-                body: $exception->getMessage(),
-                reason: explode("\n", $exception->getMessage())[0],
+            response: static::add_additional_headers(
+                new Response(
+                    status: static::get_exception_status_code(),
+                    body: $exception->getMessage(),
+                    reason: explode("\n", $exception->getMessage())[0],
+                ),
+                $exception,
             ),
         );
     }
@@ -121,6 +124,9 @@ abstract class exception_response extends \core\router\schema\response\response 
         \Exception $exception,
         ...$extra,
     ): array {
+        // Do not use $CFG->dirroot because it might not be available in destructors.
+        $dirroot = realpath(dirname(__DIR__, 5));
+
         $data = [
             'message' => $exception->getMessage(),
             'stacktrace' => [],
@@ -133,10 +139,43 @@ abstract class exception_response extends \core\router\schema\response\response 
         if (debugging(level: DEBUG_DEVELOPER)) {
             $data['stacktrace'] = array_map(
                 fn ($frame): array => array_filter($frame, fn ($key) => $key !== 'args', ARRAY_FILTER_USE_KEY),
-                $exception->getTrace(),
+                array_map(
+                    fn ($trace): array => array_key_exists('file', $trace)
+                        ? array_merge($trace, ['file' => str_replace($dirroot, '', realpath($trace['file']))])
+                        : $trace,
+                    $exception->getTrace(),
+                ),
             );
         }
 
         return $data;
+    }
+
+    /**
+     * Add additional headers to the response.
+     *
+     * @param \Psr\Http\Message\ResponseInterface $response
+     * @param \Exception $exception
+     * @return \Psr\Http\Message\ResponseInterface
+     */
+    protected static function add_additional_headers(
+        \Psr\Http\Message\ResponseInterface $response,
+        \Exception $exception,
+    ): \Psr\Http\Message\ResponseInterface {
+        foreach (static::get_additional_headers($exception) as $name => $value) {
+            $response = $response->withAddedHeader($name, $value);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Get any headers to add to the response.
+     *
+     * @param \Exception $exception The exception for which to get additional headers.
+     * @return array<string,string>
+     */
+    protected static function get_additional_headers(\Exception $exception): array {
+        return [];
     }
 }

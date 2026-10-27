@@ -17,6 +17,7 @@
 namespace core_admin\form\oauth2\server;
 
 use core\oauth2\server\entity\client_entity;
+use core\output\html_writer;
 
 /**
  * OAuth 2 Client creation form.
@@ -30,7 +31,7 @@ class create_client_form extends base_client_form {
      * Form definition.
      */
     public function definition(): void {
-        global $PAGE, $OUTPUT;
+        global $PAGE;
 
         $mform = $this->_form;
 
@@ -60,7 +61,7 @@ class create_client_form extends base_client_form {
             $clienttypes,
             'clienttypegroup',
             get_string('oauth2server_clienttype', 'admin'),
-            \html_writer::div('', 'clienttypegroup-separator border-top w-100 my-2'),
+            html_writer::div('', 'clienttypegroup-separator border-top w-100 my-2'),
             false,
         );
 
@@ -89,12 +90,12 @@ class create_client_form extends base_client_form {
             $flowelements,
             'primaryflowsgroup',
             get_string('oauth2server_clientprimaryflows', 'admin'),
-            \html_writer::div('', 'primaryflowsgroup-separator border-top w-100 my-2'),
+            html_writer::div('', 'primaryflowsgroup-separator border-top w-100 my-2'),
             false,
         );
 
         $mform->setDefault('flow_auth_code', 1);
-        $mform->setDefault('flow_client_credentials', 1);
+        $mform->setDefault('flow_client_credentials', 0);
 
         // Client Credentials is not available to Public clients.
         $mform->hideIf('flow_client_credentials', 'clienttype', 'eq', client_entity::TYPE_PUBLIC);
@@ -102,43 +103,51 @@ class create_client_form extends base_client_form {
         // Public clients must use Authorization Code.
         $mform->disabledIf('flow_auth_code', 'clienttype', 'eq', client_entity::TYPE_PUBLIC);
 
+        // Client Credentials flow warning notice.
+        $this->add_warning_notice_element(
+            'clientcredentialswarning',
+            get_string('oauth2server_clientgranttypeclientcredswarning', 'admin'),
+        );
+
+        // Hide the warning notice for Public clients, and while Client Credentials is unchecked.
+        $mform->hideIf('clientcredentialswarning', 'clienttype', 'eq', client_entity::TYPE_PUBLIC);
+        $mform->hideIf('clientcredentialswarning', 'flow_client_credentials', 'notchecked');
+
         // Redirect URI fields.
         $this->add_redirect_uri_elements();
 
         // Hide redirect URI fields when Authorization Code is unchecked.
         $this->hide_redirect_uri_elements_when_auth_code_unchecked();
 
-        // Enable PKCE checkbox.
+        // Require PKCE checkbox.
         $label = $this->create_label(
-            get_string('oauth2server_clientenablepkce', 'admin'),
-            get_string('oauth2server_clientenablepkcedesc', 'admin'),
+            get_string('oauth2server_clientpkcerequired', 'admin'),
+            get_string('oauth2server_clientpkcerequireddesc', 'admin'),
         );
 
-        $mform->addElement('checkbox', 'enablepkce', get_string('oauth2server_clientpkce', 'admin'), $label);
-        $mform->setDefault('enablepkce', 1);
+        $mform->addElement('checkbox', 'ispkcerequired', get_string('oauth2server_clientpkce', 'admin'), $label);
+        $mform->setDefault('ispkcerequired', 1);
 
         // PKCE only applies to Authorization Code.
-        $mform->hideIf('enablepkce', 'flow_auth_code', 'notchecked');
+        $mform->hideIf('ispkcerequired', 'flow_auth_code', 'notchecked');
 
         // Public clients cannot change the PKCE setting.
-        $mform->disabledIf('enablepkce', 'clienttype', 'eq', client_entity::TYPE_PUBLIC);
-
-        // Warning notice.
-        $icon = \html_writer::tag('i', '', ['class' => 'fa fa-exclamation-triangle me-2', 'aria-hidden' => 'true']);
-
-        $mform->addElement(
-            'static',
-            'warningnotice',
-            '',
-            $OUTPUT->notification(
-                $icon . get_string(
-                    'oauth2server_clientcreationwarning',
-                    'admin'
-                ),
-                \core\output\notification::NOTIFY_WARNING,
-                false,
-            ),
+        $mform->disabledIf(
+            'ispkcerequired',
+            'clienttype',
+            'eq',
+            client_entity::TYPE_PUBLIC,
         );
+
+        // Warning notice about the inability to change client type and primary flow once the client is created.
+        $this->add_warning_notice_element(
+            'clientcreationwarning',
+            get_string('oauth2server_clientcreationwarning', 'admin'),
+        );
+
+        // Add the scope fields.
+        // This restricts which scopes a token has access to.
+        $this->add_scope_fields();
 
         // Action buttons.
         $this->add_action_buttons(true, get_string('oauth2server_clientcreate', 'admin'));
@@ -198,16 +207,26 @@ class create_client_form extends base_client_form {
     }
 
     /**
-     * Create a custom label for a radio/checkbox element.
+     * Add a warning notice element to the form.
      *
-     * @param string $name Label name.
-     * @param string $description Label description.
-     * @return string Generated HTML.
+     * @param string $elementname The name of the form element.
+     * @param string $warningtext The warning text to display.
+     * @return void
      */
-    private function create_label(string $name, string $description): string {
-        $namespan = \html_writer::span($name, 'fw-semibold');
-        $descriptionspan = \html_writer::span($description, 'text-muted small');
+    private function add_warning_notice_element(string $elementname, string $warningtext): void {
+        global $OUTPUT;
 
-        return \html_writer::div($namespan . $descriptionspan, 'd-inline-flex flex-column ms-1');
+        $icon = html_writer::tag('i', '', ['class' => 'fa fa-exclamation-triangle me-2', 'aria-hidden' => 'true']);
+
+        $this->_form->addElement(
+            'static',
+            $elementname,
+            '',
+            $OUTPUT->notification(
+                $icon . $warningtext,
+                \core\output\notification::NOTIFY_WARNING,
+                false,
+            ),
+        );
     }
 }

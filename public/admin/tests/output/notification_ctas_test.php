@@ -60,8 +60,9 @@ final class notification_ctas_test extends \advanced_testcase {
      * The external marketplace-style CTAs (marketplace, moodlecloud, partners) carry a base64
      * "site" param following the same pattern already used and tested for the "Browse new
      * plugins" link (see tool_installaddon_installer::get_external_service_url()), so the
-     * marketplace can match on site URL instead of a new registration-based lookup. A minimal
-     * utm_source/utm_campaign pair is also kept for on-site analytics.
+     * marketplace can match on site URL instead of a new registration-based lookup. A
+     * utm_source/utm_medium/utm_campaign/utm_content set is also kept, following Moodle HQ's
+     * marketing team's standard tracking convention for ad hoc, non-campaign CTA links.
      */
     public function test_marketplace_ctas_carry_site_info_and_utm_params(): void {
         global $CFG, $SITE, $PAGE;
@@ -78,9 +79,11 @@ final class notification_ctas_test extends \advanced_testcase {
             $query = [];
             parse_str((string) parse_url($bykey[$key]->href, PHP_URL_QUERY), $query);
 
-            $this->assertSame(['site', 'utm_source', 'utm_campaign'], array_keys($query));
-            $this->assertSame('moodle_admin', $query['utm_source']);
-            $this->assertSame($key, $query['utm_campaign']);
+            $this->assertSame(['site', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'], array_keys($query));
+            $this->assertSame(parse_url($CFG->wwwroot, PHP_URL_HOST), $query['utm_source']);
+            $this->assertSame('lms_referral', $query['utm_medium']);
+            $this->assertSame('000_lms_cta', $query['utm_campaign']);
+            $this->assertSame($key, $query['utm_content']);
 
             $site = json_decode(base64_decode($query['site']), true);
             $this->assertSame(strip_tags($SITE->fullname), $site['fullname']);
@@ -90,10 +93,7 @@ final class notification_ctas_test extends \advanced_testcase {
 
         $this->assertStringStartsWith('https://marketplace.moodle.com/', $bykey['marketplace']->href);
         $this->assertStringStartsWith('https://www.moodlecloud.com/standard-plans/', $bykey['moodlecloud']->href);
-        $this->assertStringStartsWith(
-            'https://moodle.com/services/certified-service-providers/',
-            $bykey['partners']->href
-        );
+        $this->assertStringStartsWith('https://moodle.com/get-moodle/', $bykey['partners']->href);
     }
 
     /**

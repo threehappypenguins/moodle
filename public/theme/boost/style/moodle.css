@@ -31194,8 +31194,8 @@ audio.mediaplugin_html5audio {
 }
 
 .moodle-dialogue-base .moodle-dialogue-wrap {
-  background-color: var(--bs-white);
-  border: 1px solid #ccc;
+  background-color: var(--mds-bg-surface-default);
+  border: 1px solid var(--mds-border-default);
 }
 
 .modal.show {
@@ -31205,7 +31205,7 @@ audio.mediaplugin_html5audio {
 .moodle-dialogue-base .moodle-dialogue-wrap .moodle-dialogue-hd {
   display: flex;
   padding: 1rem 1rem;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--mds-border-default);
 }
 
 .moodle-dialogue-base .moodle-dialogue-wrap .moodle-dialogue-hd.yui3-widget-hd {
@@ -31237,6 +31237,7 @@ audio.mediaplugin_html5audio {
   padding: 1rem 1rem;
   margin: -1rem -1rem -1rem auto;
   position: relative;
+  color: inherit;
   background-color: transparent;
   border: 0;
   background-image: none;
@@ -31273,30 +31274,30 @@ audio.mediaplugin_html5audio {
 }
 
 .moodle-dialogue-exception .param-stacktrace label {
-  background-color: #eee;
-  border: 1px solid #ccc;
+  background-color: var(--mds-bg-surface-strong);
+  border: 1px solid var(--mds-border-default);
   border-bottom-width: 0;
 }
 
 .moodle-dialogue-exception .param-stacktrace pre {
-  border: 1px solid #ccc;
-  background-color: var(--bs-white);
+  border: 1px solid var(--mds-border-default);
+  background-color: var(--mds-bg-surface-default);
 }
 
 .moodle-dialogue-exception .param-stacktrace .stacktrace-file {
-  color: navy;
+  color: var(--mds-text-feedback-primary);
   font-size: 0.875rem;
 }
 
 .moodle-dialogue-exception .param-stacktrace .stacktrace-line {
-  color: #f0ad4e;
+  color: var(--mds-text-feedback-warning);
   font-size: 0.875rem;
 }
 
 .moodle-dialogue-exception .param-stacktrace .stacktrace-call {
-  color: #333;
+  color: var(--mds-text-default);
   font-size: 90%;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--mds-border-default);
 }
 
 .moodle-dialogue-base .moodle-dialogue .moodle-dialogue-content .moodle-dialogue-ft:empty {
@@ -31362,7 +31363,7 @@ audio.mediaplugin_html5audio {
   height: 100%;
   top: 0;
   left: 0;
-  background-color: var(--bs-white);
+  background-color: var(--mds-bg-surface-default);
   text-align: center;
   padding: 10% 0;
 }
@@ -31397,7 +31398,7 @@ audio.mediaplugin_html5audio {
 
 .chooserdialogue .moodle-dialogue-wrap .moodle-dialogue-bd {
   padding: 0;
-  background: #f2f2f2;
+  background: var(--mds-bg-surface-strong);
   border-bottom-right-radius: 10px;
   border-bottom-left-radius: 10px;
 }
@@ -31422,7 +31423,7 @@ audio.mediaplugin_html5audio {
 /* Various settings for the options area */
 .choosercontainer #chooseform .options {
   position: relative;
-  border-bottom: 1px solid #bbb;
+  border-bottom: 1px solid var(--mds-border-default);
 }
 
 /* Only set these options if we're showing the js container */
@@ -31473,7 +31474,7 @@ audio.mediaplugin_html5audio {
   display: block;
   margin: 0;
   padding: 0.5rem 0;
-  border-bottom: 1px solid #ffffff;
+  border-bottom: 1px solid var(--mds-bg-surface-default);
 }
 
 .choosercontainer #chooseform .option .icon {
@@ -31507,7 +31508,7 @@ audio.mediaplugin_html5audio {
   left: 240px;
   margin: 0;
   padding: 1.6em;
-  background-color: #ffffff;
+  background-color: var(--mds-bg-surface-default);
   overflow-x: hidden;
   overflow-y: auto;
   line-height: 2em;
@@ -31520,7 +31521,7 @@ audio.mediaplugin_html5audio {
 }
 
 .choosercontainer #chooseform .selected {
-  background-color: #ffffff;
+  background-color: var(--mds-bg-surface-default);
   margin-top: -1px;
   padding-top: 1px;
 }
@@ -33103,8 +33104,8 @@ blockquote {
 body.behat-site .action-menu .dropdown-subpanel-content.show {
   animation: none;
 }
-.action-menu .dropstart .dropdown-subpanel-content.dropdown-menu[data-bs-popper],
-.action-menu .dropend .dropdown-subpanel-content.dropdown-menu[data-bs-popper] {
+.action-menu .dropstart .dropdown-subpanel-content.dropdown-menu[data-bs-popper][data-popper-placement$=-start],
+.action-menu .dropend .dropdown-subpanel-content.dropdown-menu[data-bs-popper][data-popper-placement$=-start] {
   /* stylelint-disable declaration-no-important */
   top: calc(-0.5rem - var(--bs-border-width)) !important;
   /* stylelint-enable declaration-no-important */
@@ -34223,7 +34224,7 @@ img.icon {
 }
 .admin-notification-ctas .admin-notification-cta .admin-notification-cta-ticks li {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--mds-spacing-xxs, 0.25rem);
 }
 .admin-notification-ctas .admin-notification-cta .admin-notification-cta-ticks .admin-notification-cta-tick {
@@ -34444,7 +34445,7 @@ img.icon {
 @media (min-width: 576px) {
   .card-carousel .card {
     flex: 0 1 auto;
-    width: 240px;
+    width: 245px;
     max-width: 100%;
   }
 }
@@ -34458,7 +34459,6 @@ img.icon {
 
 .block_recentlyaccessedcourses .paging-bar-container {
   margin-top: -2.4rem;
-  padding-right: 0.5rem;
   justify-content: flex-end;
 }
 @media (max-width: 575.98px) {
@@ -34520,6 +34520,9 @@ aside[id^=block-region-side-] .block_recentlyaccesseditems .card:nth-of-type(n+4
 
 .block_timeline .paged-content-page-container {
   background-color: var(--bs-body-bg);
+}
+.block_timeline .list-group-item {
+  background-color: var(--bs-card-bg);
 }
 
 .block_timeline .event-action {
@@ -35380,13 +35383,6 @@ table.calendartable caption {
   list-style: square;
 }
 
-.section-collapsemenu {
-  padding: 0.5rem 0.75rem;
-  color: var(--bs-gray-600);
-  line-height: 1;
-  background: none;
-  border: 0;
-}
 .section-collapsemenu .collapseall {
   display: block;
 }
@@ -35399,8 +35395,20 @@ table.calendartable caption {
 .section-collapsemenu.collapsed .expandall {
   display: block;
 }
-.section-collapsemenu:hover .collapsemenu-text {
+
+button.section-collapsemenu {
+  padding: 0.5rem 0.75rem;
+  color: var(--bs-gray-600);
+  line-height: 1;
+  background: none;
+  border: 0;
+}
+button.section-collapsemenu:hover .collapsemenu-text {
   text-decoration: underline;
+}
+
+.section-list.has-collapsemenu .section-collapsemenu {
+  display: none;
 }
 
 .courseindex-collapsemenu {
@@ -35446,8 +35454,8 @@ table.calendartable caption {
 .course-section .section-item .course-section-header .section-restrictionlock .icon {
   color: var(--bs-gray-600);
 }
-.course-section .section-item .course-content-item-content [data-for=sectioninfo] {
-  padding-left: calc(16px + 3rem);
+.course-section .section-item .course-content-item-content > [data-for=sectioninfo] {
+  padding-left: 1rem;
   padding-right: 1rem;
   padding-bottom: 1rem;
 }
@@ -35457,6 +35465,9 @@ table.calendartable caption {
   background-color: var(--bs-gray-100);
   border-bottom-right-radius: 1rem;
   border-bottom-left-radius: 1rem;
+}
+.course-section .section-item .course-section-header:has(.icons-collapse-expand) ~ .course-content-item-content > [data-for=sectioninfo] {
+  padding-left: calc(16px + 3rem);
 }
 .course-section.current > .section-item {
   position: relative;
@@ -36002,8 +36013,6 @@ body:not(.editing) .single-section > ul > .course-section .section_availability 
 }
 
 .single-section-page #page.drawers #topofscroll {
-  background-color: var(--bs-body-bg);
-  border-radius: 1rem;
   padding: 1rem;
 }
 .single-section-page #page-header {
@@ -36399,6 +36408,7 @@ body.editing#page-course-learningoutcomes .activity-item:hover:not(:has(.activit
 }
 #course-category-listings .listitem > div .idnumber {
   margin-right: 2em;
+  min-width: 0;
 }
 #course-category-listings .listitem[data-visible="0"] {
   color: var(--bs-secondary-color);
@@ -37001,10 +37011,36 @@ body.editing#page-course-learningoutcomes .activity-item:hover:not(:has(.activit
 
 /* Option summary styles. */
 .modchooser .optionsummary {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  border: var(--mds-stroke-weight-sm) solid var(--mds-border-subtle);
+  border-radius: var(--mds-border-radius-xl);
+  background-color: var(--mds-bg-surface-subtle);
+  padding-block: var(--mds-spacing-md);
+}
+.modchooser .optionsummary [data-region=chooser-option-summary-content-container] {
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  width: 100%;
-  background-color: var(--bs-white);
+  padding-inline: var(--mds-spacing-md);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bs-gray-600) var(--mds-bg-surface-subtle);
+}
+.modchooser .optionsummary [data-region=chooser-option-summary-content-container]::-webkit-scrollbar {
+  width: 12px;
+}
+.modchooser .optionsummary [data-region=chooser-option-summary-content-container]::-webkit-scrollbar-track {
+  background: var(--mds-bg-surface-subtle);
+}
+.modchooser .optionsummary [data-region=chooser-option-summary-content-container]::-webkit-scrollbar-thumb {
+  background-color: var(--bs-gray-600);
+  border-radius: 20px;
+  border: 3px solid var(--mds-bg-surface-subtle);
+}
+.modchooser .optionsummary [data-region=chooser-option-summary-content-container]::-webkit-scrollbar-thumb:hover {
+  background-color: var(--bs-gray-700);
 }
 .modchooser .optionsummary .activitychooser-option-details {
   min-width: 15rem;
@@ -37033,10 +37069,12 @@ body.editing#page-course-learningoutcomes .activity-item:hover:not(:has(.activit
   .modchooser .modal-body .carousel,
   .modchooser .modal-body .carousel-inner,
   .modchooser .modal-body .carousel-item,
-  .modchooser .modal-body .optionsummary,
   .modchooser .modal-body .searchresultitemscontainer-wrapper {
     height: 100%;
     overflow-y: auto;
+  }
+  .modchooser .modal-body .optionsummary {
+    height: 100%;
   }
   .modchoosercontainer,
   .optionscontainer,
@@ -37806,11 +37844,6 @@ body.drawer-ease {
   height: auto;
 }
 
-/* The javascript is adding a style="height: 0px;" to this element - we need to set the min-height so the height is ignored. */
-.filepicker .moodle-dialogue-bd {
-  min-height: 520px;
-}
-
 .fp-navbar {
   border-color: var(--bs-gray-500);
   border-bottom: 0;
@@ -37824,6 +37857,8 @@ body.drawer-ease {
   clear: none;
   overflow: auto;
   height: 452px;
+  min-height: 150px;
+  max-height: calc(100vh - 240px);
 }
 
 .filepicker.moodle-dialogue-fullscreen .file-picker .fp-content {
@@ -38846,24 +38881,8 @@ a.ygtvspacer:hover {
 .preferences-container .preference-table .preference-row .preference-name {
   vertical-align: middle;
 }
-.preferences-container .preference-table .preference-row .disabled-message {
-  text-align: center;
-  height: 30px;
-  line-height: 30px;
-}
 .preferences-container .preference-table .preference-row.loading .preference-name .loading-icon {
   display: block;
-}
-
-.disabled-message {
-  display: none;
-}
-
-.disabled .disabled-message {
-  display: block;
-}
-.disabled .disabled-message + form {
-  display: none;
 }
 
 .general-settings-container .loading-icon {
@@ -40492,6 +40511,10 @@ body.path-question-type .mform fieldset.hidden {
   justify-content: flex-start;
   width: 100%;
   margin-right: 0;
+}
+.mform .d-flex .fdate_time_selector .fitem {
+  margin-left: 0 !important; /* stylelint-disable-line declaration-no-important */
+  margin-right: 0 !important; /* stylelint-disable-line declaration-no-important */
 }
 
 .d-flex > .form-control {
@@ -45134,6 +45157,7 @@ body.tox-fullscreen .tox.tox-tinymce-aux {
   max-width: 100%;
   width: 100%;
   margin: 0 auto;
+  background-color: var(--bs-body-bg);
   border-radius: 0.5rem;
   padding: 1.5rem 0.5rem;
   margin-top: 0.5rem;
@@ -45303,6 +45327,10 @@ body.tox-fullscreen .tox.tox-tinymce-aux {
   }
 }
 @media (min-width: 992px) {
+  .pagelayout-standard #page.drawers .main-inner,
+  body.limitedwidth #page.drawers .main-inner {
+    margin-top: calc(calc(60px + 3rem - 0.5rem) - 60px);
+  }
   .pagelayout-standard .drawer-toggles .drawer-toggler,
   body.limitedwidth .drawer-toggles .drawer-toggler {
     top: calc(60px + 3rem);
@@ -45994,12 +46022,6 @@ div.editor_atto_toolbar button .icon {
   height: 100%;
   display: flex;
 }
-.navbar.fixed-top .editmode-switch-form .input-group {
-  flex-wrap: nowrap;
-}
-.navbar.fixed-top .editmode-switch-form .input-group > label {
-  white-space: nowrap;
-}
 
 .dir-rtl .navbar.fixed-top .usermenu .dropdown-menu .dropdown-item.carousel-navigation-link::after {
   font: var(--fa-font-solid);
@@ -46206,37 +46228,30 @@ div.editor_atto_toolbar button .icon {
   .path-admin-reportbuilder.pagelayout-popup.behat-site .fixed-top {
     position: fixed;
   }
-  .path-admin-reportbuilder.pagelayout-popup #region-main {
+  .path-admin-reportbuilder.pagelayout-popup #region-main,
+  .path-admin-reportbuilder.pagelayout-popup #page-content {
     border: none;
-    padding: 0;
+    padding: 0 !important; /* stylelint-disable-line declaration-no-important */
   }
   .path-admin-reportbuilder.pagelayout-popup #maincontent {
     visibility: hidden;
   }
-  .path-admin-reportbuilder.pagelayout-popup .dynamictabs .nav-tabs {
-    position: fixed;
-    z-index: 1030;
-    width: calc(100% - 35px);
-    padding-top: 1.25rem;
-    background-color: var(--bs-white);
-    box-shadow: 0 1.25rem 0 var(--bs-white);
-  }
-  .path-admin-reportbuilder.pagelayout-popup .dynamictabs .tab-content {
-    padding-top: 83px;
+  .path-admin-reportbuilder.pagelayout-popup .nav-tabs {
+    padding-top: 1.5rem;
   }
   .path-admin-reportbuilder.pagelayout-popup .reportbuilder-sidebar-menu {
     position: fixed;
   }
   .path-admin-reportbuilder.pagelayout-popup .reportbuilder-sidebar-menu .reportbuilder-sidebar-menu-cards {
-    max-height: calc(100vh - 163px - 52px);
+    max-height: calc(100vh - calc(60px + calc(44px + 3rem)) - calc(38px + 1rem));
   }
   .path-admin-reportbuilder.pagelayout-popup .reportbuilder-sidebar-settings {
     position: fixed;
-    right: 30px;
-    max-height: calc(100vh - 163px);
+    right: 1.5rem;
+    max-height: calc(100vh - calc(60px + calc(44px + 3rem)));
   }
   .path-admin-reportbuilder.pagelayout-popup .reportbuilder-report[data-editing] .reportbuilder-report-container {
-    max-height: calc(100vh - 163px);
+    max-height: calc(100vh - calc(60px + calc(44px + 3rem)));
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--bs-gray-600) #f8f9fa;
@@ -46911,15 +46926,41 @@ div.editor_atto_toolbar button .icon {
   padding: 0;
   border: 0;
 }
-.dropdownmoremenu > .dropdown-menu .dropdown-submenu > .dropdown-menu .dropdown-item:not(.active) {
-  background-color: #f8f9fa;
+.dropdownmoremenu > .dropdown-menu .dropdown-submenu > .dropdown-menu .dropdown-item {
+  background-color: var(--bs-gray-100);
 }
-.dropdownmoremenu > .dropdown-menu .dropdown-submenu > .dropdown-menu .dropdown-item:not(.active):hover, .dropdownmoremenu > .dropdown-menu .dropdown-submenu > .dropdown-menu .dropdown-item:not(.active):focus {
+.dropdownmoremenu > .dropdown-menu .dropdown-submenu > .dropdown-menu .dropdown-item:hover, .dropdownmoremenu > .dropdown-menu .dropdown-submenu > .dropdown-menu .dropdown-item:focus {
   color: #ffffff;
   background-color: #0f6cbf;
 }
 .dropdownmoremenu > .dropdown-menu .dropdown-submenu > .dropdown-menu .dropdown-divider {
   display: none;
+}
+
+.more-nav .dropdown-item[aria-current=page],
+.more-nav .dropdown-item.active {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: transparent;
+  color: var(--mds-text-default);
+}
+.more-nav .dropdown-item[aria-current=page]:focus-within, .more-nav .dropdown-item[aria-current=page]:hover,
+.more-nav .dropdown-item.active:focus-within,
+.more-nav .dropdown-item.active:hover {
+  background-color: var(--bs-dropdown-link-active-bg);
+  color: #ffffff;
+}
+.more-nav .dropdown-item[aria-current=page]::before,
+.more-nav .dropdown-item.active::before {
+  font: var(--fa-font-solid);
+  content: "\f00c";
+  position: absolute;
+  left: 0.4rem;
+  font-size: 0.7rem;
+}
+.more-nav .dropdown-menu:has(.dropdown-item.active) .dropdown-item {
+  padding-left: 1.5rem;
 }
 
 .primary-navigation .navigation {
@@ -46932,13 +46973,10 @@ div.editor_atto_toolbar button .icon {
 }
 
 .primary-navigation .navigation.primarynav-navbar .more-nav {
-  gap: var(--mds-spacing-xs);
+  gap: var(--mds-spacing-xxs);
 }
 .primary-navigation .navigation.primarynav-navbar .nav-item {
   height: 60px;
-}
-.primary-navigation .navigation.primarynav-navbar .mds-nav-pill {
-  color: #1d2125;
 }
 .primary-navigation .navigation.primarynav-navbar .mds-nav-pill.dropdown-toggle:focus {
   box-shadow: none;
@@ -46958,7 +46996,7 @@ div.editor_atto_toolbar button .icon {
   .primary-navigation {
     display: none;
   }
-  .editmode-switch-form label {
+  .editmode-switch-form .mds-switch-label {
     width: 1px !important;
     height: 1px !important;
     padding: 0 !important;
@@ -46968,32 +47006,49 @@ div.editor_atto_toolbar button .icon {
     white-space: nowrap !important;
     border: 0 !important;
   }
-  .editmode-switch-form label:not(caption) {
+  .editmode-switch-form .mds-switch-label:not(caption) {
     position: absolute !important;
   }
-  .editmode-switch-form label * {
+  .editmode-switch-form .mds-switch-label * {
     overflow: hidden !important;
   }
 }
-.editmode-switch-form .form-check.form-switch .form-check-input {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%236a737b'/%3e%3c/svg%3e");
-  background-color: var(--bs-gray-400);
-  border: none;
-}
-[data-bs-theme=dark] .editmode-switch-form .form-check.form-switch .form-check-input:not(:checked) {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23f8f9fa'/%3e%3c/svg%3e");
+.editmode-switch-form .mds-switch {
+  position: relative;
 }
 
-.editmode-switch-form .form-check.form-switch .form-check-input:checked {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e");
-  background-color: var(--bs-primary);
-  border: none;
+.editmode-switch-form .mds-switch-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  opacity: 0;
+  cursor: pointer;
 }
-.editmode-switch-form .form-check.form-switch .form-check-input:focus {
-  border-color: transparent;
-  box-shadow: none;
-  outline: 2px solid var(--bs-primary);
-  outline-offset: 1px;
+.editmode-switch-form .mds-switch-input:not(:disabled):hover + .mds-switch-control .mds-switch-track {
+  background-color: var(--mds-bg-switch-track-hover);
+  color: var(--mds-bg-switch-track-hover);
+}
+.editmode-switch-form .mds-switch-input:not(:disabled):hover + .mds-switch-control .mds-switch-thumb {
+  background-color: var(--mds-bg-switch-thumb-hover);
+}
+.editmode-switch-form .mds-switch-input:checked:not(:disabled):hover + .mds-switch-control .mds-switch-track {
+  background-color: var(--mds-bg-interactive-primary-hover);
+  color: var(--mds-bg-interactive-primary-hover);
+}
+.editmode-switch-form .mds-switch-input:checked:not(:disabled):hover + .mds-switch-control .mds-switch-thumb {
+  background-color: var(--mds-bg-interactive-primary-default-light);
+}
+
+.editmode-switch-form {
+  --mds-bg-interactive-primary-default: var(--bs-primary);
+  --mds-bg-interactive-primary-default-light: var(--bs-primary-bg-subtle);
+  --mds-bg-interactive-primary-hover: #0d5ca2;
+  --mds-bg-interactive-primary-disabled: #9fc4e5;
 }
 
 .drawer-primary .drawercontent {
@@ -47029,7 +47084,6 @@ div.editor_atto_toolbar button .icon {
 .secondary-navigation .navigation {
   border-bottom: 1px solid var(--bs-border-color);
   background-color: var(--bs-body-bg);
-  margin: 0 -0.5rem;
   padding: 0 0.5rem;
 }
 .secondary-navigation .navigation .nav-tabs {
@@ -47051,7 +47105,7 @@ div.editor_atto_toolbar button .icon {
   height: 60px;
 }
 .secondary-navigation .navigation.secondarynav-tabbar .more-nav {
-  gap: var(--mds-spacing-xs);
+  gap: var(--mds-spacing-xxs);
 }
 .secondary-navigation .navigation.secondarynav-tabbar .nav-item {
   height: 60px;

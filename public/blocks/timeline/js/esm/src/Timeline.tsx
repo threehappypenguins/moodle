@@ -95,7 +95,7 @@ export default function Timeline({midnight, filter, order, limit, nocoursesurl, 
 
     return (
         <div data-region="timeline" className="block-timeline">
-            <div className="p-0 px-2">
+            <div className="p-0">
                 <div className="d-flex flex-wrap gap-1 g-0">
                     <div>
                         <DayFilter activeFilter={activeFilter} onChange={handleFilterChange} />
@@ -111,7 +111,7 @@ export default function Timeline({midnight, filter, order, limit, nocoursesurl, 
             </div>
 
             <div className="p-0">
-                <div data-region="view-dates" role="tabpanel" className={showCoursesView ? 'd-none' : ''}>
+                <div data-region="view-dates" className={showCoursesView ? 'd-none' : ''}>
                     {!showCoursesView && (
                         <DatesView
                             midnight={midnight}
@@ -125,7 +125,7 @@ export default function Timeline({midnight, filter, order, limit, nocoursesurl, 
                         />
                     )}
                 </div>
-                <div data-region="view-courses" role="tabpanel" className={showCoursesView ? '' : 'd-none'}>
+                <div data-region="view-courses" className={showCoursesView ? '' : 'd-none'}>
                     {showCoursesView && (
                         <CoursesView
                             midnight={midnight}

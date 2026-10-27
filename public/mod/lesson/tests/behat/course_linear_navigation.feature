@@ -9,9 +9,13 @@ Feature: Display the course linear navigation in the lesson pages
       | username | firstname | lastname |
       | teacher  | Teacher   | 1        |
       | student  | Student   | 1        |
+    # Linear navigation starts disabled so that the lesson's own "Link to next activity"
+    # setting is still available while the lesson is configured below.
+    And the following config values are set as admin:
+      | enablelinearnav | 0 | format_topics |
     And the following "courses" exist:
-      | fullname | shortname | enablelinearnav |
-      | Course1  | C1        | 0               |
+      | fullname | shortname |
+      | Course1  | C1        |
     And the following "course enrolments" exist:
       | user     | course | role           |
       | student  | C1     | student        |
@@ -35,10 +39,8 @@ Feature: Display the course linear navigation in the lesson pages
       | Maximum number of tries per question   | 2     |
       | Allow student review                   | Yes   |
     And I press "Save and display"
-    And I am on the "Course1" "course editing" page
-    And I expand all fieldsets
-    And I set the field "Enable linear navigation" to "Yes"
-    And I press "Save and display"
+    And the following config values are set as admin:
+      | enablelinearnav | 1 | format_topics |
 
   @javascript
   Scenario: As a student I should see the course linear navigation in lesson pages that allow it
@@ -104,11 +106,9 @@ Feature: Display the course linear navigation in the lesson pages
     And I should not see "Link to next activity"
 
   Scenario: The Link to next activity setting is shown when linear navigation is disabled
-    Given I am on the "Course1" "course editing" page logged in as "teacher"
-    And I expand all fieldsets
-    And I set the field "Enable linear navigation" to "No"
-    And I press "Save and display"
-    When I am on the "Lesson1" "lesson activity editing" page
+    Given the following config values are set as admin:
+      | enablelinearnav | 0 | format_topics |
+    When I am on the "Lesson1" "lesson activity editing" page logged in as "teacher"
     And I expand all fieldsets
     Then I should see "Link to next activity"
     # Check that the links to next activity are shown in the lesson pages when linear navigation is disabled.

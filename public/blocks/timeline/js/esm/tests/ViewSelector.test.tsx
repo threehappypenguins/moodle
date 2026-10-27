@@ -44,6 +44,7 @@ function optionFor(container: HTMLElement, filtername: string): HTMLElement {
 
 beforeEach(() => {
     (globalThis as any).mockString('ariaviewselector', 'block_timeline', 'Sort by');
+    (globalThis as any).mockString('ariaviewselectorbutton', 'block_timeline', 'Sort by dates: sort timeline items');
     (globalThis as any).mockString('ariaviewselectoroption', 'block_timeline', 'option');
     (globalThis as any).mockString('sortbydates', 'block_timeline', 'Sort by dates');
     (globalThis as any).mockString('sortbycourses', 'block_timeline', 'Sort by courses');
@@ -79,5 +80,78 @@ describe('ViewSelector', () => {
 
         expect(optionFor(container, 'sortbydates')).toHaveTextContent('Sort by dates');
         expect(optionFor(container, 'sortbycourses')).toHaveTextContent('Sort by courses');
+    });
+
+    it('marks the dropdown up as a menu, not a tablist', async() => {
+        const {container} = await renderSelector(<ViewSelector activeOrder="sortbydates" onChange={jest.fn()} />);
+
+        expect(container.querySelector('[role="menu"]')).toBeInTheDocument();
+        expect(container.querySelector('[role="tablist"], [role="tab"]')).not.toBeInTheDocument();
+        expect(optionFor(container, 'sortbydates')).toHaveAttribute('role', 'menuitem');
+        expect(optionFor(container, 'sortbycourses')).toHaveAttribute('role', 'menuitem');
+    });
+
+    it('leaves no option referring to a panel that does not exist', async() => {
+        const {container} = await renderSelector(<ViewSelector activeOrder="sortbydates" onChange={jest.fn()} />);
+
+        for (const name of ['sortbydates', 'sortbycourses']) {
+            const option = optionFor(container, name);
+            expect(option).not.toHaveAttribute('aria-controls');
+            expect(option).toHaveAttribute('href', '#');
+        }
+    });
+
+    it('exposes the collapsed state on the toggle before the dropdown is first opened', async() => {
+        await renderSelector(<ViewSelector activeOrder="sortbydates" onChange={jest.fn()} />);
+
+        const toggle = screen.getByRole('button');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(toggle).toHaveAttribute('aria-controls', 'menusortby');
+        expect(document.getElementById('menusortby')).toBeInTheDocument();
+    });
+
+    it('leaves the expanded state Bootstrap set alone when the component re-renders', async() => {
+        const {rerender} = await renderSelector(<ViewSelector activeOrder="sortbydates" onChange={jest.fn()} />);
+
+        // Stand in for Bootstrap's dropdown JS, which owns the attribute once the menu opens.
+        const toggle = screen.getByRole('button');
+        toggle.setAttribute('aria-expanded', 'true');
+
+        await act(async() => {
+            rerender(<ViewSelector activeOrder="sortbycourses" onChange={jest.fn()} />);
+        });
+
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('leads the toggle accessible name with the visible selection (WCAG 2.5.3)', async() => {
+        await renderSelector(<ViewSelector activeOrder="sortbydates" onChange={jest.fn()} />);
+
+        // Someone driving the page by voice says the words they can see, so the visible text
+        // has to be in the accessible name, and lead it.
+        await waitFor(() => {
+            expect(screen.getByRole('button', {name: /^Sort by dates\b/})).toBeInTheDocument();
+        });
+    });
+
+    it('names the toggle from a single string rather than two concatenated halves', async() => {
+        await renderSelector(<ViewSelector activeOrder="sortbydates" onChange={jest.fn()} />);
+
+        const toggle = screen.getByRole('button');
+        await waitFor(() => {
+            expect(toggle).toHaveAttribute('aria-label', 'Sort by dates: sort timeline items');
+        });
+
+        // The qualifier must not also sit inside the button as hidden text: that would append it
+        // to the name a second time, and leave each half to be translated out of context.
+        expect(toggle.textContent).toBe('Sort by dates');
+    });
+
+    it('gives the dropdown menu an accessible name', async() => {
+        await renderSelector(<ViewSelector activeOrder="sortbydates" onChange={jest.fn()} />);
+
+        await waitFor(() => {
+            expect(screen.getByRole('menu', {name: 'Sort by'})).toBeInTheDocument();
+        });
     });
 });

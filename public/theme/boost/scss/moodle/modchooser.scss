@@ -267,10 +267,22 @@
 /* Option summary styles. */
 
 .modchooser .optionsummary {
-    overflow-x: hidden;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     width: 100%;
-    background-color: var(--#{$prefix}white);
+    border: var(--mds-stroke-weight-sm) solid var(--mds-border-subtle);
+    border-radius: var(--mds-border-radius-xl);
+    background-color: var(--mds-bg-surface-subtle);
+    padding-block: var(--mds-spacing-md);
+
+    [data-region="chooser-option-summary-content-container"] {
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding-inline: var(--mds-spacing-md);
+        @include thin-scrolls(var(--mds-bg-surface-subtle)); // stylelint-disable-line csstree/validator
+    }
 
     .activitychooser-option-details {
         min-width: 15rem;
@@ -313,10 +325,12 @@
         .modal-body .carousel,
         .modal-body .carousel-inner,
         .modal-body .carousel-item,
-        .modal-body .optionsummary,
         .modal-body .searchresultitemscontainer-wrapper {
             height: 100%;
             overflow-y: auto;
+        }
+        .modal-body .optionsummary {
+            height: 100%;
         }
     }
 

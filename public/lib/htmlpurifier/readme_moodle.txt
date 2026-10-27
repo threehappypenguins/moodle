@@ -14,3 +14,7 @@ Description of HTML Purifier library import into Moodle
     HTMLPurifier.path.php
 * add locallib.php with Moodle specific extensions to /lib/htmlpurifier/
 * add this readme_moodle.txt to /lib/htmlpurifier/
+* update the ezyang/htmlpurifier version in composer.json to match and run
+  `composer update ezyang/htmlpurifier` to keep composer.lock and vendor/
+  in sync (Moodle's own autoloader locks HTMLPURIFIER_PREFIX to whichever
+  copy loads first, so a mismatched vendor/ copy breaks ConfigSchema lookups)

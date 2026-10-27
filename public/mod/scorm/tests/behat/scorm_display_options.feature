@@ -9,11 +9,13 @@ Feature: Scorm display options
       | username | firstname | lastname | email                |
       | teacher1 | Teacher   | One      | teacher1@example.com |
       | student1 | Student   | One      | student1@example.com |
+    And the following config values are set as admin:
+      | enablelinearnav | 0 | format_topics |
     And the following "courses" exist:
-      | fullname | shortname | format         | activitytype | coursedisplay | enablelinearnav |
-      | Course 1 | C1        | topics         |              | 0             | 0               |
-      | Course 2 | C2        | singleactivity | scorm        | 0             | 0               |
-      | Course 3 | C3        | topics         |              | 1             | 0               |
+      | fullname | shortname | format         | activitytype | coursedisplay |
+      | Course 1 | C1        | topics         |              | 0             |
+      | Course 2 | C2        | singleactivity | scorm        | 0             |
+      | Course 3 | C3        | topics         |              | 1             |
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |

@@ -23,9 +23,11 @@
  */
 
 $string['ariadayfilter'] = 'Filter timeline by date';
+$string['ariadayfilterbutton'] = '{$a}: filter timeline by date';
 $string['ariadayfilteroption'] = '{$a} filter option';
 $string['ariaeventlistitem'] = '{$a->name} activity in {$a->course} is due on {$a->date}';
 $string['ariaviewselector'] = 'Sort timeline items';
+$string['ariaviewselectorbutton'] = '{$a}: sort timeline items';
 $string['ariaviewselectoroption'] = '{$a} sort option';
 $string['duedate'] = 'Due date';
 $string['moreactivities'] = 'Show more activities';

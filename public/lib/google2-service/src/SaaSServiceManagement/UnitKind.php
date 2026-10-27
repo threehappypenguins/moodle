@@ -19,6 +19,18 @@ namespace Google\Service\SaaSServiceManagement;
 
 class UnitKind extends \Google\Collection
 {
+  /**
+   * Unspecified boundary type.
+   */
+  public const BOUNDARY_TYPE_BOUNDARY_TYPE_UNSPECIFIED = 'BOUNDARY_TYPE_UNSPECIFIED';
+  /**
+   * Tenant project boundary.
+   */
+  public const BOUNDARY_TYPE_BOUNDARY_TYPE_TENANT_PROJECT = 'BOUNDARY_TYPE_TENANT_PROJECT';
+  /**
+   * Managed project boundary.
+   */
+  public const BOUNDARY_TYPE_BOUNDARY_TYPE_MANAGED_PROJECT = 'BOUNDARY_TYPE_MANAGED_PROJECT';
   protected $collection_key = 'outputVariableMappings';
   /**
    * Optional. Annotations is an unstructured key-value map stored with a
@@ -30,11 +42,25 @@ class UnitKind extends \Google\Collection
    */
   public $annotations;
   /**
+   * Optional. Output only. BoundaryType describes the type of boundary the Unit
+   * Kind represents.
+   *
+   * @var string
+   */
+  public $boundaryType;
+  /**
    * Output only. The timestamp when the resource was created.
    *
    * @var string
    */
   public $createTime;
+  /**
+   * Optional. Default revisions of flags for this UnitKind. Newly created units
+   * will use the flag default_flag_revisions present at the time of creation.
+   *
+   * @var string[]
+   */
+  public $defaultFlagRevisions;
   /**
    * Optional. A reference to the Release object to use as default for creating
    * new units of this UnitKind (optional). If not specified, a new unit must
@@ -74,8 +100,9 @@ class UnitKind extends \Google\Collection
   protected $outputVariableMappingsDataType = 'array';
   /**
    * Required. Immutable. A reference to the Saas that defines the product
-   * (managed service) that the producer wants to manage with SaaS Runtime. Part
-   * of the SaaS Runtime common data model. Immutable once set.
+   * (managed service) that the producer wants to manage with App Lifecycle
+   * Manager. Part of the App Lifecycle Manager common data model. Immutable
+   * once set.
    *
    * @var string
    */
@@ -119,6 +146,26 @@ class UnitKind extends \Google\Collection
     return $this->annotations;
   }
   /**
+   * Optional. Output only. BoundaryType describes the type of boundary the Unit
+   * Kind represents.
+   *
+   * Accepted values: BOUNDARY_TYPE_UNSPECIFIED, BOUNDARY_TYPE_TENANT_PROJECT,
+   * BOUNDARY_TYPE_MANAGED_PROJECT
+   *
+   * @param self::BOUNDARY_TYPE_* $boundaryType
+   */
+  public function setBoundaryType($boundaryType)
+  {
+    $this->boundaryType = $boundaryType;
+  }
+  /**
+   * @return self::BOUNDARY_TYPE_*
+   */
+  public function getBoundaryType()
+  {
+    return $this->boundaryType;
+  }
+  /**
    * Output only. The timestamp when the resource was created.
    *
    * @param string $createTime
@@ -133,6 +180,23 @@ class UnitKind extends \Google\Collection
   public function getCreateTime()
   {
     return $this->createTime;
+  }
+  /**
+   * Optional. Default revisions of flags for this UnitKind. Newly created units
+   * will use the flag default_flag_revisions present at the time of creation.
+   *
+   * @param string[] $defaultFlagRevisions
+   */
+  public function setDefaultFlagRevisions($defaultFlagRevisions)
+  {
+    $this->defaultFlagRevisions = $defaultFlagRevisions;
+  }
+  /**
+   * @return string[]
+   */
+  public function getDefaultFlagRevisions()
+  {
+    return $this->defaultFlagRevisions;
   }
   /**
    * Optional. A reference to the Release object to use as default for creating
@@ -190,8 +254,8 @@ class UnitKind extends \Google\Collection
   }
   /**
    * Optional. List of inputVariables for this release that will either be
-   * retrieved from a dependency’s outputVariables, or will be passed on to a
-   * dependency’s inputVariables. Maximum 100.
+   * retrieved from a dependency's outputVariables, or will be passed on to a
+   * dependency's inputVariables. Maximum 100.
    *
    * @param VariableMapping[] $inputVariableMappings
    */
@@ -260,8 +324,9 @@ class UnitKind extends \Google\Collection
   }
   /**
    * Required. Immutable. A reference to the Saas that defines the product
-   * (managed service) that the producer wants to manage with SaaS Runtime. Part
-   * of the SaaS Runtime common data model. Immutable once set.
+   * (managed service) that the producer wants to manage with App Lifecycle
+   * Manager. Part of the App Lifecycle Manager common data model. Immutable
+   * once set.
    *
    * @param string $saas
    */

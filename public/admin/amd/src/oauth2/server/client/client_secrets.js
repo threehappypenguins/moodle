@@ -36,8 +36,9 @@ import ModalEvents from 'core/modal_events';
  *
  * @param {HTMLButtonElement} button The trigger button.
  * @param {number} maxActiveSecrets The maximum number of active secrets allowed.
+ * @param {boolean} isClientActive Whether the client is active.
  */
-const handleGenerateClick = async(button, maxActiveSecrets) => {
+const handleGenerateClick = async(button, maxActiveSecrets, isClientActive) => {
     const clientId = button.dataset.clientid;
     button.disabled = true;
 
@@ -49,7 +50,7 @@ const handleGenerateClick = async(button, maxActiveSecrets) => {
         );
 
         const createSecretData = await createSecretResponse.json();
-        await handlePostSecretCreation(button, createSecretData.secret, maxActiveSecrets);
+        await handlePostSecretCreation(button, createSecretData.secret, maxActiveSecrets, isClientActive);
     } catch (error) {
         button.disabled = false;
         Notification.exception(error);
@@ -81,8 +82,9 @@ const canCreateClientSecret = async(clientId, maxActiveSecrets) => {
  * @param {HTMLButtonElement} generateSecretButton The trigger button.
  * @param {string} secret The generated secret.
  * @param {number} maxActiveSecrets The maximum number of active secrets allowed.
- * */
-const handlePostSecretCreation = async(generateSecretButton, secret, maxActiveSecrets) => {
+ * @param {boolean} isClientActive Whether the client is active.
+ */
+const handlePostSecretCreation = async(generateSecretButton, secret, maxActiveSecrets, isClientActive) => {
     const clientId = generateSecretButton.dataset.clientid;
     const clientIdentifier = generateSecretButton.dataset.clientidentifier;
 
@@ -126,7 +128,10 @@ const handlePostSecretCreation = async(generateSecretButton, secret, maxActiveSe
         // Fetch and display an alert that the maximum number of secrets has been reached.
         const {html, js} = await Templates.renderForPromise(
             'core_admin/oauth2/server/client_secrets_limit_reached_alert',
-            {maxsecretsnumber: maxActiveSecrets}
+            {
+                maxsecretsnumber: maxActiveSecrets,
+                isclientactive: isClientActive,
+            }
         );
         const secretsAlertContainer = document.getElementById('client-secrets-alert-container');
         if (secretsAlertContainer) {
@@ -141,13 +146,14 @@ const handlePostSecretCreation = async(generateSecretButton, secret, maxActiveSe
  * Initialize event listeners.
  *
  * @param {number} maxActiveSecrets The maximum number of active secrets allowed.
+ * @param {boolean} isClientActive Whether the client is active.
  */
-export const init = (maxActiveSecrets) => {
+export const init = (maxActiveSecrets, isClientActive) => {
     document.addEventListener('click', async(e) => {
         const btn = e.target.closest('[data-action="generate-secret"]');
         if (btn) {
             e.preventDefault();
-            await handleGenerateClick(btn, maxActiveSecrets);
+            await handleGenerateClick(btn, maxActiveSecrets, isClientActive);
         }
     });
 };

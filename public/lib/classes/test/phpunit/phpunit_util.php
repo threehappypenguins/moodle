@@ -498,6 +498,9 @@ class phpunit_util extends \core\test\testing_util {
         set_config('curlsecurityblockedhosts', '');
         set_config('curlsecurityallowedport', '');
 
+        // Configure keys to ensure that tests of the oauth2 framework do not cause DB changes.
+        \core\di::get(\core\oauth2\setup::class)->configure_keys();
+
         // Execute all the adhoc tasks.
         while ($task = \core\task\manager::get_next_adhoc_task(time())) {
             $task->execute();
@@ -1509,20 +1512,6 @@ class phpunit_util extends \core\test\testing_util {
     #[\Override]
     protected static function get_framework() {
         return 'phpunit';
-    }
-
-    /**
-     * Get the path to the root of the package Moodle is installed in.
-     *
-     * @return bool|string
-     */
-    protected static function get_package_root(): string {
-        if (!class_exists(\Composer\InstalledVersions::class)) {
-            // If composer is not being used, we assume that the root package is Moodle and return empty string.
-            return dirname(__DIR__, 5);
-        }
-
-        return realpath(\Composer\InstalledVersions::getRootPackage()['install_path']);
     }
 }
 

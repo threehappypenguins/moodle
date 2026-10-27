@@ -26,10 +26,24 @@ namespace core_courseformat\local;
 #[\PHPUnit\Framework\Attributes\CoversClass(linearnavigationsettings::class)]
 final class linearnavigationsettings_test extends \advanced_testcase {
     /**
+     * Set the site-level linear navigation setting for a course format.
+     *
+     * @param string $format The course format name, e.g. 'topics'.
+     * @param int|null $enablelinearnav The site setting value, or null to leave the format with no setting at all.
+     */
+    private function set_linear_navigation_config(string $format, ?int $enablelinearnav): void {
+        if ($enablelinearnav === null) {
+            unset_config(linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV, 'format_' . $format);
+            return;
+        }
+        set_config(linearnavigationsettings::SETTING_ENABLE_LINEAR_NAV, $enablelinearnav, 'format_' . $format);
+    }
+
+    /**
      * Test show_navigation_footer.
      *
      * @param string $format The course format to use.
-     * @param int $enablelinearnav The value of the enablelinearnav setting.
+     * @param int|null $enablelinearnav The site-level setting value for the format, or null for no setting.
      * @param bool $hasstickyfooter Whether the page already has a sticky footer.
      * @param bool $shownavigationfooter Whether the navigation footer should be shown.
      * @param bool $hascm Whether the page is on an activity page.
@@ -40,7 +54,7 @@ final class linearnavigationsettings_test extends \advanced_testcase {
     #[\PHPUnit\Framework\Attributes\DataProvider('show_navigation_footer_provider')]
     public function test_show_navigation_footer(
         string $format,
-        int $enablelinearnav,
+        ?int $enablelinearnav,
         bool $hasstickyfooter,
         bool $shownavigationfooter,
         bool $hascm,
@@ -61,9 +75,10 @@ final class linearnavigationsettings_test extends \advanced_testcase {
             $this->setUser($this->getDataGenerator()->create_user());
         }
 
+        $this->set_linear_navigation_config($format, $enablelinearnav);
+
         $course = $this->getDataGenerator()->create_course([
             'format' => $format,
-            'enablelinearnav' => $enablelinearnav,
         ]);
 
         $moodlepage = new \moodle_page();
@@ -183,20 +198,21 @@ final class linearnavigationsettings_test extends \advanced_testcase {
      * Test is_linear_navigation_enabled.
      *
      * @param string $format The course format to use.
-     * @param int $enablelinearnav The value of the enablelinearnav setting.
+     * @param int|null $enablelinearnav The site-level setting value for the format, or null for no setting.
      * @param bool $expected The expected result.
      */
     #[\PHPUnit\Framework\Attributes\DataProvider('is_linear_navigation_enabled_provider')]
     public function test_is_linear_navigation_enabled(
         string $format,
-        int $enablelinearnav,
+        ?int $enablelinearnav,
         bool $expected,
     ): void {
         $this->resetAfterTest();
 
+        $this->set_linear_navigation_config($format, $enablelinearnav);
+
         $course = $this->getDataGenerator()->create_course([
             'format' => $format,
-            'enablelinearnav' => $enablelinearnav,
         ]);
 
         $this->assertSame($expected, linearnavigationsettings::is_linear_navigation_enabled($course));
@@ -209,13 +225,23 @@ final class linearnavigationsettings_test extends \advanced_testcase {
      */
     public static function is_linear_navigation_enabled_provider(): array {
         return [
-            'Supported format with linear navigation enabled' => [
+            'Topics with linear navigation enabled' => [
                 'format' => 'topics',
                 'enablelinearnav' => 1,
                 'expected' => true,
             ],
-            'Supported format with linear navigation disabled' => [
+            'Topics with linear navigation disabled' => [
                 'format' => 'topics',
+                'enablelinearnav' => 0,
+                'expected' => false,
+            ],
+            'Weeks with linear navigation enabled' => [
+                'format' => 'weeks',
+                'enablelinearnav' => 1,
+                'expected' => true,
+            ],
+            'Weeks with linear navigation disabled' => [
+                'format' => 'weeks',
                 'enablelinearnav' => 0,
                 'expected' => false,
             ],
@@ -224,6 +250,66 @@ final class linearnavigationsettings_test extends \advanced_testcase {
                 'enablelinearnav' => 1,
                 'expected' => false,
             ],
+            'Unsupported format with no setting defined' => [
+                'format' => 'social',
+                'enablelinearnav' => null,
+                'expected' => false,
+            ],
         ];
+    }
+
+    /**
+     * Test that a format supporting linear navigation without its own setting falls back to enabled.
+     *
+     * This is the path a third-party format takes when it opts in by overriding uses_linear_navigation()
+     * without registering a site setting of its own.
+     */
+    public function test_is_linear_navigation_enabled_falls_back_to_enabled_without_setting(): void {
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course(['format' => 'topics']);
+
+        // Disable first, so that the fallback below is proven to be reached rather than
+        // simply matching a pre-existing enabled value.
+        $this->set_linear_navigation_config('topics', 0);
+        $this->assertFalse(linearnavigationsettings::is_linear_navigation_enabled($course));
+
+        $this->set_linear_navigation_config('topics', null);
+        $this->assertTrue(linearnavigationsettings::is_linear_navigation_enabled($course));
+    }
+
+    /**
+     * Test that the site setting is applied per format rather than site-wide.
+     */
+    public function test_is_linear_navigation_enabled_is_independent_per_format(): void {
+        $this->resetAfterTest();
+
+        $topicscourse = $this->getDataGenerator()->create_course(['format' => 'topics']);
+        $weekscourse = $this->getDataGenerator()->create_course(['format' => 'weeks']);
+
+        $this->set_linear_navigation_config('topics', 1);
+        $this->set_linear_navigation_config('weeks', 0);
+        $this->assertTrue(linearnavigationsettings::is_linear_navigation_enabled($topicscourse));
+        $this->assertFalse(linearnavigationsettings::is_linear_navigation_enabled($weekscourse));
+
+        // Flipping one format must not affect the other.
+        $this->set_linear_navigation_config('topics', 0);
+        $this->set_linear_navigation_config('weeks', 1);
+        $this->assertFalse(linearnavigationsettings::is_linear_navigation_enabled($topicscourse));
+        $this->assertTrue(linearnavigationsettings::is_linear_navigation_enabled($weekscourse));
+    }
+
+    /**
+     * Test that changing the site setting takes effect on a course that already exists.
+     */
+    public function test_is_linear_navigation_enabled_applies_to_existing_courses(): void {
+        $this->resetAfterTest();
+
+        $this->set_linear_navigation_config('topics', 0);
+        $course = $this->getDataGenerator()->create_course(['format' => 'topics']);
+        $this->assertFalse(linearnavigationsettings::is_linear_navigation_enabled($course));
+
+        $this->set_linear_navigation_config('topics', 1);
+        $this->assertTrue(linearnavigationsettings::is_linear_navigation_enabled($course));
     }
 }

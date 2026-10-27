@@ -35,15 +35,33 @@ use Google\Client;
  */
 class WorkspaceEvents extends \Google\Service
 {
+  /** On their own behalf, apps in Google Chat can see all members in Google Chat spaces and conversations throughout your Workspace organization, even when the Chat app isn't a member. */
+  const CHAT_APP_ALL_MEMBERSHIPS_READONLY =
+      "https://www.googleapis.com/auth/chat.app.all.memberships.readonly";
+  /** On their own behalf, apps in Google Chat can see all messages and reactions throughout your Workspace organization, even when the Chat app isn't a member of a space or conversation. */
+  const CHAT_APP_ALL_MESSAGES_READONLY =
+      "https://www.googleapis.com/auth/chat.app.all.messages.readonly";
+  /** On their own behalf, apps in Google Chat can see metadata about all spaces and conversations in Google Chat throughout your Workspace organization, even when the Chat app isn't a member. */
+  const CHAT_APP_ALL_SPACES_READONLY =
+      "https://www.googleapis.com/auth/chat.app.all.spaces.readonly";
+  /** On their own behalf, apps in Google Chat can see the last read time for all users in all spaces and conversations throughout your Workspace organization, even when the Chat app isn't a member.. */
+  const CHAT_APP_ALL_USERS_READSTATE_READONLY =
+      "https://www.googleapis.com/auth/chat.app.all.users.readstate.readonly";
   /** On their own behalf, apps in Google Chat can see, add, update, and remove members from conversations and spaces. */
   const CHAT_APP_MEMBERSHIPS =
       "https://www.googleapis.com/auth/chat.app.memberships";
+  /** On their own behalf, apps in Google Chat can see members of conversations and spaces. */
+  const CHAT_APP_MEMBERSHIPS_READONLY =
+      "https://www.googleapis.com/auth/chat.app.memberships.readonly";
   /** On their own behalf, apps in Google Chat can see all messages and their associated reactions and message content. */
   const CHAT_APP_MESSAGES_READONLY =
       "https://www.googleapis.com/auth/chat.app.messages.readonly";
   /** On their own behalf, apps in Google Chat can create conversations and spaces and see or update their metadata (including history settings and access settings). */
   const CHAT_APP_SPACES =
       "https://www.googleapis.com/auth/chat.app.spaces";
+  /** On their own behalf, apps in Google Chat can see conversations and spaces and their metadata (including history settings and access settings). */
+  const CHAT_APP_SPACES_READONLY =
+      "https://www.googleapis.com/auth/chat.app.spaces.readonly";
   /** Private Service: https://www.googleapis.com/auth/chat.bot. */
   const CHAT_BOT =
       "https://www.googleapis.com/auth/chat.bot";
@@ -71,6 +89,18 @@ class WorkspaceEvents extends \Google\Service
   /** View chat and spaces in Google Chat. */
   const CHAT_SPACES_READONLY =
       "https://www.googleapis.com/auth/chat.spaces.readonly";
+  /** See and change your availability status in Google Chat.. */
+  const CHAT_USERS_AVAILABILITY =
+      "https://www.googleapis.com/auth/chat.users.availability";
+  /** See your availability status in Google Chat.. */
+  const CHAT_USERS_AVAILABILITY_READONLY =
+      "https://www.googleapis.com/auth/chat.users.availability.readonly";
+  /** View and modify last read time for Google Chat conversations. */
+  const CHAT_USERS_READSTATE =
+      "https://www.googleapis.com/auth/chat.users.readstate";
+  /** View last read time for Google Chat conversations. */
+  const CHAT_USERS_READSTATE_READONLY =
+      "https://www.googleapis.com/auth/chat.users.readstate.readonly";
   /** See, edit, create, and delete all of your Google Drive files. */
   const DRIVE =
       "https://www.googleapis.com/auth/drive";
@@ -276,6 +306,10 @@ class WorkspaceEvents extends \Google\Service
                   'location' => 'query',
                   'type' => 'integer',
                 ],
+                'tenant' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
               ],
             ],'subscribe' => [
               'path' => 'v1/{+name}:subscribe',
@@ -285,6 +319,10 @@ class WorkspaceEvents extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'tenant' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],
@@ -310,6 +348,10 @@ class WorkspaceEvents extends \Google\Service
                   'location' => 'query',
                   'type' => 'string',
                 ],
+                'tenant' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
               ],
             ],'delete' => [
               'path' => 'v1/{+name}',
@@ -320,6 +362,10 @@ class WorkspaceEvents extends \Google\Service
                   'type' => 'string',
                   'required' => true,
                 ],
+                'tenant' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
               ],
             ],'get' => [
               'path' => 'v1/{+name}',
@@ -329,6 +375,10 @@ class WorkspaceEvents extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'tenant' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],'list' => [
@@ -345,6 +395,10 @@ class WorkspaceEvents extends \Google\Service
                   'type' => 'integer',
                 ],
                 'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'tenant' => [
                   'location' => 'query',
                   'type' => 'string',
                 ],

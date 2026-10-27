@@ -81,6 +81,7 @@ class oauth2 {
     ): ResponseInterface {
         try {
             [$requestid, $authrequest] = $this->get_auth_request($request);
+            $this->check_pkce_requirement($authrequest);
         } catch (OAuthServerException $exception) {
             // All instances of OAuthServerException can be formatted into a HTTP response.
             return $exception->generateHttpResponse($response);
@@ -745,9 +746,14 @@ class oauth2 {
         $approved = $request->getParsedBody()['approve'] ?? '0';
 
         if ($approved === '1') {
-            $selectedscopes = array_map(function ($scope) {
-                return $scope->getIdentifier();
-            }, $authrequest->getScopes());
+            $client = $authrequest->getClient();
+            $selectedscopes = array_map(
+                fn (ScopeEntityInterface $scope): string => $scope->getIdentifier(),
+                array_filter(
+                    $authrequest->getScopes(),
+                    static fn (ScopeEntityInterface $scope): bool => $client->is_scope_approved($scope),
+                ),
+            );
 
             $grantedscopesrepository->store_granted_scopes_for_user(
                 $authrequest->getClient(),
@@ -1077,6 +1083,7 @@ class oauth2 {
         if ($data['state'] !== null) {
             $authrequest->setState($data['state']);
         }
+
         $authrequest->setScopes(array_values(array_filter(array_map(
             fn (string $identifier): ?ScopeEntityInterface => $this->scoperepository->getScopeEntityByIdentifier($identifier),
             $data['scopes'],
@@ -1257,5 +1264,23 @@ class oauth2 {
         $response->getBody()->write($OUTPUT->footer());
 
         return $response;
+    }
+
+    /**
+     * Ensure that PKCE requirements are met.
+     *
+     * @param \League\OAuth2\Server\RequestTypes\AuthorizationRequest $authrequest
+     */
+    protected function check_pkce_requirement(
+        \League\OAuth2\Server\RequestTypes\AuthorizationRequest $authrequest,
+    ): void {
+        $client = $authrequest->getClient();
+        if ($client->is_pkce_required() && $authrequest->getCodeChallenge() === null) {
+            // PKCE is required for this client, but the request does not include a code challenge.
+            throw OAuthServerException::invalidRequest(
+                'code_challenge',
+                'PKCE is required for this client',
+            );
+        }
     }
 }

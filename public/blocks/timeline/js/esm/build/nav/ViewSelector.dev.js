@@ -4,30 +4,30 @@ import { jsxDEV } from "react/jsx-dev-runtime";
 /**
  * Sort-order (dates / courses) selector for the Timeline block.
  *
- * Matches the DOM structure of the legacy nav-view-selector.mustache template.
+ * Matches the DOM structure of the legacy nav-view-selector.mustache template, except for the
+ * ARIA roles: this is a dropdown of two sort options, so it uses the menu pattern that DayFilter
+ * and Bootstrap's own dropdown JS already implement, rather than the tablist the legacy template
+ * declared but never wired up.
  *
  * @module     block_timeline/nav/ViewSelector
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-import { useId } from "react";
 import String from "@moodle/lms/core/String";
 import { useAriaLabels } from "../common/useAriaLabels";
-const SPAN_ID = "timeline-view-selector-current-selection";
+import { useComposedLabel } from "../common/useComposedLabel";
 const VIEW_OPTIONS = [
   { name: "sortbydates", labelKey: "sortbydates" },
   { name: "sortbycourses", labelKey: "sortbycourses" }
 ];
 function ViewSelector({ activeOrder, onChange }) {
-  const uid = useId().replace(/:/g, "");
   const menuId = "menusortby";
-  const datesId = `view_dates_${uid}`;
-  const coursesId = `view_courses_${uid}`;
-  const panelId = {
-    sortbydates: datesId,
-    sortbycourses: coursesId
-  };
-  const { buttonLabel, itemLabels } = useAriaLabels("ariaviewselector", "ariaviewselectoroption", VIEW_OPTIONS);
+  const { buttonLabel: menuLabel, itemLabels } = useAriaLabels(
+    "ariaviewselector",
+    "ariaviewselectoroption",
+    VIEW_OPTIONS
+  );
   const activeOption = VIEW_OPTIONS.find((o) => o.name === activeOrder) ?? VIEW_OPTIONS[0];
+  const toggleLabel = useComposedLabel("ariaviewselectorbutton", activeOption.labelKey);
   return /* @__PURE__ */ jsxDEV("div", { "data-region": "view-selector", className: "dropdown mb-1", children: [
     /* @__PURE__ */ jsxDEV(
       "button",
@@ -36,17 +36,17 @@ function ViewSelector({ activeOrder, onChange }) {
         className: "btn btn-outline-secondary dropdown-toggle icon-no-margin",
         "data-bs-toggle": "dropdown",
         "aria-haspopup": "true",
-        "aria-label": buttonLabel,
+        "aria-expanded": "false",
+        "aria-label": toggleLabel,
         "aria-controls": menuId,
-        title: buttonLabel,
-        "aria-describedby": SPAN_ID,
-        children: /* @__PURE__ */ jsxDEV("span", { id: SPAN_ID, "data-active-item-text": "", children: /* @__PURE__ */ jsxDEV(String, { identifier: activeOption.labelKey, component: "block_timeline", children: "" }, void 0, false, {
+        title: menuLabel,
+        children: /* @__PURE__ */ jsxDEV("span", { "data-active-item-text": "", children: /* @__PURE__ */ jsxDEV(String, { identifier: activeOption.labelKey, component: "block_timeline", children: "" }, void 0, false, {
           fileName: "public/blocks/timeline/js/esm/src/nav/ViewSelector.tsx",
-          lineNumber: 81,
+          lineNumber: 82,
           columnNumber: 21
         }, this) }, void 0, false, {
           fileName: "public/blocks/timeline/js/esm/src/nav/ViewSelector.tsx",
-          lineNumber: 80,
+          lineNumber: 81,
           columnNumber: 17
         }, this)
       },
@@ -54,7 +54,7 @@ function ViewSelector({ activeOrder, onChange }) {
       false,
       {
         fileName: "public/blocks/timeline/js/esm/src/nav/ViewSelector.tsx",
-        lineNumber: 70,
+        lineNumber: 68,
         columnNumber: 13
       },
       this
@@ -63,26 +63,26 @@ function ViewSelector({ activeOrder, onChange }) {
       "div",
       {
         id: menuId,
-        role: "tablist",
+        role: "menu",
+        "aria-label": menuLabel,
         className: "dropdown-menu dropdown-menu-end",
         "data-show-active-item": "",
         children: VIEW_OPTIONS.map((option) => /* @__PURE__ */ jsxDEV(
           "a",
           {
             className: `dropdown-item${activeOrder === option.name ? " active dropdown-item-active" : ""}`,
-            href: `#${panelId[option.name]}`,
+            href: "#",
             "data-filtername": option.name,
             "aria-current": activeOrder === option.name ? "true" : void 0,
             "aria-label": itemLabels[option.name],
-            "aria-controls": panelId[option.name],
-            role: "tab",
+            role: "menuitem",
             onClick: (e) => {
               e.preventDefault();
               onChange(option.name);
             },
             children: /* @__PURE__ */ jsxDEV(String, { identifier: option.labelKey, component: "block_timeline", children: "" }, void 0, false, {
               fileName: "public/blocks/timeline/js/esm/src/nav/ViewSelector.tsx",
-              lineNumber: 106,
+              lineNumber: 107,
               columnNumber: 25
             }, this)
           },
@@ -90,7 +90,7 @@ function ViewSelector({ activeOrder, onChange }) {
           false,
           {
             fileName: "public/blocks/timeline/js/esm/src/nav/ViewSelector.tsx",
-            lineNumber: 92,
+            lineNumber: 94,
             columnNumber: 21
           },
           this
@@ -100,14 +100,14 @@ function ViewSelector({ activeOrder, onChange }) {
       false,
       {
         fileName: "public/blocks/timeline/js/esm/src/nav/ViewSelector.tsx",
-        lineNumber: 85,
+        lineNumber: 86,
         columnNumber: 13
       },
       this
     )
   ] }, void 0, true, {
     fileName: "public/blocks/timeline/js/esm/src/nav/ViewSelector.tsx",
-    lineNumber: 69,
+    lineNumber: 67,
     columnNumber: 9
   }, this);
 }

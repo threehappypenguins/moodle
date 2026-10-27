@@ -50,6 +50,28 @@ class engine extends \core_search\engine {
     private ?int $mysqlmintokensize = null;
 
     /**
+     * Cached lower-case fulltext-search stopwords for the current database, or null if not yet computed.
+     *
+     * @var string[]|null
+     */
+    private ?array $stopwords = null;
+
+    /**
+     * MySQL/MariaDB InnoDB's built-in default full-text stopword list, applied when
+     * innodb_ft_server_stopword_table is not customised. This list is fixed by the server and not
+     * user-configurable, so it is hardcoded here rather than read from
+     * INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD, which requires the PROCESS privilege and is
+     * therefore unavailable to the restricted database user a typical Moodle site connects with.
+     *
+     * @var string[]
+     */
+    private const MYSQL_DEFAULT_STOPWORDS = [
+        'a', 'about', 'an', 'are', 'as', 'at', 'be', 'by', 'com', 'de', 'en', 'for', 'from', 'how',
+        'i', 'in', 'is', 'it', 'la', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'was', 'what',
+        'when', 'where', 'who', 'will', 'with', 'und', 'www',
+    ];
+
+    /**
      * Prepares a SQL query, applies filters and executes it returning its results.
      *
      * @throws \core_search\engine_exception
@@ -405,11 +427,19 @@ class engine extends \core_search\engine {
             }
         }
 
+        // MySQL and MSSQL do not index fulltext stopwords, so including one as a required
+        // (MySQL boolean-mode +term, MSSQL CONTAINS AND term) conjunct returns zero rows even
+        // though the rest of the phrase matches. Drop them from the term list instead.
+        $stopwords = in_array($dbfamily, ['mysql', 'mssql'], true) ? $this->get_stopwords() : [];
+
         $terms = [];
         foreach ($parts as $part) {
             // Strip any remaining non-letter, non-number characters from each word.
             $term = preg_replace('/[^\pL\pN_]+/u', '', $part);
             if ($term === '') {
+                continue;
+            }
+            if ($stopwords && in_array(\core_text::strtolower($term), $stopwords, true)) {
                 continue;
             }
             switch ($dbfamily) {
@@ -445,6 +475,103 @@ class engine extends \core_search\engine {
             default:
                 return '';
         }
+    }
+
+    /**
+     * Returns the fulltext-search stopwords configured for the current database, in lower case.
+     *
+     * Only MySQL and MSSQL are queried; other database families do not strip stopwords from the
+     * fulltext index (PostgreSQL's 'simple' text search configuration used here does not either).
+     *
+     * @return string[] Lower-case stopwords, or an empty array if none apply or could be determined.
+     */
+    private function get_stopwords(): array {
+        global $DB;
+
+        if ($this->stopwords !== null) {
+            return $this->stopwords;
+        }
+
+        try {
+            switch ($DB->get_dbfamily()) {
+                case 'mysql':
+                    $this->stopwords = $this->get_mysql_stopwords();
+                    break;
+                case 'mssql':
+                    $this->stopwords = $this->get_mssql_stopwords();
+                    break;
+                default:
+                    $this->stopwords = [];
+            }
+        } catch (\dml_exception $e) {
+            // If the stopword list cannot be determined, fall back to not filtering anything.
+            $this->stopwords = [];
+        }
+
+        return $this->stopwords;
+    }
+
+    /**
+     * Returns the InnoDB fulltext stopwords configured for the current MySQL/MariaDB server.
+     *
+     * @return string[] Lower-case stopwords.
+     */
+    private function get_mysql_stopwords(): array {
+        global $DB;
+
+        if (!(int) $DB->get_field_sql('SELECT @@innodb_ft_enable_stopword')) {
+            // Stopword filtering is disabled server-side, so nothing is excluded from the index.
+            return [];
+        }
+
+        if (trim((string) $DB->get_field_sql('SELECT @@innodb_ft_server_stopword_table')) !== '') {
+            // A custom stopword table is configured server-side; its contents are not queried
+            // here, so leave filtering to the pre-existing (unfiltered) behaviour for this case.
+            return [];
+        }
+
+        return self::MYSQL_DEFAULT_STOPWORDS;
+    }
+
+    /**
+     * Returns the fulltext stopwords configured for the stoplist attached to the search index,
+     * according to the current MSSQL server.
+     *
+     * @return string[] Lower-case stopwords.
+     */
+    private function get_mssql_stopwords(): array {
+        global $DB;
+
+        $tablename = $DB->get_prefix() . 'search_simpledb_index';
+        $stoplistid = $DB->get_field_sql(
+            'SELECT fi.stoplist_id FROM sys.fulltext_indexes fi WHERE fi.object_id = OBJECT_ID(?)',
+            [$tablename]
+        );
+
+        if ($stoplistid === false || $stoplistid === null) {
+            // No fulltext index found, or it has STOPLIST = OFF (nothing is excluded from the
+            // index, so there is nothing to filter out of the query either).
+            return [];
+        }
+
+        if ((int) $stoplistid === 0) {
+            // Stoplist id 0 is SQL Server's built-in system stoplist, which is what a fulltext
+            // index gets by default when no STOPLIST clause is given (as is the case for the
+            // search_simpledb index, see db/install.php). Its words are not listed in
+            // sys.fulltext_stopwords -- that view only covers stoplists created via CREATE
+            // FULLTEXT STOPLIST -- so look them up in sys.fulltext_system_stopwords instead,
+            // keyed by the language(s) configured on the index's columns.
+            $sql = "SELECT DISTINCT sw.stopword
+                      FROM sys.fulltext_index_columns fic
+                      JOIN sys.fulltext_system_stopwords sw ON sw.language_id = fic.language_id
+                     WHERE fic.object_id = OBJECT_ID(?)";
+            $words = $DB->get_fieldset_sql($sql, [$tablename]);
+        } else {
+            $sql = 'SELECT stopword FROM sys.fulltext_stopwords WHERE stoplist_id = ?';
+            $words = $DB->get_fieldset_sql($sql, [$stoplistid]);
+        }
+
+        return array_map('core_text::strtolower', $words);
     }
 
     /**

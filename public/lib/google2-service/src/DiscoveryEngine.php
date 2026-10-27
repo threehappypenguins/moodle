@@ -40,17 +40,22 @@ class DiscoveryEngine extends \Google\Service
   /** Search your organization's data in the Cloud Search index. */
   const CLOUD_SEARCH_QUERY =
       "https://www.googleapis.com/auth/cloud_search.query";
-  /** View your Agentspace chat history, including uploaded files and generated reports and visualizations, and interact with the Agentspace assistant on your behalf.. */
+  /** View your Agentspace chat history, including uploaded files and generated reports and visualizations, and interact with the Agentspace assistant on your behalf. Also view the artifacts you access through NotebookLM Enterprise.. */
   const DISCOVERYENGINE_ASSIST_READWRITE =
       "https://www.googleapis.com/auth/discoveryengine.assist.readwrite";
   /** View, edit, create, and delete all your data associated with any Discovery Engine API product, such as Agentspace, Vertex AI Search, or NotebookLM Enterprise, including both end user data and administration or configuration data.. */
   const DISCOVERYENGINE_READWRITE =
       "https://www.googleapis.com/auth/discoveryengine.readwrite";
+  /** Interact with Discovery Engine API products, such as Agentspace, Vertex AI Search, or NotebookLM Enterprise, on your behalf. It will also allow the app to view all data that you have access to when you use or interact with a Discovery Engine API product.. */
+  const DISCOVERYENGINE_SERVING_READWRITE =
+      "https://www.googleapis.com/auth/discoveryengine.serving.readwrite";
 
+  public $billingAccounts_billingAccountLicenseConfigs;
   public $projects;
   public $projects_locations;
   public $projects_locations_cmekConfigs;
   public $projects_locations_collections;
+  public $projects_locations_collections_dataConnector;
   public $projects_locations_collections_dataConnector_operations;
   public $projects_locations_collections_dataStores;
   public $projects_locations_collections_dataStores_branches;
@@ -78,6 +83,10 @@ class DiscoveryEngine extends \Google\Service
   public $projects_locations_collections_dataStores_widgetConfigs;
   public $projects_locations_collections_engines;
   public $projects_locations_collections_engines_assistants;
+  public $projects_locations_collections_engines_assistants_agents_a2a_v1;
+  public $projects_locations_collections_engines_assistants_agents_a2a_v1_message;
+  public $projects_locations_collections_engines_assistants_agents_a2a_v1_tasks;
+  public $projects_locations_collections_engines_assistants_agents_a2a_v1_tasks_pushNotificationConfigs;
   public $projects_locations_collections_engines_assistants_agents_operations;
   public $projects_locations_collections_engines_completionConfig;
   public $projects_locations_collections_engines_controls;
@@ -139,6 +148,36 @@ class DiscoveryEngine extends \Google\Service
     $this->version = 'v1';
     $this->serviceName = 'discoveryengine';
 
+    $this->billingAccounts_billingAccountLicenseConfigs = new DiscoveryEngine\Resource\BillingAccountsBillingAccountLicenseConfigs(
+        $this,
+        $this->serviceName,
+        'billingAccountLicenseConfigs',
+        [
+          'methods' => [
+            'distributeLicenseConfig' => [
+              'path' => 'v1/{+billingAccountLicenseConfig}:distributeLicenseConfig',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'billingAccountLicenseConfig' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'retractLicenseConfig' => [
+              'path' => 'v1/{+billingAccountLicenseConfig}:retractLicenseConfig',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'billingAccountLicenseConfig' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
     $this->projects = new DiscoveryEngine\Resource\Projects(
         $this,
         $this->serviceName,
@@ -178,6 +217,16 @@ class DiscoveryEngine extends \Google\Service
             ],'getCmekConfig' => [
               'path' => 'v1/{+name}',
               'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'provision' => [
+              'path' => 'v1/{+name}:provision',
+              'httpMethod' => 'POST',
               'parameters' => [
                 'name' => [
                   'location' => 'path',
@@ -333,6 +382,49 @@ class DiscoveryEngine extends \Google\Service
                 'updateMask' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_collections_dataConnector = new DiscoveryEngine\Resource\ProjectsLocationsCollectionsDataConnector(
+        $this,
+        $this->serviceName,
+        'dataConnector',
+        [
+          'methods' => [
+            'mcp' => [
+              'path' => 'v1/projects/{projectsId}/locations/{locationsId}/collections/{collectionsId}/dataConnector/mcp',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'projectsId' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'locationsId' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'collectionsId' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'contentType' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'data' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'extensions' => [
+                  'location' => 'query',
+                  'type' => 'object',
+                  'repeated' => true,
                 ],
               ],
             ],
@@ -1183,6 +1275,20 @@ class DiscoveryEngine extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'create' => [
+              'path' => 'v1/{+parent}/servingConfigs',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'servingConfigId' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
             ],'delete' => [
               'path' => 'v1/{+name}',
               'httpMethod' => 'DELETE',
@@ -1293,6 +1399,10 @@ class DiscoveryEngine extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'sessionId' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],'delete' => [
@@ -1785,6 +1895,14 @@ class DiscoveryEngine extends \Google\Service
                   'location' => 'query',
                   'type' => 'boolean',
                 ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'modelInfoView' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
               ],
             ],'patch' => [
               'path' => 'v1/{+name}',
@@ -1844,6 +1962,20 @@ class DiscoveryEngine extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'getIamPolicy' => [
+              'path' => 'v1/{+resource}:getIamPolicy',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'resource' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'options.requestedPolicyVersion' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+              ],
             ],'list' => [
               'path' => 'v1/{+parent}/engines',
               'httpMethod' => 'GET',
@@ -1878,6 +2010,16 @@ class DiscoveryEngine extends \Google\Service
                 'updateMask' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+              ],
+            ],'setIamPolicy' => [
+              'path' => 'v1/{+resource}:setIamPolicy',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'resource' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
                 ],
               ],
             ],
@@ -1964,6 +2106,197 @@ class DiscoveryEngine extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_collections_engines_assistants_agents_a2a_v1 = new DiscoveryEngine\Resource\ProjectsLocationsCollectionsEnginesAssistantsAgentsA2aV1(
+        $this,
+        $this->serviceName,
+        'v1',
+        [
+          'methods' => [
+            'getCard' => [
+              'path' => 'v1/{+tenant}/a2a/v1/card',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_collections_engines_assistants_agents_a2a_v1_message = new DiscoveryEngine\Resource\ProjectsLocationsCollectionsEnginesAssistantsAgentsA2aV1Message(
+        $this,
+        $this->serviceName,
+        'message',
+        [
+          'methods' => [
+            'send' => [
+              'path' => 'v1/{+tenant}/a2a/v1/message:send',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'stream' => [
+              'path' => 'v1/{+tenant}/a2a/v1/message:stream',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_collections_engines_assistants_agents_a2a_v1_tasks = new DiscoveryEngine\Resource\ProjectsLocationsCollectionsEnginesAssistantsAgentsA2aV1Tasks(
+        $this,
+        $this->serviceName,
+        'tasks',
+        [
+          'methods' => [
+            'cancel' => [
+              'path' => 'v1/{+tenant}/a2a/v1/{+name}:cancel',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v1/{+tenant}/a2a/v1/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'historyLength' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+              ],
+            ],'subscribe' => [
+              'path' => 'v1/{+tenant}/a2a/v1/{+name}:subscribe',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_collections_engines_assistants_agents_a2a_v1_tasks_pushNotificationConfigs = new DiscoveryEngine\Resource\ProjectsLocationsCollectionsEnginesAssistantsAgentsA2aV1TasksPushNotificationConfigs(
+        $this,
+        $this->serviceName,
+        'pushNotificationConfigs',
+        [
+          'methods' => [
+            'create' => [
+              'path' => 'v1/{+tenant}/a2a/v1/{+parent}',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'configId' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'delete' => [
+              'path' => 'v1/{+tenant}/a2a/v1/{+name}',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v1/{+tenant}/a2a/v1/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v1/{+tenant}/a2a/v1/{+parent}/pushNotificationConfigs',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'tenant' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],
@@ -2252,6 +2585,20 @@ class DiscoveryEngine extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'create' => [
+              'path' => 'v1/{+parent}/servingConfigs',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'servingConfigId' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
             ],'delete' => [
               'path' => 'v1/{+name}',
               'httpMethod' => 'DELETE',
@@ -2362,6 +2709,10 @@ class DiscoveryEngine extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'sessionId' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],'delete' => [
@@ -2474,6 +2825,14 @@ class DiscoveryEngine extends \Google\Service
                 'getWidgetConfigRequestOption.turnOffCollectionComponents' => [
                   'location' => 'query',
                   'type' => 'boolean',
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'modelInfoView' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],'patch' => [
@@ -3262,6 +3621,20 @@ class DiscoveryEngine extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'create' => [
+              'path' => 'v1/{+parent}/servingConfigs',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'servingConfigId' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
             ],'delete' => [
               'path' => 'v1/{+name}',
               'httpMethod' => 'DELETE',
@@ -3372,6 +3745,10 @@ class DiscoveryEngine extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'sessionId' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],'delete' => [
@@ -3744,6 +4121,14 @@ class DiscoveryEngine extends \Google\Service
                   'location' => 'query',
                   'type' => 'boolean',
                 ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'modelInfoView' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
               ],
             ],'patch' => [
               'path' => 'v1/{+name}',
@@ -3967,6 +4352,28 @@ class DiscoveryEngine extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'list' => [
+              'path' => 'v1/{+parent}/licenseConfigs',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'filter' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
             ],'patch' => [
               'path' => 'v1/{+name}',
               'httpMethod' => 'PATCH',
@@ -4143,30 +4550,6 @@ class DiscoveryEngine extends \Google\Service
                   'required' => true,
                 ],
               ],
-            ],'create' => [
-              'path' => 'v1/{+parent}/userStores',
-              'httpMethod' => 'POST',
-              'parameters' => [
-                'parent' => [
-                  'location' => 'path',
-                  'type' => 'string',
-                  'required' => true,
-                ],
-                'userStoreId' => [
-                  'location' => 'query',
-                  'type' => 'string',
-                ],
-              ],
-            ],'delete' => [
-              'path' => 'v1/{+name}',
-              'httpMethod' => 'DELETE',
-              'parameters' => [
-                'name' => [
-                  'location' => 'path',
-                  'type' => 'string',
-                  'required' => true,
-                ],
-              ],
             ],'get' => [
               'path' => 'v1/{+name}',
               'httpMethod' => 'GET',
@@ -4229,6 +4612,10 @@ class DiscoveryEngine extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'filter' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
                 'orderBy' => [
                   'location' => 'query',

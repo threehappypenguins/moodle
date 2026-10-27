@@ -32,7 +32,7 @@ use Google\Service\NetworkSecurity\Operation;
 class OrganizationsLocationsFirewallEndpoints extends \Google\Service\Resource
 {
   /**
-   * Creates a new FirewallEndpoint in a given project and location.
+   * Creates a new FirewallEndpoint in a given organization and location.
    * (firewallEndpoints.create)
    *
    * @param string $parent Required. Value for parent.
@@ -53,6 +53,8 @@ class OrganizationsLocationsFirewallEndpoints extends \Google\Service\Resource
    * clients from accidentally creating duplicate commitments. The request ID must
    * be a valid UUID with the exception that zero UUID is not supported
    * (00000000-0000-0000-0000-000000000000).
+   * @opt_param bool validateOnly Optional. If set, validate the request and
+   * preview the endpoint, but do not actually create it.
    * @return Operation
    * @throws \Google\Service\Exception
    */
@@ -63,7 +65,7 @@ class OrganizationsLocationsFirewallEndpoints extends \Google\Service\Resource
     return $this->call('create', [$params], Operation::class);
   }
   /**
-   * Deletes a single Endpoint. (firewallEndpoints.delete)
+   * Deletes a single org Endpoint. (firewallEndpoints.delete)
    *
    * @param string $name Required. Name of the resource
    * @param array $optParams Optional parameters.
@@ -89,7 +91,7 @@ class OrganizationsLocationsFirewallEndpoints extends \Google\Service\Resource
     return $this->call('delete', [$params], Operation::class);
   }
   /**
-   * Gets details of a single Endpoint. (firewallEndpoints.get)
+   * Gets details of a single org Endpoint. (firewallEndpoints.get)
    *
    * @param string $name Required. Name of the resource
    * @param array $optParams Optional parameters.
@@ -103,7 +105,7 @@ class OrganizationsLocationsFirewallEndpoints extends \Google\Service\Resource
     return $this->call('get', [$params], FirewallEndpoint::class);
   }
   /**
-   * Lists FirewallEndpoints in a given project and location.
+   * Lists FirewallEndpoints in a given organization and location.
    * (firewallEndpoints.listOrganizationsLocationsFirewallEndpoints)
    *
    * @param string $parent Required. Parent value for ListEndpointsRequest
@@ -126,7 +128,7 @@ class OrganizationsLocationsFirewallEndpoints extends \Google\Service\Resource
     return $this->call('list', [$params], ListFirewallEndpointsResponse::class);
   }
   /**
-   * Update a single Endpoint. (firewallEndpoints.patch)
+   * Update a single org Endpoint. (firewallEndpoints.patch)
    *
    * @param string $name Immutable. Identifier. Name of resource.
    * @param FirewallEndpoint $postBody

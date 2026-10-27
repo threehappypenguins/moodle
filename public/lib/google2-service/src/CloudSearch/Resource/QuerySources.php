@@ -34,12 +34,18 @@ class QuerySources extends \Google\Service\Resource
    * **Note:** This API requires a standard end user account to execute. A service
    * account can't perform Query API requests directly; to use a service account
    * to perform queries, set up [Google Workspace domain-wide delegation of
-   * authority](https://developers.google.com/cloud-
+   * authority](https://developers.google.com/workspace/cloud-
    * search/docs/guides/delegation/). (sources.listQuerySources)
    *
    * @param array $optParams Optional parameters.
    *
    * @opt_param string pageToken Number of sources to return in the response.
+   * @opt_param string requestOptions.clientDisplayLanguageCode The BCP-47
+   * language code, such as "pt" or "en". It represents the user's preferred
+   * Display Language.
+   * @opt_param string requestOptions.countryCode Optional. Specifies the
+   * country/region where the query originated, as a lowercase ISO 3166-1 alpha-2
+   * region code (using 'uk' instead of 'gb' for the United Kingdom).
    * @opt_param bool requestOptions.debugOptions.enableDebugging If you are asked
    * by Google to help with debugging, set this field. Otherwise, ignore this
    * field.

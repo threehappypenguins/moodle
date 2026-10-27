@@ -27,3 +27,5 @@ defined('MOODLE_INTERNAL') || die;
 $string['pluginname'] = 'Fake plugin for testing OAuth2 scopes';
 $string['read_scope_desc'] = 'This is a test scope used for testing OAuth2 scopes in Moodle.';
 $string['read_scope_summary'] = 'Read scope';
+$string['write_scope_desc'] = 'This is a test scope used for testing OAuth2 scopes in Moodle.';
+$string['write_scope_summary'] = 'Write scope';

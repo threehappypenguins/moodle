@@ -27,6 +27,7 @@ namespace mod_quiz;
 use context_module;
 use core_external\external_api;
 use mod_quiz\quiz_settings;
+use PHPUnit\Framework\Attributes\CoversFunction;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -38,8 +39,80 @@ require_once($CFG->dirroot . '/mod/quiz/tests/quiz_question_helper_test_trait.ph
  * @copyright  2008 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
  */
+#[CoversFunction('quiz_add_instance')]
+#[CoversFunction('quiz_update_instance')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('quiz_delete_instance')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('mod_quiz_core_calendar_provide_event_action')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('mod_quiz_inplace_editable')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('quiz_num_attempt_summary')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('quiz_num_attempts')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('quiz_num_users_who_attempted')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('quiz_num_users_who_can_attempt')]
 final class lib_test extends \advanced_testcase {
     use \quiz_question_helper_test_trait;
+
+    /**
+     * Test that creating a quiz without a due date uses the database default without triggering warnings.
+     */
+    public function test_quiz_add_instance_without_duedate(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+
+        $quiz = (object) [
+            'course' => $course->id,
+            'name' => 'Quiz without a due date',
+            'intro' => '',
+            'introformat' => FORMAT_HTML,
+            'timeopen' => 0,
+            'timeclose' => 0,
+            'quizpassword' => '',
+            'grade' => 100,
+            'decimalpoints' => 2,
+            'questiondecimalpoints' => -1,
+        ];
+        $quiz->coursemodule = add_course_module((object) [
+            'course' => $course->id,
+            'module' => $DB->get_field('modules', 'id', ['name' => 'quiz'], MUST_EXIST),
+        ]);
+
+        $quizid = quiz_add_instance($quiz);
+
+        $this->assertEquals(0, $DB->get_field('quiz', 'duedate', ['id' => $quizid], MUST_EXIST));
+        $this->assertFalse($DB->record_exists('event', [
+            'modulename' => 'quiz',
+            'instance' => $quizid,
+            'eventtype' => QUIZ_EVENT_TYPE_DUE,
+        ]));
+    }
+
+    /**
+     * Test that updating a quiz without a due date preserves the stored date and its calendar event.
+     */
+    public function test_quiz_update_instance_without_duedate(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $duedate = time() + DAYSECS;
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id, 'duedate' => $duedate]);
+        $quiz->instance = $quiz->id;
+        $quiz->coursemodule = $quiz->cmid;
+        $quiz->quizpassword = $quiz->password;
+        unset($quiz->duedate);
+
+        $this->assertTrue(quiz_update_instance($quiz, null));
+
+        $this->assertEquals($duedate, $DB->get_field('quiz', 'duedate', ['id' => $quiz->id], MUST_EXIST));
+        $this->assertEquals($duedate, $DB->get_field('event', 'timestart', [
+            'modulename' => 'quiz',
+            'instance' => $quiz->id,
+            'eventtype' => QUIZ_EVENT_TYPE_DUE,
+        ], MUST_EXIST));
+    }
 
     public function test_quiz_has_grades(): void {
         $quiz = new \stdClass();
@@ -137,8 +210,6 @@ final class lib_test extends \advanced_testcase {
 
     /**
      * Test deleting a quiz when the course is deleted.
-     *
-     * @covers ::quiz_delete_instance
      */
     public function test_quiz_when_delete_course(): void {
         global $DB, $USER;
@@ -457,7 +528,6 @@ final class lib_test extends \advanced_testcase {
 
     /**
      * Test event actions for due event.
-     * @covers ::mod_quiz_core_calendar_provide_event_action
      */
     public function test_quiz_core_calendar_provide_event_action_due(): void {
         $this->resetAfterTest();
@@ -1012,11 +1082,10 @@ final class lib_test extends \advanced_testcase {
     /**
      * Test customised and automated question numbering for a given slot number and customised value.
      *
-     * @dataProvider mod_quiz_inplace_editable_provider
      * @param int $slotnumber
      * @param string $newvalue
-     * @covers ::mod_quiz_inplace_editable
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('mod_quiz_inplace_editable_provider')]
     public function test_mod_quiz_inplace_editable(int $slotnumber, string $newvalue): void {
         global $CFG;
         require_once($CFG->dirroot . '/lib/external/externallib.php');
@@ -1073,9 +1142,8 @@ final class lib_test extends \advanced_testcase {
      *
      * @param int $groupmode The group mode to use for the test.
      * @param array $expected The expected results for each user.
-     * @covers ::quiz_num_attempt_summary
-     * @dataProvider num_attempts_data_provider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('num_attempts_data_provider')]
     public function test_quiz_num_attempt_summary(int $groupmode, array $expected): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -1194,9 +1262,8 @@ final class lib_test extends \advanced_testcase {
      *
      * @param int $groupmode The group mode to use for the test.
      * @param array $expected The expected results for each group setting.
-     * @covers ::quiz_num_attempts
-     * @dataProvider quiz_num_attempts_data_provider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('quiz_num_attempts_data_provider')]
     public function test_quiz_num_attempts(int $groupmode, array $expected): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -1256,8 +1323,6 @@ final class lib_test extends \advanced_testcase {
 
     /**
      * Test the quiz_num_attempts function with the student only flag.
-     *
-     * @covers ::quiz_num_attempts
      */
     public function test_quiz_num_attempts_student_only(): void {
         $this->resetAfterTest();
@@ -1279,9 +1344,8 @@ final class lib_test extends \advanced_testcase {
      *
      * @param int $groupmode The group mode to use for the test.
      * @param array $expected The expected results for each user.
-     * @covers ::quiz_num_users_who_attempted
-     * @dataProvider quiz_num_users_who_attempted_data_provider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('quiz_num_users_who_attempted_data_provider')]
     public function test_quiz_num_users_who_attempted(int $groupmode, array $expected): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -1346,9 +1410,8 @@ final class lib_test extends \advanced_testcase {
      *
      * @param int $groupmode The group mode to use for the test.
      * @param array $expected The expected results for each user.
-     * @covers ::quiz_num_users_who_can_attempt
-     * @dataProvider quiz_num_users_who_can_attempt_data_provider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('quiz_num_users_who_can_attempt_data_provider')]
     public function test_quiz_num_users_who_can_attempt(int $groupmode, array $expected): void {
         $this->resetAfterTest();
         $this->setAdminUser();

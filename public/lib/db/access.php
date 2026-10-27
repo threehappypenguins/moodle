@@ -1956,10 +1956,12 @@ $capabilities = array(
     // Allow a user to mint personal access tokens for the REST API on their own behalf.
     'moodle/api:createtoken' => [
 
-        'riskbitmask' => RISK_CONFIG | RISK_DATALOSS | RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        // A token acts only as its owner, so it carries no more risk than the owner already has.
+        'riskbitmask' => RISK_SPAM | RISK_PERSONAL,
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
+            'user' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
         ],
     ],

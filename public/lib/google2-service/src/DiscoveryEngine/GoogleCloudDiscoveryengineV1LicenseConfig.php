@@ -37,6 +37,18 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
    */
   public const STATE_NOT_STARTED = 'NOT_STARTED';
   /**
+   * This is when a sub license config has returned all its seats back to
+   * BillingAccountLicenseConfig that it belongs to. Similar to EXPIRED.
+   */
+  public const STATE_WITHDRAWN = 'WITHDRAWN';
+  /**
+   * The license config is terminated earlier than the expiration date and it is
+   * deactivating. The customer will still have access in this state. It will be
+   * converted to EXPIRED after the deactivating period ends (14 days) or when
+   * the end date is reached, whichever comes first.
+   */
+  public const STATE_DEACTIVATING = 'DEACTIVATING';
+  /**
    * Default value, do not use.
    */
   public const SUBSCRIPTION_TERM_SUBSCRIPTION_TERM_UNSPECIFIED = 'SUBSCRIPTION_TERM_UNSPECIFIED';
@@ -53,17 +65,20 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
    */
   public const SUBSCRIPTION_TERM_SUBSCRIPTION_TERM_THREE_YEARS = 'SUBSCRIPTION_TERM_THREE_YEARS';
   /**
+   * Custom term. Must set the end_date.
+   */
+  public const SUBSCRIPTION_TERM_SUBSCRIPTION_TERM_CUSTOM = 'SUBSCRIPTION_TERM_CUSTOM';
+  /**
    * Default value.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_UNSPECIFIED = 'SUBSCRIPTION_TIER_UNSPECIFIED';
   /**
-   * Search tier. Search tier can access VAIS search features and NotebookLM
-   * features.
+   * Search tier. Search tier can access Vertex AI Search features and
+   * NotebookLM features.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_SEARCH = 'SUBSCRIPTION_TIER_SEARCH';
   /**
-   * Search + assistant tier. Search + assistant tier can access VAIS search
-   * features, NotebookLM features and assistant features.
+   * Gemini Enterprise Plus tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_SEARCH_AND_ASSISTANT = 'SUBSCRIPTION_TIER_SEARCH_AND_ASSISTANT';
   /**
@@ -72,41 +87,54 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_NOTEBOOK_LM = 'SUBSCRIPTION_TIER_NOTEBOOK_LM';
   /**
-   * Frontline worker tier.
+   * Gemini Frontline worker tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_FRONTLINE_WORKER = 'SUBSCRIPTION_TIER_FRONTLINE_WORKER';
   /**
-   * Agentspace Starter tier.
+   * Gemini Business Starter tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_AGENTSPACE_STARTER = 'SUBSCRIPTION_TIER_AGENTSPACE_STARTER';
   /**
-   * Agentspace Business tier.
+   * Gemini Business tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_AGENTSPACE_BUSINESS = 'SUBSCRIPTION_TIER_AGENTSPACE_BUSINESS';
   /**
-   * Enterprise tier.
+   * Gemini Enterprise Standard tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_ENTERPRISE = 'SUBSCRIPTION_TIER_ENTERPRISE';
   /**
-   * EDU tier.
+   * Gemini Enterprise Standard tier for emerging markets.
+   */
+  public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_ENTERPRISE_EMERGING = 'SUBSCRIPTION_TIER_ENTERPRISE_EMERGING';
+  /**
+   * Gemini Enterprise EDU tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_EDU = 'SUBSCRIPTION_TIER_EDU';
   /**
-   * EDU Pro tier.
+   * Gemini Enterprise EDU Pro tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_EDU_PRO = 'SUBSCRIPTION_TIER_EDU_PRO';
   /**
-   * EDU emerging market tier.
+   * Gemini Enterprise EDU tier for emerging market only.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_EDU_EMERGING = 'SUBSCRIPTION_TIER_EDU_EMERGING';
   /**
-   * EDU Pro emerging market tier.
+   * Gemini Enterprise EDU Pro tier for emerging market.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_EDU_PRO_EMERGING = 'SUBSCRIPTION_TIER_EDU_PRO_EMERGING';
   /**
-   * Frontline starter tier.
+   * Gemini Frontline Starter tier.
    */
   public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_FRONTLINE_STARTER = 'SUBSCRIPTION_TIER_FRONTLINE_STARTER';
+  /**
+   * Represents the Gemini Enterprise Consumption-only tier: $0 subscription
+   * billed purely on usage (PAYG).
+   */
+  public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_CONSUMPTION_ONLY = 'SUBSCRIPTION_TIER_CONSUMPTION_ONLY';
+  /**
+   * Gemini Enterprise EDU tier for government in emerging markets.
+   */
+  public const SUBSCRIPTION_TIER_SUBSCRIPTION_TIER_EDU_GOV_EMERGING = 'SUBSCRIPTION_TIER_EDU_GOV_EMERGING';
   /**
    * Optional. Whether the license config should be auto renewed when it reaches
    * the end date.
@@ -114,6 +142,16 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
    * @var bool
    */
   public $autoRenew;
+  /**
+   * Output only. Indication of whether the subscription is terminated earlier
+   * than the expiration date. This is usually terminated by pipeline once the
+   * subscription gets terminated from subsv3.
+   *
+   * @var bool
+   */
+  public $earlyTerminated;
+  protected $earlyTerminationDateType = GoogleTypeDate::class;
+  protected $earlyTerminationDateDataType = '';
   protected $endDateType = GoogleTypeDate::class;
   protected $endDateDataType = '';
   /**
@@ -128,6 +166,16 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
    * @var bool
    */
   public $geminiBundle;
+  /**
+   * Optional. Timestamp of the most recent user-initiated update (seat count
+   * change or subscription term change). Unlike `update_time`, this field is
+   * only stamped when a customer explicitly updates the license (e.g. via the
+   * UI), and is not touched by system-driven writes (subscription pipeline,
+   * BALC propagation, etc.).
+   *
+   * @var string
+   */
+  public $lastUserUpdateTime;
   /**
    * Required. Number of licenses purchased.
    *
@@ -181,6 +229,41 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
     return $this->autoRenew;
   }
   /**
+   * Output only. Indication of whether the subscription is terminated earlier
+   * than the expiration date. This is usually terminated by pipeline once the
+   * subscription gets terminated from subsv3.
+   *
+   * @param bool $earlyTerminated
+   */
+  public function setEarlyTerminated($earlyTerminated)
+  {
+    $this->earlyTerminated = $earlyTerminated;
+  }
+  /**
+   * @return bool
+   */
+  public function getEarlyTerminated()
+  {
+    return $this->earlyTerminated;
+  }
+  /**
+   * Output only. The date when the subscription is terminated earlier than the
+   * expiration date.
+   *
+   * @param GoogleTypeDate $earlyTerminationDate
+   */
+  public function setEarlyTerminationDate(GoogleTypeDate $earlyTerminationDate)
+  {
+    $this->earlyTerminationDate = $earlyTerminationDate;
+  }
+  /**
+   * @return GoogleTypeDate
+   */
+  public function getEarlyTerminationDate()
+  {
+    return $this->earlyTerminationDate;
+  }
+  /**
    * Optional. The planed end date.
    *
    * @param GoogleTypeDate $endDate
@@ -227,6 +310,26 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
   public function getGeminiBundle()
   {
     return $this->geminiBundle;
+  }
+  /**
+   * Optional. Timestamp of the most recent user-initiated update (seat count
+   * change or subscription term change). Unlike `update_time`, this field is
+   * only stamped when a customer explicitly updates the license (e.g. via the
+   * UI), and is not touched by system-driven writes (subscription pipeline,
+   * BALC propagation, etc.).
+   *
+   * @param string $lastUserUpdateTime
+   */
+  public function setLastUserUpdateTime($lastUserUpdateTime)
+  {
+    $this->lastUserUpdateTime = $lastUserUpdateTime;
+  }
+  /**
+   * @return string
+   */
+  public function getLastUserUpdateTime()
+  {
+    return $this->lastUserUpdateTime;
   }
   /**
    * Required. Number of licenses purchased.
@@ -281,7 +384,8 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
   /**
    * Output only. The state of the license config.
    *
-   * Accepted values: STATE_UNSPECIFIED, ACTIVE, EXPIRED, NOT_STARTED
+   * Accepted values: STATE_UNSPECIFIED, ACTIVE, EXPIRED, NOT_STARTED,
+   * WITHDRAWN, DEACTIVATING
    *
    * @param self::STATE_* $state
    */
@@ -301,7 +405,7 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
    *
    * Accepted values: SUBSCRIPTION_TERM_UNSPECIFIED,
    * SUBSCRIPTION_TERM_ONE_MONTH, SUBSCRIPTION_TERM_ONE_YEAR,
-   * SUBSCRIPTION_TERM_THREE_YEARS
+   * SUBSCRIPTION_TERM_THREE_YEARS, SUBSCRIPTION_TERM_CUSTOM
    *
    * @param self::SUBSCRIPTION_TERM_* $subscriptionTerm
    */
@@ -323,9 +427,10 @@ class GoogleCloudDiscoveryengineV1LicenseConfig extends \Google\Model
    * SUBSCRIPTION_TIER_SEARCH_AND_ASSISTANT, SUBSCRIPTION_TIER_NOTEBOOK_LM,
    * SUBSCRIPTION_TIER_FRONTLINE_WORKER, SUBSCRIPTION_TIER_AGENTSPACE_STARTER,
    * SUBSCRIPTION_TIER_AGENTSPACE_BUSINESS, SUBSCRIPTION_TIER_ENTERPRISE,
-   * SUBSCRIPTION_TIER_EDU, SUBSCRIPTION_TIER_EDU_PRO,
-   * SUBSCRIPTION_TIER_EDU_EMERGING, SUBSCRIPTION_TIER_EDU_PRO_EMERGING,
-   * SUBSCRIPTION_TIER_FRONTLINE_STARTER
+   * SUBSCRIPTION_TIER_ENTERPRISE_EMERGING, SUBSCRIPTION_TIER_EDU,
+   * SUBSCRIPTION_TIER_EDU_PRO, SUBSCRIPTION_TIER_EDU_EMERGING,
+   * SUBSCRIPTION_TIER_EDU_PRO_EMERGING, SUBSCRIPTION_TIER_FRONTLINE_STARTER,
+   * SUBSCRIPTION_TIER_CONSUMPTION_ONLY, SUBSCRIPTION_TIER_EDU_GOV_EMERGING
    *
    * @param self::SUBSCRIPTION_TIER_* $subscriptionTier
    */

@@ -85,30 +85,43 @@ class LinuxNodeConfig extends \Google\Model
    * Transparent hugepage support for anonymous memory is disabled.
    */
   public const TRANSPARENT_HUGEPAGE_ENABLED_TRANSPARENT_HUGEPAGE_ENABLED_NEVER = 'TRANSPARENT_HUGEPAGE_ENABLED_NEVER';
+  protected $accurateTimeConfigType = AccurateTimeConfig::class;
+  protected $accurateTimeConfigDataType = '';
   /**
    * cgroup_mode specifies the cgroup mode to be used on the node.
    *
    * @var string
    */
   public $cgroupMode;
+  protected $customNodeInitType = CustomNodeInit::class;
+  protected $customNodeInitDataType = '';
+  protected $diskIoSchedulerType = DiskIoScheduler::class;
+  protected $diskIoSchedulerDataType = '';
   protected $hugepagesType = HugepagesConfig::class;
   protected $hugepagesDataType = '';
   protected $nodeKernelModuleLoadingType = NodeKernelModuleLoading::class;
   protected $nodeKernelModuleLoadingDataType = '';
+  protected $nodeVfioConfigType = NodeVfioConfig::class;
+  protected $nodeVfioConfigDataType = '';
+  protected $swapConfigType = SwapConfig::class;
+  protected $swapConfigDataType = '';
   /**
    * The Linux kernel parameters to be applied to the nodes and all pods running
    * on the nodes. The following parameters are supported. net.core.busy_poll
    * net.core.busy_read net.core.netdev_max_backlog net.core.rmem_max
    * net.core.rmem_default net.core.wmem_default net.core.wmem_max
-   * net.core.optmem_max net.core.somaxconn net.ipv4.tcp_rmem net.ipv4.tcp_wmem
-   * net.ipv4.tcp_tw_reuse net.ipv4.tcp_mtu_probing net.ipv4.tcp_max_orphans
+   * net.core.optmem_max net.core.somaxconn net.ipv4.neigh.default.gc_thresh1
+   * net.ipv4.neigh.default.gc_thresh2 net.ipv4.neigh.default.gc_thresh3
+   * net.ipv4.tcp_rmem net.ipv4.tcp_wmem net.ipv4.tcp_tw_reuse
+   * net.ipv4.tcp_mtu_probing net.ipv4.tcp_max_orphans
    * net.ipv4.tcp_max_tw_buckets net.ipv4.tcp_syn_retries net.ipv4.tcp_ecn
    * net.ipv4.tcp_congestion_control net.netfilter.nf_conntrack_max
    * net.netfilter.nf_conntrack_buckets
    * net.netfilter.nf_conntrack_tcp_timeout_close_wait
    * net.netfilter.nf_conntrack_tcp_timeout_time_wait
    * net.netfilter.nf_conntrack_tcp_timeout_established
-   * net.netfilter.nf_conntrack_acct kernel.shmmni kernel.shmmax kernel.shmall
+   * net.netfilter.nf_conntrack_acct kernel.keys.maxkeys kernel.keys.maxbytes
+   * kernel.shmmni kernel.shmmax kernel.shmall kernel.core_pattern
    * kernel.perf_event_paranoid kernel.sched_rt_runtime_us
    * kernel.softlockup_panic kernel.yama.ptrace_scope kernel.kptr_restrict
    * kernel.dmesg_restrict kernel.sysrq fs.aio-max-nr fs.file-max
@@ -144,6 +157,22 @@ class LinuxNodeConfig extends \Google\Model
   public $transparentHugepageEnabled;
 
   /**
+   * Optional. The accurate time configuration for the node pool.
+   *
+   * @param AccurateTimeConfig $accurateTimeConfig
+   */
+  public function setAccurateTimeConfig(AccurateTimeConfig $accurateTimeConfig)
+  {
+    $this->accurateTimeConfig = $accurateTimeConfig;
+  }
+  /**
+   * @return AccurateTimeConfig
+   */
+  public function getAccurateTimeConfig()
+  {
+    return $this->accurateTimeConfig;
+  }
+  /**
    * cgroup_mode specifies the cgroup mode to be used on the node.
    *
    * Accepted values: CGROUP_MODE_UNSPECIFIED, CGROUP_MODE_V1, CGROUP_MODE_V2
@@ -160,6 +189,39 @@ class LinuxNodeConfig extends \Google\Model
   public function getCgroupMode()
   {
     return $this->cgroupMode;
+  }
+  /**
+   * Optional. Allow users to run arbitrary bash script or container on the
+   * node.
+   *
+   * @param CustomNodeInit $customNodeInit
+   */
+  public function setCustomNodeInit(CustomNodeInit $customNodeInit)
+  {
+    $this->customNodeInit = $customNodeInit;
+  }
+  /**
+   * @return CustomNodeInit
+   */
+  public function getCustomNodeInit()
+  {
+    return $this->customNodeInit;
+  }
+  /**
+   * Optional. Controls the configuration for the disk IO scheduler.
+   *
+   * @param DiskIoScheduler $diskIoScheduler
+   */
+  public function setDiskIoScheduler(DiskIoScheduler $diskIoScheduler)
+  {
+    $this->diskIoScheduler = $diskIoScheduler;
+  }
+  /**
+   * @return DiskIoScheduler
+   */
+  public function getDiskIoScheduler()
+  {
+    return $this->diskIoScheduler;
   }
   /**
    * Optional. Amounts for 2M and 1G hugepages
@@ -196,19 +258,55 @@ class LinuxNodeConfig extends \Google\Model
     return $this->nodeKernelModuleLoading;
   }
   /**
+   * Optional. Contains VFIO-related configurations for this node.
+   *
+   * @param NodeVfioConfig $nodeVfioConfig
+   */
+  public function setNodeVfioConfig(NodeVfioConfig $nodeVfioConfig)
+  {
+    $this->nodeVfioConfig = $nodeVfioConfig;
+  }
+  /**
+   * @return NodeVfioConfig
+   */
+  public function getNodeVfioConfig()
+  {
+    return $this->nodeVfioConfig;
+  }
+  /**
+   * Optional. Enables and configures swap space on nodes. If omitted, swap is
+   * disabled.
+   *
+   * @param SwapConfig $swapConfig
+   */
+  public function setSwapConfig(SwapConfig $swapConfig)
+  {
+    $this->swapConfig = $swapConfig;
+  }
+  /**
+   * @return SwapConfig
+   */
+  public function getSwapConfig()
+  {
+    return $this->swapConfig;
+  }
+  /**
    * The Linux kernel parameters to be applied to the nodes and all pods running
    * on the nodes. The following parameters are supported. net.core.busy_poll
    * net.core.busy_read net.core.netdev_max_backlog net.core.rmem_max
    * net.core.rmem_default net.core.wmem_default net.core.wmem_max
-   * net.core.optmem_max net.core.somaxconn net.ipv4.tcp_rmem net.ipv4.tcp_wmem
-   * net.ipv4.tcp_tw_reuse net.ipv4.tcp_mtu_probing net.ipv4.tcp_max_orphans
+   * net.core.optmem_max net.core.somaxconn net.ipv4.neigh.default.gc_thresh1
+   * net.ipv4.neigh.default.gc_thresh2 net.ipv4.neigh.default.gc_thresh3
+   * net.ipv4.tcp_rmem net.ipv4.tcp_wmem net.ipv4.tcp_tw_reuse
+   * net.ipv4.tcp_mtu_probing net.ipv4.tcp_max_orphans
    * net.ipv4.tcp_max_tw_buckets net.ipv4.tcp_syn_retries net.ipv4.tcp_ecn
    * net.ipv4.tcp_congestion_control net.netfilter.nf_conntrack_max
    * net.netfilter.nf_conntrack_buckets
    * net.netfilter.nf_conntrack_tcp_timeout_close_wait
    * net.netfilter.nf_conntrack_tcp_timeout_time_wait
    * net.netfilter.nf_conntrack_tcp_timeout_established
-   * net.netfilter.nf_conntrack_acct kernel.shmmni kernel.shmmax kernel.shmall
+   * net.netfilter.nf_conntrack_acct kernel.keys.maxkeys kernel.keys.maxbytes
+   * kernel.shmmni kernel.shmmax kernel.shmall kernel.core_pattern
    * kernel.perf_event_paranoid kernel.sched_rt_runtime_us
    * kernel.softlockup_panic kernel.yama.ptrace_scope kernel.kptr_restrict
    * kernel.dmesg_restrict kernel.sysrq fs.aio-max-nr fs.file-max

@@ -16,7 +16,7 @@
 
 namespace core\oauth2\server\repository;
 
-use League\OAuth2\Server\Entities\ClientEntityInterface;
+use core\oauth2\server\entity\client_entity_interface;
 use League\OAuth2\Server\Entities\UserEntityInterface;
 use League\OAuth2\Server\Entities\ScopeEntityInterface;
 use League\OAuth2\Server\Repositories\ScopeRepositoryInterface;
@@ -41,12 +41,12 @@ class granted_scopes_repository {
     /**
      * Get the granted scopes for the specified client/user combination.
      *
-     * @param ClientEntityInterface $client The client.
+     * @param client_entity_interface $client The client.
      * @param UserEntityInterface $user The user.
      * @return ScopeEntityInterface[] The granted scopes array, empty if none.
      */
     public function get_granted_scopes_for_user(
-        ClientEntityInterface $client,
+        client_entity_interface $client,
         UserEntityInterface $user,
     ): array {
         global $DB;
@@ -66,22 +66,25 @@ class granted_scopes_repository {
 
         $scopes = array_filter(explode(' ', $scope), static fn($s) => !empty($s));
 
-        return array_map(
-            fn(string $scope): ScopeEntityInterface => $this->scoperepository->getScopeEntityByIdentifier($scope),
-            $scopes,
+        return array_filter(
+            array_map(
+                fn(string $scope): ?ScopeEntityInterface => $this->scoperepository->getScopeEntityByIdentifier($scope),
+                $scopes,
+            ),
+            fn ($scope): bool => $scope && $client->is_scope_approved($scope),
         );
     }
 
     /**
      * Whether the user has granted all of the requested scopes for the specified client.
      *
-     * @param ClientEntityInterface $client The client.
+     * @param client_entity_interface $client The client.
      * @param UserEntityInterface $user The user.
      * @param ScopeEntityInterface[] $requestedscopes The requested scopes.
      * @return bool True if the user has granted all of the requested scopes, false otherwise.
      */
     public function has_granted_all_scopes(
-        ClientEntityInterface $client,
+        client_entity_interface $client,
         UserEntityInterface $user,
         array $requestedscopes,
     ): bool {
@@ -103,13 +106,13 @@ class granted_scopes_repository {
     /**
      * Update all granted scopes for the user.
      *
-     * @param ClientEntityInterface $client The client.
+     * @param client_entity_interface $client The client.
      * @param UserEntityInterface $user The user.
      * @param string[] $scopes The scopes to grant.
      * @return void
      */
     public function store_granted_scopes_for_user(
-        ClientEntityInterface $client,
+        client_entity_interface $client,
         UserEntityInterface $user,
         array $scopes,
     ): void {

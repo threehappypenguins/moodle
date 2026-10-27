@@ -123,26 +123,27 @@ $userenrolment-link-hover-border-color: #666 !default;
 
 $corelightbox-bg: #ccc !default;
 
-$dialogue-base-bg:              var(--#{$prefix}white) !default;
-$dialogue-base-border-color:    #ccc !default;
-$dialogue-base-hd-border-color: #dee2e6 !default;
+$dialogue-base-bg:              var(--mds-bg-surface-default) !default;
+$dialogue-base-border-color:    var(--mds-border-default) !default;
+$dialogue-base-hd-border-color: var(--mds-border-default) !default;
 
-$dialogue-exception-label-bg:           #eee !default;
-$dialogue-exception-label-border-color: #ccc !default;
-$dialogue-exception-pre-bg:             var(--#{$prefix}white) !default;
-$dialogue-exception-pre-border-color:   #ccc !default;
-$dialogue-exception-file-color:         navy !default;
-$dialogue-exception-call-color:         #333 !default;
-$dialogue-exception-call-border-color:  #eee !default;
+$dialogue-exception-label-bg:           var(--mds-bg-surface-strong) !default;
+$dialogue-exception-label-border-color: var(--mds-border-default) !default;
+$dialogue-exception-pre-bg:             var(--mds-bg-surface-default) !default;
+$dialogue-exception-pre-border-color:   var(--mds-border-default) !default;
+$dialogue-exception-file-color:         var(--mds-text-feedback-primary) !default;
+$dialogue-exception-line-color:         var(--mds-text-feedback-warning) !default;
+$dialogue-exception-call-color:         var(--mds-text-default) !default;
+$dialogue-exception-call-border-color:  var(--mds-border-default) !default;
 
-$dialogue-lightbox-bg: var(--#{$prefix}white) !default;
+$dialogue-lightbox-bg: var(--mds-bg-surface-default) !default;
 
-$chooserdialogue-bg:                    #f2f2f2 !default;
-$chooserdialogue-options-border-color:  #bbb !default;
+$chooserdialogue-bg:                    var(--mds-bg-surface-strong) !default;
+$chooserdialogue-options-border-color:  var(--mds-border-default) !default;
 
-$choosercontainer-label-border-color:       $white !default;
-$choosercontainer-instruction-bg:           $white !default;
-$choosercontainer-chooseform-selected-bg:   $white !default;
+$choosercontainer-label-border-color:       var(--mds-bg-surface-default) !default;
+$choosercontainer-instruction-bg:           var(--mds-bg-surface-default) !default;
+$choosercontainer-chooseform-selected-bg:   var(--mds-bg-surface-default) !default;
 
 $formlisting-bg:            var(--#{$prefix}white) !default;
 $formlisting-border-color:  #ddd !default;

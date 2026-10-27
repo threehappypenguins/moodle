@@ -33,6 +33,16 @@ require_once($CFG->dirroot . '/calendar/tests/helpers.php');
 /**
  * Tests various classes and functions in upgradelib.php library.
  */
+#[\PHPUnit\Framework\Attributes\CoversFunction('check_mod_assignment')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('upgrade_add_item_to_usermenu')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('moodle_needs_upgrading')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('upgrade_started')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('upgrade_set_timeout')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('upgrade_change_binary_column_to_int')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('check_aurora_version')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('moodlenet_migrate_profile_field')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('upgrade_migrate_classic_theme_to_boost')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('upgrade_penalty_calculation_freeze')]
 final class upgradelib_test extends advanced_testcase {
 
     /**
@@ -777,11 +787,11 @@ final class upgradelib_test extends advanced_testcase {
     /**
      * Test that objects in serialized strings will be changed over to stdClass.
      *
-     * @dataProvider serialized_strings_dataprovider
      * @param string $initialstring The initial serialized setting.
      * @param bool $expectededited If the string is expected to be edited.
      * @param string $expectedresult The expected serialized setting to be returned.
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('serialized_strings_dataprovider')]
     public function test_upgrade_fix_serialized_objects($initialstring, $expectededited, $expectedresult): void {
         list($edited, $resultstring) = upgrade_fix_serialized_objects($initialstring);
         $this->assertEquals($expectededited, $edited);
@@ -1357,7 +1367,6 @@ final class upgradelib_test extends advanced_testcase {
     /**
      * Test the check_mod_assignment check if mod_assignment is still used.
      *
-     * @covers ::check_mod_assignment
      * @return void
      */
     public function test_check_mod_assignment_is_used(): void {
@@ -1424,10 +1433,8 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test the functionality of the {@link upgrade_add_item_to_usermenu()} function.
-     *
-     * @covers ::upgrade_add_item_to_usermenu
-     * @dataProvider usermenu_items_dataprovider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('usermenu_items_dataprovider')]
     public function test_upgrade_add_item_to_usermenu(string $initialmenu, string $newmenuitem, string $expectedmenu): void {
         global $CFG;
 
@@ -1507,8 +1514,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test the upgrade status check alongside the outageless flags.
-     *
-     * @covers ::moodle_needs_upgrading
      */
     public function test_moodle_upgrade_check_outageless(): void {
         global $CFG;
@@ -1530,8 +1535,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test the upgrade status check alongside the outageless flags.
-     *
-     * @covers ::upgrade_started
      */
     public function test_moodle_start_upgrade_outageless(): void {
         global $CFG;
@@ -1554,8 +1557,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test the upgrade timeout setter alongside the outageless flags.
-     *
-     * @covers ::upgrade_set_timeout
      */
     public function test_moodle_set_upgrade_timeout_outageless(): void {
         global $CFG;
@@ -1578,10 +1579,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test the components of the upgrade process being run outageless.
-     *
-     * @covers ::moodle_needs_upgrading
-     * @covers ::upgrade_started
-     * @covers ::upgrade_set_timeout
      */
     public function test_upgrade_components_with_outageless(): void {
         global $CFG;
@@ -1640,14 +1637,13 @@ calendar,core_calendar|/calendar/view.php?view=month',
     /**
      * Unit test for {@see upgrade_change_binary_column_to_int()}.
      *
-     * @dataProvider upgrade_change_binary_column_to_int_provider
-     * @covers ::upgrade_change_binary_column_to_int()
      * @param int $type The field type.
      * @param string|null $length The field length.
      * @param bool $expectedresult Whether the conversion succeeded.
      * @param bool $expecexception Whether to expect an exception.
      * @return void
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('upgrade_change_binary_column_to_int_provider')]
     public function test_upgrade_change_binary_column_to_int(
         int $type,
         ?string $length,
@@ -1706,8 +1702,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test for upgrade script replacing full urls with relative urls in defaulthomepage setting
-     *
-     * @covers ::upgrade_change_binary_column_to_int()
      */
     public function test_upgrade_store_relative_url_sitehomepage(): void {
         global $CFG;
@@ -1734,8 +1728,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test the check_aurora_version check when the Moodle instance is not using Amazon Aurora as a database architecture.
-     *
-     * @covers ::check_aurora_version
      */
     public function test_check_aurora_version_is_not_used(): void {
         global $CFG;
@@ -1749,8 +1741,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test the check_aurora_version check when the Moodle instance is using Amazon Aurora as a database architecture.
-     *
-     * @covers ::check_aurora_version
      */
     public function test_check_aurora_version_is_used(): void {
         global $CFG;
@@ -1766,8 +1756,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test moodlenet_migrate_profile_field creates category, field and migrates data.
-     *
-     * @covers ::moodlenet_migrate_profile_field
      */
     public function test_moodlenet_migrate_profile_field(): void {
         global $DB;
@@ -1843,8 +1831,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test migration of compatible Classic settings and files to Boost.
-     *
-     * @covers ::upgrade_migrate_classic_theme_to_boost
      */
     public function test_upgrade_migrate_classic_theme_to_boost(): void {
         $this->resetAfterTest();
@@ -1933,8 +1919,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test that Boost settings and files are kept when Classic was never customised.
-     *
-     * @covers ::upgrade_migrate_classic_theme_to_boost
      */
     public function test_upgrade_migrate_classic_theme_to_boost_unmodified_classic(): void {
         $this->resetAfterTest();
@@ -1980,8 +1964,6 @@ calendar,core_calendar|/calendar/view.php?view=month',
 
     /**
      * Test migration helper no-op behaviour when Classic is not the active site theme.
-     *
-     * @covers ::upgrade_migrate_classic_theme_to_boost
      */
     public function test_upgrade_migrate_classic_theme_to_boost_non_classic_theme(): void {
         $this->resetAfterTest();
@@ -2017,5 +1999,312 @@ calendar,core_calendar|/calendar/view.php?view=month',
         $files = $fs->get_area_files($systemcontext->id, 'theme_boost', 'preset', 0, 'id', false);
         $this->assertCount(1, $files);
         $this->assertEquals('existingboost.scss', reset($files)->get_filename());
+    }
+
+    /**
+     * Test that courses affected by MDL-88407 are frozen during upgrade.
+     */
+    public function test_upgrade_penalty_calculation_freeze(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+
+        require_once($CFG->libdir . '/db/upgradelib.php');
+
+        // Course 1: default multiplier/offset, legacy-corrupted rawgrade (mark 70 - penalty 20 = 50,
+        // ignoring multiplier/offset entirely) - the stored rawgrade (50) differs from the
+        // authoritative mark (70), so this is affected.
+        $course1 = $this->getDataGenerator()->create_course();
+        $this->create_penalised_assignment_grade(
+            $course1->id,
+            $this->getDataGenerator()->create_user()->id,
+            multfactor: 1.0,
+            plusfactor: 0.0,
+            rawgrade: 50.0,
+            deductedmark: 20.0,
+            finalgrade: 50.0,
+            authoritativegrade: 70.0,
+        );
+
+        // Course 2: non-default multiplier/offset, no penalty deducted - not affected.
+        $course2 = $this->getDataGenerator()->create_course();
+        $this->create_penalised_assignment_grade(
+            $course2->id,
+            $this->getDataGenerator()->create_user()->id,
+            multfactor: 2.0,
+            plusfactor: 5.0,
+            rawgrade: 50.0,
+            deductedmark: 0.0,
+            finalgrade: 105.0,
+            authoritativegrade: 50.0,
+        );
+
+        // Course 3: non-default multiplier/offset, legacy-corrupted rawgrade (mark 32.5 * 2 + 5 - 20 =
+        // 50, ignoring the deduction) - the stored rawgrade (50) differs from the authoritative mark
+        // (32.5), so this is affected.
+        $course3 = $this->getDataGenerator()->create_course();
+        $this->create_penalised_assignment_grade(
+            $course3->id,
+            $this->getDataGenerator()->create_user()->id,
+            multfactor: 2.0,
+            plusfactor: 5.0,
+            rawgrade: 50.0,
+            deductedmark: 20.0,
+            finalgrade: 105.0,
+            authoritativegrade: 32.5,
+        );
+
+        upgrade_penalty_calculation_freeze();
+
+        $this->assertEquals(20260808, $CFG->{'gradebook_calculations_freeze_' . $course1->id});
+        $this->assertTrue(empty($CFG->{'gradebook_calculations_freeze_' . $course2->id}));
+        $this->assertEquals(20260808, $CFG->{'gradebook_calculations_freeze_' . $course3->id});
+
+        // Running the script again for an already-frozen course must not overwrite the existing value.
+        set_config('gradebook_calculations_freeze_' . $course3->id, 20150627);
+        upgrade_penalty_calculation_freeze();
+        $this->assertEquals(20150627, $CFG->{'gradebook_calculations_freeze_' . $course3->id});
+
+        // Running the script for a single course only must not affect other courses.
+        set_config('gradebook_calculations_freeze_' . $course3->id, null);
+        $course4 = $this->getDataGenerator()->create_course();
+        $this->create_penalised_assignment_grade(
+            $course4->id,
+            $this->getDataGenerator()->create_user()->id,
+            multfactor: 3.0,
+            plusfactor: 1.0,
+            rawgrade: 50.0,
+            deductedmark: 15.0,
+            finalgrade: 151.0,
+            authoritativegrade: 64 / 3,
+        );
+
+        upgrade_penalty_calculation_freeze($course4->id);
+        $this->assertTrue(empty($CFG->{'gradebook_calculations_freeze_' . $course3->id}));
+        $this->assertEquals(20260808, $CFG->{'gradebook_calculations_freeze_' . $course4->id});
+    }
+
+    /**
+     * Create an Assignment grade item with a single user's grade_grade, with full control over the
+     * stored rawgrade, deductedmark and finalgrade.
+     *
+     * @param int $courseid The course id.
+     * @param int $userid The graded user id.
+     * @param float $multfactor The grade item's multiplier.
+     * @param float $plusfactor The grade item's offset.
+     * @param float $rawgrade The stored rawgrade.
+     * @param float $deductedmark The mark deducted from the grade as a penalty.
+     * @param float $finalgrade The stored finalgrade.
+     * @param float $authoritativegrade The mark stored in Assignment's assign_grades table for the
+     *        student's latest attempt, used to compare against the stored rawgrade.
+     * @return grade_item The Assignment's grade item.
+     */
+    private function create_penalised_assignment_grade(
+        int $courseid,
+        int $userid,
+        float $multfactor,
+        float $plusfactor,
+        float $rawgrade,
+        float $deductedmark,
+        float $finalgrade,
+        float $authoritativegrade,
+    ): grade_item {
+        global $DB;
+
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $courseid,
+            'grade' => 200,
+        ]);
+
+        $DB->insert_record('assign_submission', [
+            'assignment' => $assign->id,
+            'userid' => $userid,
+            'attemptnumber' => 0,
+            'latest' => 1,
+        ]);
+        $DB->insert_record('assign_grades', [
+            'assignment' => $assign->id,
+            'userid' => $userid,
+            'attemptnumber' => 0,
+            'grade' => $authoritativegrade,
+        ]);
+
+        $gradeitem = grade_item::fetch([
+            'courseid' => $courseid,
+            'itemtype' => 'mod',
+            'itemmodule' => 'assign',
+            'iteminstance' => $assign->id,
+            'itemnumber' => 0,
+        ]);
+        $gradeitem->multfactor = $multfactor;
+        $gradeitem->plusfactor = $plusfactor;
+        $gradeitem->update();
+
+        $grade = $gradeitem->get_grade($userid, true);
+        $grade->rawgrade = $rawgrade;
+        $grade->deductedmark = $deductedmark;
+        $grade->finalgrade = $finalgrade;
+        $grade->update();
+
+        return $gradeitem;
+    }
+
+    /**
+     * Test that a course is frozen when an Assignment's stored rawgrade happens to match the authoritative
+     * mark, but the fixed calculation would produce a different finalgrade.
+     *
+     * This covers the case where comparing rawgrade with the authoritative mark alone would miss a
+     * legacy-corrupted grade.
+     */
+    public function test_upgrade_penalty_calculation_freeze_assignment_precision(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+
+        require_once($CFG->libdir . '/db/upgradelib.php');
+
+        $user = $this->getDataGenerator()->create_user();
+
+        // Course 1: The rawgrade coincidentally matches the authoritative mark, but the fixed calculation produces
+        // a different finalgrade, so the course must still be frozen.
+        $course1 = $this->getDataGenerator()->create_course();
+        $this->create_penalised_assignment_grade(
+            $course1->id,
+            $user->id,
+            multfactor: 1.0,
+            plusfactor: 20.0,
+            rawgrade: 50.0,
+            deductedmark: 20.0,
+            finalgrade: 70.0,
+            authoritativegrade: 50.0,
+        );
+
+        // Course 2: The stored grade already matches the fixed calculation, so the course must not be frozen.
+        $course2 = $this->getDataGenerator()->create_course();
+        $this->create_penalised_assignment_grade(
+            $course2->id,
+            $user->id,
+            multfactor: 1.0,
+            plusfactor: 20.0,
+            rawgrade: 50.0,
+            deductedmark: 20.0,
+            finalgrade: 50.0,
+            authoritativegrade: 50.0,
+        );
+
+        // Course 3: The rawgrade differs from the authoritative mark, so the primary Assignment check must freeze
+        // the course.
+        $course3 = $this->getDataGenerator()->create_course();
+        $this->create_penalised_assignment_grade(
+            $course3->id,
+            $user->id,
+            multfactor: 2.0,
+            plusfactor: 5.0,
+            rawgrade: 85.0,
+            deductedmark: 20.0,
+            finalgrade: 175.0,
+            authoritativegrade: 50.0,
+        );
+
+        upgrade_penalty_calculation_freeze();
+
+        $this->assertEquals(20260808, $CFG->{'gradebook_calculations_freeze_' . $course1->id});
+        $this->assertFalse(isset($CFG->{'gradebook_calculations_freeze_' . $course2->id}));
+        $this->assertEquals(20260808, $CFG->{'gradebook_calculations_freeze_' . $course3->id});
+    }
+
+    /**
+     * Test that an overridden Assignment grade does not cause its course to be frozen.
+     *
+     * Overridden grades are skipped by grade_item::regrade_final_grades(), so a mismatch between
+     * finalgrade and the fixed calculation cannot cause a grade change during regrading.
+     */
+    public function test_upgrade_penalty_calculation_freeze_skips_overridden_grade(): void {
+        global $CFG, $DB;
+
+        $this->resetAfterTest();
+
+        require_once($CFG->libdir . '/db/upgradelib.php');
+
+        $course = $this->getDataGenerator()->create_course();
+        $gradeitem = $this->create_penalised_assignment_grade(
+            $course->id,
+            $this->getDataGenerator()->create_user()->id,
+            multfactor: 1.0,
+            plusfactor: 0.0,
+            rawgrade: 50.0,
+            deductedmark: 20.0,
+            // A teacher-overridden finalgrade that does not match what the fixed formula would
+            // recompute ((50 - 20) * 1 + 0 = 30) - this must not be mistaken for legacy corruption.
+            finalgrade: 60.0,
+            authoritativegrade: 50.0,
+        );
+        $DB->set_field('grade_grades', 'overridden', time(), ['itemid' => $gradeitem->id]);
+
+        upgrade_penalty_calculation_freeze();
+
+        $this->assertTrue(empty($CFG->{'gradebook_calculations_freeze_' . $course->id}));
+    }
+
+    /**
+     * Test that a scale-graded Assignment item does not cause its course to be frozen, even when its
+     * stored rawgrade differs from the authoritative mark.
+     */
+    public function test_upgrade_penalty_calculation_freeze_skips_non_value_gradetype(): void {
+        global $CFG, $DB;
+
+        $this->resetAfterTest();
+
+        require_once($CFG->libdir . '/db/upgradelib.php');
+
+        $course = $this->getDataGenerator()->create_course();
+        $gradeitem = $this->create_penalised_assignment_grade(
+            $course->id,
+            $this->getDataGenerator()->create_user()->id,
+            multfactor: 1.0,
+            plusfactor: 0.0,
+            rawgrade: 85.0,
+            deductedmark: 20.0,
+            finalgrade: 175.0,
+            // A rawgrade genuinely different from the authoritative mark - would freeze the course
+            // if not for the gradetype exclusion below.
+            authoritativegrade: 50.0,
+        );
+        $DB->set_field('grade_items', 'gradetype', GRADE_TYPE_SCALE, ['id' => $gradeitem->id]);
+
+        upgrade_penalty_calculation_freeze();
+
+        $this->assertTrue(empty($CFG->{'gradebook_calculations_freeze_' . $course->id}));
+    }
+
+    /**
+     * Test that an Assignment grade with no finalgrade yet does not cause its course to be frozen,
+     * even when its stored rawgrade differs from the authoritative mark.
+     */
+    public function test_upgrade_penalty_calculation_freeze_skips_null_finalgrade(): void {
+        global $CFG, $DB;
+
+        $this->resetAfterTest();
+
+        require_once($CFG->libdir . '/db/upgradelib.php');
+
+        $course = $this->getDataGenerator()->create_course();
+        $gradeitem = $this->create_penalised_assignment_grade(
+            $course->id,
+            $this->getDataGenerator()->create_user()->id,
+            multfactor: 1.0,
+            plusfactor: 0.0,
+            rawgrade: 85.0,
+            deductedmark: 20.0,
+            finalgrade: 175.0,
+            // A rawgrade genuinely different from the authoritative mark - would freeze the course
+            // if not for the null-finalgrade exclusion below.
+            authoritativegrade: 50.0,
+        );
+        $DB->set_field('grade_grades', 'finalgrade', null, ['itemid' => $gradeitem->id]);
+
+        upgrade_penalty_calculation_freeze();
+
+        $this->assertTrue(empty($CFG->{'gradebook_calculations_freeze_' . $course->id}));
     }
 }

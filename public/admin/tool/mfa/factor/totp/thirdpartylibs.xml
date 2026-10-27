@@ -3,14 +3,14 @@
   <library>
     <location>extlib/OTPHP</location>
     <name>OTPHP</name>
-    <version>11.3.0</version>
+    <version>11.5.0</version>
     <license>MIT</license>
     <repository>https://github.com/Spomky-Labs/otphp</repository>
   </library>
   <library>
     <location>extlib/ParagonIE/ConstantTime</location>
     <name>Constant-Time Encoding</name>
-    <version>3.0.0</version>
+    <version>3.1.3</version>
     <license>MIT</license>
     <repository>https://github.com/paragonie/constant_time_encoding</repository>
   </library>
