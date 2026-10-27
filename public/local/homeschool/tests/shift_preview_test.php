@@ -21,7 +21,6 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 
 require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
-require_once($CFG->dirroot . '/course/lib.php');
 
 /**
  * Tests for shift preview snapshots and apply-from-preview behaviour.
@@ -180,9 +179,7 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
      * Apply skips activities moved out of the previewed section before apply.
      */
     public function test_apply_shift_snapshot_skips_moved_section(): void {
-        global $CFG, $DB;
-
-        require_once($CFG->dirroot . '/course/lib.php');
+        global $DB;
 
         $original = strtotime('2026-06-01 09:00:00');
         $shifted = strtotime('2026-06-08 09:00:00');
@@ -191,8 +188,7 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
         $this->setUser($teacher);
 
         $sectiontwo = $DB->get_record('course_sections', ['course' => $course->id, 'section' => 2], '*', MUST_EXIST);
-        $cm = get_coursemodule_from_id('assign', $assign->cmid, 0, false, MUST_EXIST);
-        moveto_module($cm, $sectiontwo);
+        \core_courseformat\formatactions::cm($course->id)->move_end_section($assign->cmid, (int) $sectiontwo->id);
 
         $snapshot = [
             (object) [

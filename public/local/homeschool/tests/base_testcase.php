@@ -18,6 +18,8 @@ namespace local_homeschool;
 
 defined('MOODLE_INTERNAL') || die();
 
+use local_homeschool\local\activity_progress;
+use local_homeschool\local\course_repository;
 use local_homeschool\local\return_context;
 use local_homeschool\local\shift_preview;
 use local_homeschool\local\shift_undo;
@@ -57,6 +59,8 @@ abstract class base_testcase extends \advanced_testcase {
         return_context::clear();
         shift_undo::clear();
         shift_preview::clear();
+        activity_progress::reset_caches();
+        course_repository::reset_caches();
     }
 
     /**

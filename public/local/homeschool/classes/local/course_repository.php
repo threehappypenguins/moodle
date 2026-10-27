@@ -27,6 +27,15 @@ defined('MOODLE_INTERNAL') || die();
  */
 class course_repository {
 
+    /** @var array */
+    protected static $capabilitycoursescache = [];
+
+    /**
+     * Clear request-level caches (also used between PHPUnit tests).
+     */
+    public static function reset_caches(): void {
+        self::$capabilitycoursescache = [];
+    }
     /**
      * Daysections courses the user may view on the dashboard.
      *
@@ -226,11 +235,9 @@ class course_repository {
         string $homeschoolcap,
         bool $requiremanageactivities,
     ): array {
-        static $cache = [];
-
         $cachekey = $userid . ':' . $homeschoolcap . ':' . (int) $requiremanageactivities;
-        if (array_key_exists($cachekey, $cache)) {
-            return $cache[$cachekey];
+        if (array_key_exists($cachekey, self::$capabilitycoursescache)) {
+            return self::$capabilitycoursescache[$cachekey];
         }
 
         $courses = get_user_capability_course(
@@ -263,7 +270,7 @@ class course_repository {
             }
         }
 
-        $cache[$cachekey] = $filtered;
+        self::$capabilitycoursescache[$cachekey] = $filtered;
         return $filtered;
     }
 }

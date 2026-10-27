@@ -35,6 +35,28 @@
         {{/hasday}}
     </form>
 
+    {{> local_homeschool/current_days}}
+
+    {{#hasincompletedays}}
+        <div class="local-homeschool-incomplete-days mb-3">
+            <div class="form-label">{{#str}} incompletedaysheading, local_homeschool {{/str}}</div>
+            {{#incompletenone}}
+                <p class="mb-0">{{#str}} incompletedaysnone, local_homeschool {{/str}}</p>
+            {{/incompletenone}}
+            {{#incompletechildren}}
+                <div class="local-homeschool-incomplete-day-child">
+                    {{name}} —
+                    {{#hasleftovers}}
+                        {{#days}}{{#separator}}, {{/separator}}<a href="{{url}}">{{label}}</a>{{/days}}
+                    {{/hasleftovers}}
+                    {{^hasleftovers}}
+                        {{#str}} incompletedaysnone, local_homeschool {{/str}}
+                    {{/hasleftovers}}
+                </div>
+            {{/incompletechildren}}
+        </div>
+    {{/hasincompletedays}}
+
     {{#hasday}}
         {{#hasaddcourses}}
             <div class="local-homeschool-add-activity mb-3"

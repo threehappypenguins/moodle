@@ -179,6 +179,7 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
             $this->make_snapshot($assign->cmid, $original, $shifted),
         ]);
 
+        $this->ensure_grade_outcomes_modules_table();
         \core_courseformat\formatactions::cm($course->id)->delete($assign->cmid);
 
         $this->assertNull(shift_undo::get_available());
@@ -186,6 +187,31 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
         $result = shift_undo::apply();
         $this->assertSame(0, $result->updated);
         $this->assertSame(0, $result->skipped);
+    }
+
+    /**
+     * PHPUnit schema can lag core install.xml; activity delete reads this table.
+     */
+    protected function ensure_grade_outcomes_modules_table(): void {
+        global $DB;
+
+        $dbman = $DB->get_manager();
+        $table = new \xmldb_table('grade_outcomes_modules');
+        if ($dbman->table_exists($table)) {
+            return;
+        }
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+        $table->add_field('outcomecourseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('usercreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('outcomecourseid', XMLDB_KEY_FOREIGN, ['outcomecourseid'], 'grade_outcomes_courses', ['id']);
+        $table->add_key('cmid', XMLDB_KEY_FOREIGN, ['cmid'], 'course_modules', ['id']);
+        $table->add_key('usercreated', XMLDB_KEY_FOREIGN, ['usercreated'], 'user', ['id']);
+        $table->add_index('outcomecourseid-cmid', XMLDB_INDEX_UNIQUE, ['outcomecourseid', 'cmid']);
+        $dbman->create_table($table);
     }
 
     /**

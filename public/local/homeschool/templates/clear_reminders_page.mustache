@@ -1,0 +1,102 @@
+<div class="local-homeschool-clear-reminders">
+    <p>
+        <a href="{{dashboardurl}}">{{#str}} backtodashboard, local_homeschool {{/str}}</a>
+    </p>
+
+    <p>{{#str}} clearremindersintro, local_homeschool {{/str}}</p>
+
+    {{#hascourses}}
+        <form method="get" action="{{pageurl}}" class="mb-4 local-homeschool-clear-reminders-course">
+            <label for="local-homeschool-clear-course" class="form-label">{{#str}} course {{/str}}</label>
+            <div class="local-homeschool-day-picker-controls">
+                <select class="form-select"
+                        name="id"
+                        id="local-homeschool-clear-course">
+                    <option value="">{{#str}} choosecourse, local_homeschool {{/str}}</option>
+                    {{#courseoptions}}
+                        <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+                    {{/courseoptions}}
+                </select>
+            </div>
+            {{#showhidden}}
+                <input type="hidden" name="showhidden" value="1">
+            {{/showhidden}}
+        </form>
+    {{/hascourses}}
+
+    {{#hascourse}}
+        {{^hasdays}}
+            <div class="alert alert-info">{{#str}} clearremindersnone, local_homeschool {{/str}}</div>
+        {{/hasdays}}
+
+        {{#hasdays}}
+            {{^hasselectable}}
+                <div class="alert alert-info">{{#str}} clearremindersnodates, local_homeschool {{/str}}</div>
+            {{/hasselectable}}
+
+            <form method="post" action="{{pageurl}}" id="local-homeschool-clear-reminders-form">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <input type="hidden" name="action" value="confirm">
+                <input type="hidden" name="id" value="{{courseid}}">
+                {{#showhidden}}
+                    <input type="hidden" name="showhidden" value="1">
+                {{/showhidden}}
+
+                {{#hasselectable}}
+                    <div class="mb-2 local-homeschool-selection-actions">
+                        <a href="#" data-action="local-homeschool-selectall">{{#str}} selectall, local_homeschool {{/str}}</a>
+                        <span aria-hidden="true"> | </span>
+                        <a href="#" data-action="local-homeschool-deselectall">{{#str}} deselectall, local_homeschool {{/str}}</a>
+                    </div>
+                {{/hasselectable}}
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-striped generaltable w-100 local-homeschool-clear-reminders-table">
+                        <thead>
+                            <tr>
+                                {{#hasselectable}}
+                                    <th scope="col" class="local-homeschool-clear-reminders-select">
+                                        <span class="visually-hidden">{{#str}} selectall, local_homeschool {{/str}}</span>
+                                    </th>
+                                {{/hasselectable}}
+                                <th scope="col">{{#str}} section {{/str}}</th>
+                                <th scope="col">{{#str}} reminderdate, local_homeschool {{/str}}</th>
+                                <th scope="col">{{#str}} activities {{/str}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#days}}
+                                <tr{{^hasdate}} class="text-muted"{{/hasdate}}>
+                                    {{#hasselectable}}
+                                        <td class="local-homeschool-clear-reminders-select">
+                                            <input type="checkbox"
+                                                   class="form-check-input local-homeschool-select-day"
+                                                   name="days[]"
+                                                   value="{{daynumber}}"
+                                                   {{#checked}}checked{{/checked}}
+                                                   {{#disabled}}disabled{{/disabled}}
+                                                   {{^hasdate}}aria-disabled="true"{{/hasdate}}
+                                                   aria-label="{{daylabel}}">
+                                        </td>
+                                    {{/hasselectable}}
+                                    <td>{{daylabel}}</td>
+                                    <td>{{dateformatted}}</td>
+                                    <td>
+                                        {{#hasactivitycount}}{{datedcount}}{{/hasactivitycount}}
+                                        {{^hasactivitycount}}{{#str}} none {{/str}}{{/hasactivitycount}}
+                                    </td>
+                                </tr>
+                            {{/days}}
+                        </tbody>
+                    </table>
+                </div>
+
+                {{#hasselectable}}
+                    <button type="submit" class="btn btn-primary" id="local-homeschool-clear-submit">
+                        {{#str}} clearselecteddates, local_homeschool {{/str}}
+                    </button>
+                {{/hasselectable}}
+            </form>
+        {{/hasdays}}
+    {{/hascourse}}
+</div>

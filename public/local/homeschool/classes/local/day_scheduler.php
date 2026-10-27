@@ -47,9 +47,15 @@ class day_scheduler {
      * @param int[] $cmids
      * @param int $timestamp Unix timestamp (0 clears the date)
      * @param bool $invalidateundo Clear shift undo when a snapshotted activity is changed
+     * @param bool $requireuservisible Skip activities that are not user-visible
      * @return \stdClass result stats
      */
-    public static function apply_to_activities(array $cmids, int $timestamp, bool $invalidateundo = true): \stdClass {
+    public static function apply_to_activities(
+        array $cmids,
+        int $timestamp,
+        bool $invalidateundo = true,
+        bool $requireuservisible = true,
+    ): \stdClass {
         $timestampsbycmid = [];
         foreach (array_unique(array_map('intval', $cmids)) as $cmid) {
             if ($cmid > 0) {
@@ -57,7 +63,7 @@ class day_scheduler {
             }
         }
 
-        return self::apply_timestamps($timestampsbycmid, $invalidateundo);
+        return self::apply_timestamps($timestampsbycmid, $invalidateundo, [], $requireuservisible);
     }
 
     /**
@@ -68,12 +74,14 @@ class day_scheduler {
      * @param array $timestampsbycmid Map of cmid => unix timestamp (0 clears the date)
      * @param bool $invalidateundo Clear shift undo when a snapshotted activity is changed
      * @param array $requiredoldbycmid Optional map of cmid => completionexpected that must still match at write time
+     * @param bool $requireuservisible Skip activities that are not user-visible
      * @return \stdClass result stats (updated, skipped, skippedchanged, courses, updatedcmids)
      */
     public static function apply_timestamps(
         array $timestampsbycmid,
         bool $invalidateundo = true,
         array $requiredoldbycmid = [],
+        bool $requireuservisible = true,
     ): \stdClass {
         global $CFG, $DB;
 
@@ -124,7 +132,7 @@ class day_scheduler {
             $modinfo = get_fast_modinfo($cm->course);
             $cminfo = $modinfo->get_cm($cm->id);
 
-            if (!$cminfo->uservisible) {
+            if ($requireuservisible && !$cminfo->uservisible) {
                 $result->skipped++;
                 continue;
             }
@@ -184,6 +192,92 @@ class day_scheduler {
         }
 
         return $result;
+    }
+
+    /**
+     * Days in a course with manageable activities, including reminder dates.
+     *
+     * Includes General (section 0). Empty sections with no manageable activities are omitted.
+     *
+     * @param \stdClass $course
+     * @return \stdClass[]
+     */
+    public static function get_course_day_reminder_rows(\stdClass $course): array {
+        $modinfo = get_fast_modinfo($course->id);
+        $rows = [];
+
+        foreach ($modinfo->get_sections() as $sectionnum => $sectioncmids) {
+            $datedcmids = [];
+            $timestamps = [];
+            $hasmanageable = false;
+
+            foreach ($sectioncmids as $cmid) {
+                $cm = $modinfo->get_cm($cmid);
+                if ($cm->deletioninprogress) {
+                    continue;
+                }
+                if (!self::can_modify_activity_schedule($cm)) {
+                    continue;
+                }
+                $hasmanageable = true;
+                if (!empty($cm->completionexpected)) {
+                    $datedcmids[] = (int) $cm->id;
+                    $timestamps[] = (int) $cm->completionexpected;
+                }
+            }
+
+            if (!$hasmanageable) {
+                continue;
+            }
+
+            $sectioninfo = $modinfo->get_section_info($sectionnum);
+            $dateformatted = get_string('notset', 'local_homeschool');
+            $hasdate = false;
+            if (!empty($timestamps)) {
+                $hasdate = true;
+                $formatted = array_unique(array_map(
+                    static fn(int $timestamp): string => activity_repository::format_expected_date($timestamp),
+                    $timestamps,
+                ));
+                $dateformatted = count($formatted) === 1
+                    ? reset($formatted)
+                    : get_string('multipledates', 'local_homeschool');
+            }
+
+            $rows[] = (object) [
+                'daynumber' => (int) $sectionnum,
+                'daylabel' => get_section_name($course, $sectioninfo),
+                'dateformatted' => $dateformatted,
+                'hasdate' => $hasdate,
+                'datedcount' => count($datedcmids),
+                'datedcmids' => $datedcmids,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Clear timeline reminder dates for selected day sections in one course.
+     *
+     * Only writes completionexpected. Completion tracking, conditions, and user
+     * completion records are left unchanged.
+     *
+     * @param \stdClass $course
+     * @param int[] $daynumbers Section numbers to clear (0 = General)
+     * @return \stdClass result stats from apply_to_activities()
+     */
+    public static function clear_course_day_reminders(\stdClass $course, array $daynumbers): \stdClass {
+        $allowed = array_fill_keys(array_map('intval', $daynumbers), true);
+        $cmids = [];
+        foreach (self::get_course_day_reminder_rows($course) as $row) {
+            if (!isset($allowed[$row->daynumber]) || !$row->hasdate) {
+                continue;
+            }
+            $cmids = array_merge($cmids, $row->datedcmids);
+        }
+
+        return self::apply_to_activities($cmids, 0, true, false);
     }
 
     /**

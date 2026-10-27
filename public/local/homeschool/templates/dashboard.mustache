@@ -49,9 +49,14 @@
             {{/showfilters}}
         </div>
 
+        {{> local_homeschool/current_days}}
+
         {{#hasshiftlink}}
-            <div class="local-homeschool-dashboard-shift-link mt-2">
+            <div class="local-homeschool-dashboard-shift-link mt-2 d-flex flex-wrap gap-2">
                 <a class="btn btn-secondary" href="{{shifturl}}">{{#str}} shiftschedulelink, local_homeschool {{/str}}</a>
+                {{#hasclearreminderslink}}
+                    <a class="btn btn-secondary" href="{{clearremindersurl}}">{{#str}} clearreminderslink, local_homeschool {{/str}}</a>
+                {{/hasclearreminderslink}}
             </div>
         {{/hasshiftlink}}
     </div>
@@ -130,50 +135,6 @@
                     {{/courses}}
                 </tbody>
             </table>
-        </div>
-
-        <div class="mb-4">
-            <h3>{{#str}} upcoming, local_homeschool {{/str}}</h3>
-            {{#hasupcoming}}
-                <table class="table table-striped generaltable w-100">
-                    <thead>
-                        <tr>
-                            <th scope="col">{{#str}} date {{/str}}</th>
-                            <th scope="col">{{#str}} course {{/str}}</th>
-                            <th scope="col">{{#str}} section {{/str}}</th>
-                            <th scope="col">{{#str}} activity {{/str}}</th>
-                            {{#canmanage}}
-                                <th scope="col">{{#str}} actions {{/str}}</th>
-                            {{/canmanage}}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{#upcoming}}
-                            <tr{{#overdue}} class="table-warning"{{/overdue}}>
-                                <td>{{dateformatted}}</td>
-                                <td>{{coursename}}</td>
-                                <td>{{sectionname}}</td>
-                                <td>
-                                    {{#url}}<a href="{{url}}">{{activityname}}</a>{{/url}}
-                                    {{^url}}{{activityname}}{{/url}}
-                                </td>
-                                {{#hasactioncell}}
-                                    <td>
-                                        {{#canopenday}}
-                                            {{#sectionname}}
-                                                <a href="{{dayurl}}">{{#str}} opendaylink, local_homeschool {{/str}}</a>
-                                            {{/sectionname}}
-                                        {{/canopenday}}
-                                    </td>
-                                {{/hasactioncell}}
-                            </tr>
-                        {{/upcoming}}
-                    </tbody>
-                </table>
-            {{/hasupcoming}}
-            {{^hasupcoming}}
-                <p class="text-muted">{{#str}} noupcoming, local_homeschool {{/str}}</p>
-            {{/hasupcoming}}
         </div>
     {{/hascourses}}
 </div>
