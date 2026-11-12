@@ -40,7 +40,6 @@ use core_courseformat\local\linearnavigationsettings;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class format_daysections extends format_topics {
-
     /**
      * Returns whether this course format uses activity indentation.
      *

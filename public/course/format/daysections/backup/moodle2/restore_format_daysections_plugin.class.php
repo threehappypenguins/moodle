@@ -23,8 +23,6 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Specialised restore for Day sections course format.
  *
@@ -34,7 +32,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class restore_format_daysections_plugin extends restore_format_plugin {
-
     /** @var int */
     protected $originalnumsections = 0;
 
@@ -58,8 +55,10 @@ class restore_format_daysections_plugin extends restore_format_plugin {
         global $DB;
 
         $target = $this->step->get_task()->get_target();
-        if (($target == backup::TARGET_CURRENT_ADDING || $target == backup::TARGET_EXISTING_ADDING) &&
-                $this->need_restore_numsections()) {
+        if (
+            ($target == backup::TARGET_CURRENT_ADDING || $target == backup::TARGET_EXISTING_ADDING) &&
+            $this->need_restore_numsections()
+        ) {
             $maxsection = $DB->get_field_sql(
                 'SELECT max(section) FROM {course_sections} WHERE course = ?',
                 [$this->step->get_task()->get_courseid()],

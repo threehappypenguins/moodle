@@ -30,7 +30,6 @@ require_once($CFG->dirroot . '/course/lib.php');
  */
 #[\PHPUnit\Framework\Attributes\CoversClass(\format_daysections::class)]
 final class format_daysections_test extends \advanced_testcase {
-
     /**
      * Tests for format_daysections::get_default_section_name.
      */
