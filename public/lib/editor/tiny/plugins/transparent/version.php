@@ -24,7 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026102700;
+$plugin->version   = 2026102701;
 $plugin->requires  = 2026042000;
 $plugin->supported = [502, 503];
 $plugin->component = 'tiny_transparent';
