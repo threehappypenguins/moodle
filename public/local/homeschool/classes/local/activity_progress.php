@@ -83,12 +83,12 @@ class activity_progress {
     /**
      * Progress rows for one activity and one or more enrolled children.
      *
-     * @param \stdClass $activity Row with cmid, courseid, modname, completion
+     * @param stdClass $activity Row with cmid, courseid, modname, completion
      * @param array $students Userid-keyed user records
      * @param bool $includenames Include child names (shared courses / show-all)
      * @return array
      */
-    public static function export_for_activity(object $activity, array $students, bool $includenames = false): array {
+    public static function export_for_activity(\stdClass $activity, array $students, bool $includenames = false): array {
         if ($students === []) {
             return [];
         }
