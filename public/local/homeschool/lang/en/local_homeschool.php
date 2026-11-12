@@ -24,6 +24,7 @@
 
 $string['pluginname'] = 'Homeschool dashboard';
 $string['privacy:metadata'] = 'The Homeschool dashboard plugin does not store any personal data.';
+$string['cachedef_shiftpreviews'] = 'Shift date preview data';
 $string['dashboard'] = 'Dashboard';
 $string['openday'] = 'Open a day';
 $string['homeschool:view'] = 'View the homeschool dashboard';

@@ -165,55 +165,7 @@ if ($action === 'clear' || $action === 'confirm') {
 $renderable = new \local_homeschool\output\clear_reminders_page($courses, $courseid, $showhidden);
 $renderer = $PAGE->get_renderer('local_homeschool');
 
-$PAGE->requires->js_init_code(<<<'JS'
-(function() {
-    var courseSelect = document.getElementById('local-homeschool-clear-course');
-    if (courseSelect && courseSelect.form) {
-        courseSelect.addEventListener('change', function() {
-            courseSelect.form.submit();
-        });
-    }
-
-    var form = document.getElementById('local-homeschool-clear-reminders-form');
-    if (!form) {
-        return;
-    }
-
-    var syncSubmit = function() {
-        var submit = document.getElementById('local-homeschool-clear-submit');
-        if (!submit) {
-            return;
-        }
-        submit.disabled = form.querySelectorAll('.local-homeschool-select-day:checked:not(:disabled)').length === 0;
-    };
-
-    var setAll = function(checked) {
-        form.querySelectorAll('.local-homeschool-select-day:not(:disabled)').forEach(function(cb) {
-            cb.checked = checked;
-        });
-        syncSubmit();
-    };
-
-    form.addEventListener('change', function(event) {
-        if (event.target.classList.contains('local-homeschool-select-day')) {
-            syncSubmit();
-        }
-    });
-
-    form.addEventListener('click', function(event) {
-        var selectAll = event.target.closest('[data-action="local-homeschool-selectall"]');
-        var deselectAll = event.target.closest('[data-action="local-homeschool-deselectall"]');
-        if (!selectAll && !deselectAll) {
-            return;
-        }
-        event.preventDefault();
-        setAll(!!selectAll);
-    });
-
-    syncSubmit();
-})();
-JS
-);
+$PAGE->requires->js_call_amd('local_homeschool/clearreminders', 'init');
 
 echo $OUTPUT->header();
 echo $renderer->render($renderable);

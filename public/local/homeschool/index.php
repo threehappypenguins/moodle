@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Homeschool dashboard entry point.
+ *
+ * @package   local_homeschool
+ * @copyright 2026 Sarah
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require(__DIR__ . '/../../../config.php');
 
 require_login();
@@ -48,23 +56,7 @@ if (!\local_homeschool\local\requirements::daysections_available()) {
 $renderable = new \local_homeschool\output\dashboard($USER->id, $showhidden, $showotherformats);
 $renderer = $PAGE->get_renderer('local_homeschool');
 
-$PAGE->requires->js_init_code(<<<'JS'
-(function() {
-    var daySelect = document.getElementById('local-homeschool-dashboard-day');
-    if (!daySelect || !daySelect.dataset.dayurl) {
-        return;
-    }
-    daySelect.addEventListener('change', function() {
-        if (!daySelect.value) {
-            return;
-        }
-        var url = new URL(daySelect.dataset.dayurl, window.location.origin);
-        url.searchParams.set('day', daySelect.value);
-        window.location.href = url.toString();
-    });
-})();
-JS
-);
+$PAGE->requires->js_call_amd('local_homeschool/dashboard', 'init');
 
 echo $OUTPUT->header();
 echo $renderer->render($renderable);
