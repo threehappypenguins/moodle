@@ -39,7 +39,8 @@ final class incomplete_days_test extends \local_homeschool\base_testcase {
     /**
      * Create teacher course.
      *
-     * @return array{0:\stdClass,1:\stdClass} teacher and course
+     * @param int $numsections Number of day sections to create
+     * @return array teacher and course
      */
     protected function create_teacher_course(int $numsections = 5): array {
         global $DB;

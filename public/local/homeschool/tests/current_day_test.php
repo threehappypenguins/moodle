@@ -40,7 +40,8 @@ final class current_day_test extends \local_homeschool\base_testcase {
     /**
      * Create teacher course.
      *
-     * @return array{0:\stdClass,1:\stdClass} teacher and course
+     * @param int $numsections Number of day sections to create
+     * @return array teacher and course
      */
     protected function create_teacher_course(int $numsections = 5): array {
         global $DB;
@@ -63,10 +64,10 @@ final class current_day_test extends \local_homeschool\base_testcase {
     }
 
     /**
-     * Student with course.
+     * Attach a course id map to a student record for current-day helpers.
      *
-     * @param \stdClass $course
-     * @param \stdClass $student
+     * @param \stdClass $student Student user record
+     * @param \stdClass $course Course record
      * @return \stdClass
      */
     protected function student_with_course(\stdClass $student, \stdClass $course): \stdClass {

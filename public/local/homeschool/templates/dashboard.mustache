@@ -19,6 +19,21 @@
 
     Homeschool parent dashboard with children, courses, and day picker.
 
+    Example context (json):
+    {
+        "dashboardurl": "/local/homeschool/index.php",
+        "dayurl": "/local/homeschool/day.php",
+        "hasdaypicker": true,
+        "dayoptions": [{"value": 1, "label": "Day 1"}],
+        "showfilters": false,
+        "hascurrentdays": false,
+        "hasshiftlink": false,
+        "hascourses": true,
+        "hasstudents": true,
+        "students": [{"name": "Alex", "courses": [{"name": "Math", "courseurl": "/course/view.php?id=1"}]}],
+        "courses": [{"name": "Math", "courseurl": "/course/view.php?id=1", "childlist": "Alex"}]
+    }
+
     @copyright 2026 Sarah
     @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 }}

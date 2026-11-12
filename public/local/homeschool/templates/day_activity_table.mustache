@@ -19,6 +19,35 @@
 
     Activity list/table for a single day section on the day page.
 
+    Example context (json):
+    {
+        "daynumber": 1,
+        "dayurl": "/local/homeschool/day.php",
+        "sesskey": "abc123",
+        "showall": false,
+        "showhidden": false,
+        "activities": [{
+            "cmid": 10,
+            "activityname": "Worksheet",
+            "activityurl": "/mod/assign/view.php?id=10",
+            "editurl": "/course/modedit.php?update=10",
+            "coursename": "Math",
+            "modname": "Assignment",
+            "hasprogress": false,
+            "dateeditable": true,
+            "completionexpectedformatted": "Not set",
+            "completionexpectediso": "",
+            "hasreminderdate": false,
+            "completionenabled": true,
+            "completionlocked": false,
+            "completion": 1,
+            "completionlabel": "Students can manually mark as complete",
+            "completionoptions": [{"value": 1, "label": "Students can manually mark as complete", "selected": true}],
+            "hasrequirements": false,
+            "hassubmissions": false
+        }]
+    }
+
     @copyright 2026 Sarah
     @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 }}

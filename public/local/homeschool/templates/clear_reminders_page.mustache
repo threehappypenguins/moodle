@@ -19,6 +19,30 @@
 
     Clear timeline reminder dates by course and day range.
 
+    Example context (json):
+    {
+        "dashboardurl": "/local/homeschool/index.php",
+        "pageurl": "/local/homeschool/clearreminders.php",
+        "sesskey": "abc123",
+        "hascourses": true,
+        "courseoptions": [{"id": 1, "name": "Math", "selected": true}],
+        "showhidden": false,
+        "hascourse": true,
+        "courseid": 1,
+        "hasdays": true,
+        "hasselectable": true,
+        "days": [{
+            "daynumber": 1,
+            "daylabel": "Day 1",
+            "dateformatted": "1 January 2026",
+            "hasdate": true,
+            "hasactivitycount": true,
+            "datedcount": 2,
+            "checked": false,
+            "disabled": false
+        }]
+    }
+
     @copyright 2026 Sarah
     @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 }}
