@@ -29,7 +29,6 @@ use templatable;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class shift_page implements renderable, templatable {
-
     /** @var string */
     protected $formhtml;
 
@@ -46,6 +45,8 @@ class shift_page implements renderable, templatable {
     protected $previewtoken;
 
     /**
+     * Constructor.
+     *
      * @param string $formhtml Rendered shift form HTML
      * @param \stdClass|null $preview Preview result from day_scheduler::preview_shift()
      * @param \stdClass|null $undo Available undo payload
@@ -67,6 +68,8 @@ class shift_page implements renderable, templatable {
     }
 
     /**
+     * Export data for the Mustache template.
+     *
      * @param renderer_base $output
      * @return \stdClass
      */

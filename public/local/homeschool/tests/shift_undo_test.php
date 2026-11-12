@@ -32,7 +32,6 @@ require_once($CFG->dirroot . '/course/lib.php');
  * @covers \local_homeschool\local\shift_undo
  */
 final class shift_undo_test extends \local_homeschool\base_testcase {
-
     /**
      * Create a teacher, course with completion enabled, and an assign activity with a reminder date.
      *
@@ -65,6 +64,8 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * Make snapshot.
+     *
      * @param int $cmid
      * @param int $original Pre-shift completionexpected
      * @param int $shifted Post-shift completionexpected stored in DB
@@ -79,6 +80,8 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * Save undo.
+     *
      * @param int $userid
      * @param \stdClass[] $snapshots
      * @return void
@@ -88,6 +91,8 @@ final class shift_undo_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * Age undo.
+     *
      * @param int $secondsago How many seconds ago the undo was stored
      * @return void
      */

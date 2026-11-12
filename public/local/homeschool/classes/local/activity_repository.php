@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Activity lookup and presentation helpers.
  *
@@ -26,7 +24,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class activity_repository {
-
     /**
      * Activities in a given day (section number) across courses.
      *
@@ -97,7 +94,7 @@ class activity_repository {
             }
         }
 
-        usort($activities, function($a, $b) {
+        usort($activities, function ($a, $b) {
             return [$a->coursename, $a->activityname] <=> [$b->coursename, $b->activityname];
         });
 

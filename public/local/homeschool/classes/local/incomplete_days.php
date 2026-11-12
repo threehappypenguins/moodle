@@ -28,7 +28,6 @@ require_once($GLOBALS['CFG']->libdir . '/completionlib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class incomplete_days {
-
     /**
      * Leftover due activities grouped by child and day.
      *

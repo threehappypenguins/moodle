@@ -34,18 +34,21 @@ require_once($CFG->libdir . '/questionlib.php');
  * @covers \local_homeschool\local\activity_progress
  */
 final class activity_progress_test extends \local_homeschool\base_testcase {
-
     /**
      * Skip when filter/report embedquestion are not installed.
      */
     protected function require_embedquestion(): void {
-        if (!class_exists(\filter_embedquestion\text_filter::class)
-                || !class_exists(\report_embedquestion\attempt_tracker::class)) {
+        if (
+            !class_exists(\filter_embedquestion\text_filter::class)
+            || !class_exists(\report_embedquestion\attempt_tracker::class)
+        ) {
             $this->markTestSkipped('filter_embedquestion / report_embedquestion not installed');
         }
     }
 
     /**
+     * Setup course with student.
+     *
      * @return array{0:\stdClass,1:\stdClass,2:\stdClass} teacher, course, student
      */
     protected function setup_course_with_student(): array {
@@ -76,6 +79,8 @@ final class activity_progress_test extends \local_homeschool\base_testcase {
     }
 
     /**
+     * Create assign with embed.
+     *
      * @param \stdClass $course
      * @param array $options
      * @return \stdClass assign module record with cmid
@@ -317,7 +322,7 @@ final class activity_progress_test extends \local_homeschool\base_testcase {
         global $CFG;
         require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
-        [, $course, $student] = $this->setup_course_with_student();
+        [$teacher, $course, $student] = $this->setup_course_with_student();
 
         $quiz = $this->getDataGenerator()->create_module('quiz', [
             'course' => $course->id,
@@ -333,7 +338,10 @@ final class activity_progress_test extends \local_homeschool\base_testcase {
 
         /** @var \mod_quiz_generator $quizgenerator */
         $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+        // Create_attempt uses $USER for the attempt owner; switch to the student first.
+        $this->setUser($student);
         $quizgenerator->create_attempt($quiz->id, $student->id);
+        $this->setUser($teacher);
 
         $activity = (object) [
             'cmid' => $quiz->cmid,
@@ -361,7 +369,7 @@ final class activity_progress_test extends \local_homeschool\base_testcase {
         global $CFG;
         require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
-        [, $course, $student] = $this->setup_course_with_student();
+        [$teacher, $course, $student] = $this->setup_course_with_student();
 
         $quiz = $this->getDataGenerator()->create_module('quiz', [
             'course' => $course->id,
@@ -377,7 +385,10 @@ final class activity_progress_test extends \local_homeschool\base_testcase {
 
         /** @var \mod_quiz_generator $quizgenerator */
         $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+        // Create_attempt uses $USER for the attempt owner; switch to the student first.
+        $this->setUser($student);
         $quizgenerator->create_attempt($quiz->id, $student->id);
+        $this->setUser($teacher);
 
         $modinfo = get_fast_modinfo($course->id);
         $cm = $modinfo->get_cm($quiz->cmid);

@@ -368,7 +368,7 @@
     left: 0;
     right: 0;
     min-width: 100%;
-    max-width: min(100vw - 2rem, 28rem);
+    max-width: 28rem;
     padding: 0.35rem 0;
     background: var(--bs-body-bg, #fff);
     border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.175));
@@ -490,8 +490,8 @@
         flex-wrap: nowrap;
     }
 
-    .local-homeschool-activity-details .local-homeschool-row-edit {
-        margin-top: 0 !important;
+    .local-homeschool-activity .local-homeschool-activity-details .local-homeschool-row-edit {
+        margin-top: 0;
     }
 
     .local-homeschool-completion-summary-text {

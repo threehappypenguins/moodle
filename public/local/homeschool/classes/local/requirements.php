@@ -28,7 +28,6 @@ use required_capability_exception;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class requirements {
-
     /** @var string Course format frankenstyle component required by this plugin. */
     public const REQUIRED_FORMAT = 'format_daysections';
 

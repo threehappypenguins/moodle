@@ -53,18 +53,8 @@ $PAGE->set_heading(get_string('shifttitle', 'local_homeschool'));
 $courses = \local_homeschool\local\course_repository::get_managed_daysections_courses($USER->id, $showhidden);
 $maxday = max(1, \local_homeschool\local\course_repository::get_max_day_number($courses));
 
-/**
- * Parse shift parameters from request data.
- *
- * @param bool $alldays
- * @param int $fromday
- * @param int $today
- * @param string $direction
- * @param int $days
- * @param int $maxday
- * @return \stdClass|null null when invalid
- */
-$parse_shift_params = static function(
+// Parse shift parameters from request data.
+$parseshiftparams = static function (
     bool $alldays,
     int $fromday,
     int $today,
@@ -171,7 +161,7 @@ $previewtoken = '';
 if ($form->is_cancelled()) {
     redirect(new moodle_url('/local/homeschool/index.php'));
 } else if ($data = $form->get_data()) {
-    $params = $parse_shift_params(
+    $params = $parseshiftparams(
         !empty($data->alldays),
         (int) ($data->fromday ?? 1),
         (int) ($data->today ?? $maxday),

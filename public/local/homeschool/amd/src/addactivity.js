@@ -45,7 +45,7 @@ const wrapModuleLinksForReturn = (modules, day, showall, showhidden) => {
         const params = new URLSearchParams({
             sesskey: Config.sesskey,
             day: String(day),
-            goto: module.link,
+            'goto': module.link,
         });
         if (showall) {
             params.set('showall', '1');

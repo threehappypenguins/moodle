@@ -79,7 +79,7 @@ if ($hassiteconfig) {
         '',
         $houroptions,
     );
-    $reminderhour->set_validate_function(static function(string $data): string {
+    $reminderhour->set_validate_function(static function (string $data): string {
         if (\local_homeschool\admin\setting_enablereminderdefault::submitted_enable_is_on() && $data === '') {
             return get_string('reminderdefaultrequired', 'local_homeschool');
         }
@@ -95,7 +95,7 @@ if ($hassiteconfig) {
         '',
         $minuteoptions,
     );
-    $reminderminute->set_validate_function(static function(string $data): string {
+    $reminderminute->set_validate_function(static function (string $data): string {
         if (\local_homeschool\admin\setting_enablereminderdefault::submitted_enable_is_on() && $data === '') {
             return get_string('reminderdefaultrequired', 'local_homeschool');
         }

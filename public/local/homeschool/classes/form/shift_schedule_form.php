@@ -28,8 +28,9 @@ require_once($GLOBALS['CFG']->libdir . '/formslib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class shift_schedule_form extends \moodleform {
-
     /**
+     * Define the form elements.
+     *
      * @return void
      */
     protected function definition() {
@@ -81,6 +82,8 @@ class shift_schedule_form extends \moodleform {
     }
 
     /**
+     * Validate submitted form data.
+     *
      * @param array $data
      * @param array $files
      * @return array

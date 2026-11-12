@@ -32,8 +32,9 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
  * @covers \local_homeschool\local\day_scheduler::apply_shift_snapshot
  */
 final class shift_preview_test extends \local_homeschool\base_testcase {
-
     /**
+     * Create teacher assign with reminder.
+     *
      * @param int $completionexpected
      * @return array{0:\stdClass,1:\stdClass,2:\stdClass}
      */
@@ -108,7 +109,10 @@ final class shift_preview_test extends \local_homeschool\base_testcase {
         $this->assertSame(0, $result->skipped);
         $this->assertSame(1, $result->skippedchanged);
         $this->assertSame($shifted, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assignone->cmid]));
-        $this->assertSame($otheroriginal + DAYSECS, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assigntwo->cmid]));
+        $this->assertSame(
+            $otheroriginal + DAYSECS,
+            (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assigntwo->cmid])
+        );
     }
 
     /**

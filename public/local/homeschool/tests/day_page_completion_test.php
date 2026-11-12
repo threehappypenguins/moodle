@@ -31,8 +31,9 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
  * @covers \local_homeschool\output\day_page
  */
 final class day_page_completion_test extends \local_homeschool\base_testcase {
-
     /**
+     * Get completion options.
+     *
      * @param \stdClass $activity
      * @return \stdClass[]
      */

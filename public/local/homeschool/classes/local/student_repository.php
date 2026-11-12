@@ -28,7 +28,6 @@ require_once($GLOBALS['CFG']->libdir . '/grouplib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class student_repository {
-
     /**
      * Student role shortname used to identify children.
      *
@@ -93,7 +92,7 @@ class student_repository {
             return [];
         }
 
-        // fullname() requires all name fields, not just firstname/lastname.
+        // Fullname() requires all name fields, not just firstname/lastname.
         $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
 
         $students = [];
@@ -128,7 +127,7 @@ class student_repository {
 
         // Merge insertion order follows whichever course first contains each child.
         // Sort by the same display name the UI uses so the list stays stable as enrolments change.
-        uasort($students, static function(\stdClass $a, \stdClass $b): int {
+        uasort($students, static function (\stdClass $a, \stdClass $b): int {
             $bydisplay = strcasecmp(self::format_child_name($a), self::format_child_name($b));
             if ($bydisplay !== 0) {
                 return $bydisplay;

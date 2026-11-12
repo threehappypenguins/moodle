@@ -28,14 +28,19 @@ require_once($GLOBALS['CFG']->libdir . '/grouplib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class activity_progress {
-
-    /** Status keys used in templates / CSS. */
+    /** Progress state: complete. */
     public const STATE_COMPLETE = 'complete';
+    /** Progress state: failed. */
     public const STATE_FAILED = 'failed';
+    /** Progress state: submitted. */
     public const STATE_SUBMITTED = 'submitted';
+    /** Progress state: draft. */
     public const STATE_DRAFT = 'draft';
+    /** Progress state: attempted. */
     public const STATE_ATTEMPTED = 'attempted';
+    /** Progress state: not started. */
     public const STATE_NOTSTARTED = 'notstarted';
+    /** Progress state: not submitted. */
     public const STATE_NOTSUBMITTED = 'notsubmitted';
 
     /** Assign submission plugin types that count as student submissions. */
@@ -111,16 +116,18 @@ class activity_progress {
         $rows = [];
         foreach ($students as $student) {
             $userid = (int) $student->id;
-            if (!self::can_view_any_progress_for_activity(
-                $cm,
-                $course,
-                $completioninfo,
-                $userid,
-                (int) $activity->completion,
-                $assign,
-                $hassubmissiontypes,
-                $hasembeds,
-            )) {
+            if (
+                !self::can_view_any_progress_for_activity(
+                    $cm,
+                    $course,
+                    $completioninfo,
+                    $userid,
+                    (int) $activity->completion,
+                    $assign,
+                    $hassubmissiontypes,
+                    $hasembeds,
+                )
+            ) {
                 continue;
             }
 
@@ -140,7 +147,10 @@ class activity_progress {
                 $lines[] = $primary;
             }
 
-            if ($hassubmissiontypes && $assign !== null && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
+            if (
+                $hassubmissiontypes && $assign !== null
+                && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)
+            ) {
                 $lines[] = self::assign_submission_line($assign, $userid);
             }
 
@@ -196,8 +206,10 @@ class activity_progress {
         bool $hassubmissiontypes,
         bool $hasembeds = false,
     ): bool {
-        if ($tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
-                && self::can_view_completion_for_user($course, $cm, $userid)) {
+        if (
+            $tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
+            && self::can_view_completion_for_user($course, $cm, $userid)
+        ) {
             return true;
         }
 
@@ -205,8 +217,10 @@ class activity_progress {
             return true;
         }
 
-        if ($cm->modname === 'assign' && $assign !== null
-                && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
+        if (
+            $cm->modname === 'assign' && $assign !== null
+            && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)
+        ) {
             return true;
         }
 
@@ -218,6 +232,8 @@ class activity_progress {
     }
 
     /**
+     * Can view completion for user.
+     *
      * @param \stdClass $course
      * @param \cm_info $cm
      * @param int $userid
@@ -239,6 +255,8 @@ class activity_progress {
     }
 
     /**
+     * Can view assign submission for user.
+     *
      * @param \assign $assign
      * @param \stdClass $course
      * @param \cm_info $cm
@@ -265,6 +283,8 @@ class activity_progress {
     }
 
     /**
+     * Can view quiz attempts for user.
+     *
      * @param \stdClass $course
      * @param \cm_info $cm
      * @param int $userid
@@ -285,6 +305,8 @@ class activity_progress {
     }
 
     /**
+     * Can view embed progress for user.
+     *
      * @param \stdClass $course
      * @param \cm_info $cm
      * @param int $userid
@@ -358,8 +380,10 @@ class activity_progress {
         $courseid = (int) $candidate->courseid;
         $cmid = (int) $candidate->cmid;
         $modname = (string) ($candidate->modname ?? '');
-        if ((int) ($candidate->completion ?? 0) > 0
-                && self::can_count_source_for_user('completion', $courseid, $cmid, $userid)) {
+        if (
+            (int) ($candidate->completion ?? 0) > 0
+            && self::can_count_source_for_user('completion', $courseid, $cmid, $userid)
+        ) {
             return true;
         }
         if ($modname === 'assign' && self::can_count_source_for_user('assign', $courseid, $cmid, $userid)) {
@@ -372,6 +396,8 @@ class activity_progress {
     }
 
     /**
+     * Viewer can count completion.
+     *
      * @param int $courseid
      * @param int $cmid
      * @param int $userid
@@ -390,6 +416,8 @@ class activity_progress {
     }
 
     /**
+     * Viewer can count assign.
+     *
      * @param int $courseid
      * @param int $cmid
      * @param int $userid
@@ -408,6 +436,8 @@ class activity_progress {
     }
 
     /**
+     * Viewer can count quiz.
+     *
      * @param int $courseid
      * @param int $cmid
      * @param int $userid
@@ -426,6 +456,8 @@ class activity_progress {
     }
 
     /**
+     * Viewer has course capability.
+     *
      * @param int $courseid
      * @param string $capability
      * @return bool
@@ -439,6 +471,8 @@ class activity_progress {
     }
 
     /**
+     * Viewer has any course capability.
+     *
      * @param int $courseid
      * @param string[] $capabilities
      * @return bool
@@ -535,8 +569,10 @@ class activity_progress {
         // File/online text or embeds get their own line; keep completion on the primary line.
         $hassecondarysubmission = $hassubmissiontypes || $hasembeds;
 
-        if ($tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
-                && self::can_view_completion_for_user($course, $cm, $userid)) {
+        if (
+            $tracking !== COMPLETION_TRACKING_NONE && $completioninfo->is_enabled($cm)
+            && self::can_view_completion_for_user($course, $cm, $userid)
+        ) {
             $data = $completioninfo->get_data($cm, false, $userid);
             $state = (int) ($data->completionstate ?? COMPLETION_INCOMPLETE);
             if (in_array($state, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)) {
@@ -553,8 +589,10 @@ class activity_progress {
         }
 
         // Assign without a dedicated submission line: keep submission-ish status on the primary line.
-        if ($cm->modname === 'assign' && !$hassecondarysubmission && $assign !== null
-                && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)) {
+        if (
+            $cm->modname === 'assign' && !$hassecondarysubmission && $assign !== null
+            && self::can_view_assign_submission_for_user($assign, $course, $cm, $userid)
+        ) {
             $legacy = self::assign_legacy_status($assign, $userid);
             if ($legacy !== null) {
                 return $legacy;
@@ -605,10 +643,12 @@ class activity_progress {
             );
         }
 
-        if ($submission && in_array($submission->status, [
-            ASSIGN_SUBMISSION_STATUS_DRAFT,
-            ASSIGN_SUBMISSION_STATUS_REOPENED,
-        ], true)) {
+        if (
+            $submission && in_array($submission->status, [
+                ASSIGN_SUBMISSION_STATUS_DRAFT,
+                ASSIGN_SUBMISSION_STATUS_REOPENED,
+            ], true)
+        ) {
             if (self::assign_submission_has_content($assign, $submission)) {
                 return self::status_line(self::STATE_DRAFT, get_string('progressdraft', 'local_homeschool'));
             }
@@ -781,6 +821,8 @@ class activity_progress {
     }
 
     /**
+     * Get assign submission.
+     *
      * @param \assign $assign
      * @param int $userid
      * @return \stdClass|null
@@ -795,6 +837,8 @@ class activity_progress {
     }
 
     /**
+     * Assign submission has content.
+     *
      * @param \assign $assign
      * @param \stdClass $submission
      * @return bool
@@ -835,10 +879,12 @@ class activity_progress {
             );
         }
 
-        if (in_array($submission->status, [
-            ASSIGN_SUBMISSION_STATUS_DRAFT,
-            ASSIGN_SUBMISSION_STATUS_REOPENED,
-        ], true)) {
+        if (
+            in_array($submission->status, [
+                ASSIGN_SUBMISSION_STATUS_DRAFT,
+                ASSIGN_SUBMISSION_STATUS_REOPENED,
+            ], true)
+        ) {
             if (!empty($submission->timemodified) && (int) $submission->timemodified > (int) $submission->timecreated) {
                 return self::status_line(self::STATE_DRAFT, get_string('progressdraft', 'local_homeschool'));
             }
@@ -848,6 +894,8 @@ class activity_progress {
     }
 
     /**
+     * Quiz status.
+     *
      * @param \cm_info $cm
      * @param int $userid
      * @return \stdClass|null
@@ -922,6 +970,8 @@ class activity_progress {
     }
 
     /**
+     * Status line.
+     *
      * @param string $state
      * @param string $label
      * @param string|null $url Optional link target for the label

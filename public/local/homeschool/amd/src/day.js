@@ -148,6 +148,138 @@ export const init = () => {
         dateForm.setAttribute('data-disabled-title', dateForm.getAttribute('title') || '');
     });
 
+    /**
+     * @param {HTMLFormElement} form
+     * @return {{selectedCompletion: HTMLInputElement|null, automaticSelected: boolean}}
+     */
+    const getCompletionState = (form) => {
+        const selectedCompletion = form.querySelector('input[name="completion"]:checked');
+        if (selectedCompletion) {
+            return {
+                selectedCompletion,
+                automaticSelected: selectedCompletion.value === '2',
+            };
+        }
+        const hiddenCompletion = form.querySelector('input[name="completion"][type="hidden"]');
+        return {
+            selectedCompletion: null,
+            automaticSelected: !!(hiddenCompletion && hiddenCompletion.value === '2'),
+        };
+    };
+
+    /**
+     * @param {HTMLFormElement} form
+     * @param {HTMLInputElement} completionRadio
+     * @param {boolean} automaticSelected
+     * @param {HTMLInputElement|null} selectedCompletion
+     */
+    const applyCompletionRadioChange = (form, completionRadio, automaticSelected, selectedCompletion) => {
+        const summaryText = form.querySelector('.local-homeschool-completion-summary-text');
+        if (summaryText) {
+            const label = completionRadio.closest('label');
+            const labelSpan = label ? label.querySelector('span') : null;
+            if (labelSpan) {
+                summaryText.textContent = labelSpan.textContent;
+            }
+        }
+        const picker = form.querySelector('.local-homeschool-completion-picker');
+        if (picker) {
+            picker.open = false;
+        }
+        const requirements = form.querySelector('.local-homeschool-requirements');
+        if (requirements) {
+            requirements.hidden = !automaticSelected;
+            if (automaticSelected) {
+                requirements.open = true;
+            }
+        }
+        const activityRow = form.closest('.local-homeschool-activity');
+        syncDateEditable(activityRow, selectedCompletion && selectedCompletion.value !== '0');
+    };
+
+    /**
+     * @param {HTMLFormElement} form
+     * @param {boolean} automaticSelected
+     * @return {boolean} False when autosave should abort.
+     */
+    const validateAutomaticRequirements = (form, automaticSelected) => {
+        const requirements = form.querySelector('.local-homeschool-requirements');
+        if (!automaticSelected || !requirements) {
+            return true;
+        }
+        const anyRequirement = form.querySelectorAll('.local-homeschool-requirement:checked').length > 0;
+        const error = requirements.querySelector('.local-homeschool-requirements-error');
+        if (!anyRequirement) {
+            requirements.hidden = false;
+            requirements.open = true;
+            if (error) {
+                error.hidden = false;
+            }
+            return false;
+        }
+        if (error) {
+            error.hidden = true;
+        }
+        return true;
+    };
+
+    /**
+     * @param {EventTarget} target
+     * @param {string} cmid
+     * @param {boolean} automaticSelected
+     */
+    const rememberExpandedPanels = (target, cmid, automaticSelected) => {
+        if (!cmid) {
+            return;
+        }
+        if (!(target.classList.contains('local-homeschool-autosave') ||
+                target.classList.contains('local-homeschool-requirement-value'))) {
+            return;
+        }
+        if (target.closest('.local-homeschool-activity-details')) {
+            sessionStorage.setItem('local_homeschool_expand_activity', cmid);
+        }
+        if (target.closest('.local-homeschool-submissions')) {
+            sessionStorage.setItem('local_homeschool_expand_submissions', cmid);
+        }
+        if (target.closest('.local-homeschool-requirements') || automaticSelected) {
+            sessionStorage.setItem('local_homeschool_expand_requirements', cmid);
+        }
+    };
+
+    /**
+     * @param {Event} event
+     */
+    const handleAutosaveChange = (event) => {
+        const form = event.target.closest('form');
+        if (!form) {
+            return;
+        }
+
+        const cmidInput = form.querySelector('input[name="cmid"]');
+        const cmid = cmidInput ? cmidInput.value : '';
+        const completionRadio = event.target.classList.contains('local-homeschool-completion-radio')
+            ? event.target
+            : null;
+        const {selectedCompletion, automaticSelected} = getCompletionState(form);
+
+        if (completionRadio) {
+            applyCompletionRadioChange(form, completionRadio, automaticSelected, selectedCompletion);
+        }
+
+        if (event.target.classList.contains('local-homeschool-requirement') ||
+                event.target.classList.contains('local-homeschool-passgrade-radio')) {
+            syncRequirementExtras(form);
+        }
+
+        if (!validateAutomaticRequirements(form, automaticSelected)) {
+            return;
+        }
+
+        rememberExpandedPanels(event.target, cmid, automaticSelected);
+        form.submit();
+    };
+
     root.addEventListener('change', (event) => {
         if (event.target.classList.contains('local-homeschool-select-cm') ||
                 event.target.id === 'local-homeschool-selectall') {
@@ -172,86 +304,9 @@ export const init = () => {
         if (event.target.classList.contains('local-homeschool-autosave') ||
                 event.target.classList.contains('local-homeschool-date-input') ||
                 event.target.classList.contains('local-homeschool-requirement-value')) {
-            const form = event.target.closest('form');
-            if (!form) {
-                return;
-            }
-
-            const cmidInput = form.querySelector('input[name="cmid"]');
-            const cmid = cmidInput ? cmidInput.value : '';
-            const requirements = form.querySelector('.local-homeschool-requirements');
-            const completionRadio = event.target.classList.contains('local-homeschool-completion-radio')
-                ? event.target
-                : null;
-            let automaticSelected = false;
-            const selectedCompletion = form.querySelector('input[name="completion"]:checked');
-            if (selectedCompletion) {
-                automaticSelected = selectedCompletion.value === '2';
-            } else {
-                const hiddenCompletion = form.querySelector('input[name="completion"][type="hidden"]');
-                automaticSelected = hiddenCompletion && hiddenCompletion.value === '2';
-            }
-
-            if (completionRadio) {
-                const summaryText = form.querySelector('.local-homeschool-completion-summary-text');
-                if (summaryText) {
-                    const label = completionRadio.closest('label');
-                    const labelSpan = label ? label.querySelector('span') : null;
-                    if (labelSpan) {
-                        summaryText.textContent = labelSpan.textContent;
-                    }
-                }
-                const picker = form.querySelector('.local-homeschool-completion-picker');
-                if (picker) {
-                    picker.open = false;
-                }
-                if (requirements) {
-                    requirements.hidden = !automaticSelected;
-                    if (automaticSelected) {
-                        requirements.open = true;
-                    }
-                }
-                const activityRow = form.closest('.local-homeschool-activity');
-                syncDateEditable(activityRow, selectedCompletion && selectedCompletion.value !== '0');
-            }
-
-            if (event.target.classList.contains('local-homeschool-requirement') ||
-                    event.target.classList.contains('local-homeschool-passgrade-radio')) {
-                syncRequirementExtras(form);
-            }
-
-            if (automaticSelected && requirements) {
-                const anyRequirement = form.querySelectorAll('.local-homeschool-requirement:checked').length > 0;
-                const error = requirements.querySelector('.local-homeschool-requirements-error');
-                if (!anyRequirement) {
-                    requirements.hidden = false;
-                    requirements.open = true;
-                    if (error) {
-                        error.hidden = false;
-                    }
-                    return;
-                }
-                if (error) {
-                    error.hidden = true;
-                }
-            }
-
-            if (cmid && (event.target.classList.contains('local-homeschool-autosave') ||
-                    event.target.classList.contains('local-homeschool-requirement-value'))) {
-                if (event.target.closest('.local-homeschool-activity-details')) {
-                    sessionStorage.setItem('local_homeschool_expand_activity', cmid);
-                }
-                if (event.target.closest('.local-homeschool-submissions')) {
-                    sessionStorage.setItem('local_homeschool_expand_submissions', cmid);
-                }
-                if (event.target.closest('.local-homeschool-requirements') || automaticSelected) {
-                    sessionStorage.setItem('local_homeschool_expand_requirements', cmid);
-                }
-            }
-            form.submit();
+            handleAutosaveChange(event);
         }
     });
-
     root.addEventListener('click', (event) => {
         const selectAll = event.target.closest('[data-action="local-homeschool-selectall"]');
         const deselectAll = event.target.closest('[data-action="local-homeschool-deselectall"]');

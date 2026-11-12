@@ -32,7 +32,6 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
  * @covers \local_homeschool\local\modedit_launch
  */
 final class modedit_launch_test extends \local_homeschool\base_testcase {
-
     /**
      * Chooser add links rewrite mod.php to modedit.php and keep the flow token.
      */

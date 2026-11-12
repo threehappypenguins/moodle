@@ -100,7 +100,7 @@ if ($day > 0) {
     if ($dateform && optional_param('cleardates', null, PARAM_RAW) !== null) {
         require_sesskey();
         $cmids = optional_param_array('cmids', [], PARAM_INT);
-        $cmids = array_values(array_filter($cmids, static function($cmid) use ($allowedcmids) {
+        $cmids = array_values(array_filter($cmids, static function ($cmid) use ($allowedcmids) {
             return isset($allowedcmids[(int) $cmid]);
         }));
 
@@ -116,7 +116,7 @@ if ($day > 0) {
 
     if ($data = $dateform->get_data()) {
         $cmids = optional_param_array('cmids', [], PARAM_INT);
-        $cmids = array_values(array_filter($cmids, static function($cmid) use ($allowedcmids) {
+        $cmids = array_values(array_filter($cmids, static function ($cmid) use ($allowedcmids) {
             return isset($allowedcmids[(int) $cmid]);
         }));
 
@@ -143,7 +143,7 @@ if ($day > 0) {
                 $cmids = [$singlecmid];
             }
         }
-        $cmids = array_values(array_filter($cmids, static function($cmid) use ($allowedcmids) {
+        $cmids = array_values(array_filter($cmids, static function ($cmid) use ($allowedcmids) {
             return isset($allowedcmids[(int) $cmid]);
         }));
 
@@ -254,11 +254,13 @@ if ($day > 0) {
         if ($completionenabled) {
             $completion = required_param('completion', PARAM_INT);
 
-            if (!in_array($completion, [
-                COMPLETION_TRACKING_NONE,
-                COMPLETION_TRACKING_MANUAL,
-                COMPLETION_TRACKING_AUTOMATIC,
-            ], true)) {
+            if (
+                !in_array($completion, [
+                    COMPLETION_TRACKING_NONE,
+                    COMPLETION_TRACKING_MANUAL,
+                    COMPLETION_TRACKING_AUTOMATIC,
+                ], true)
+            ) {
                 throw new moodle_exception('invalidcompletion', 'local_homeschool');
             }
 
@@ -278,11 +280,13 @@ if ($day > 0) {
             }
 
             try {
-                if (\local_homeschool\local\activity_updater::update_completion(
-                    $cmid,
-                    $completion,
-                    $conditionstate,
-                )) {
+                if (
+                    \local_homeschool\local\activity_updater::update_completion(
+                        $cmid,
+                        $completion,
+                        $conditionstate,
+                    )
+                ) {
                     $changed = true;
                 }
             } catch (moodle_exception $e) {

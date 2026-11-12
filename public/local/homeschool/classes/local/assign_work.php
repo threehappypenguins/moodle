@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Latest assignment submissions that count as qualifying work.
  *
@@ -31,7 +29,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class assign_work {
-
     /**
      * Queries that yield submitted assignments as qualifying work.
      *

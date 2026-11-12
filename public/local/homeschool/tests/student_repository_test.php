@@ -31,7 +31,6 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
  * @covers \local_homeschool\local\student_repository
  */
 final class student_repository_test extends \local_homeschool\base_testcase {
-
     /**
      * Children stay sorted by display name when a later enrolment would change insertion order.
      */

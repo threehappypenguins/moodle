@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Per-activity completion and assignment submission updates.
  *
@@ -26,7 +24,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class activity_updater {
-
     /**
      * Whether completion settings may be edited for this course.
      *

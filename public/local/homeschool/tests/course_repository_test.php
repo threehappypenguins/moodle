@@ -31,7 +31,6 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
  * @covers \local_homeschool\local\course_repository
  */
 final class course_repository_test extends \local_homeschool\base_testcase {
-
     /**
      * Hidden other-format courses are counted separately from daysections.
      */

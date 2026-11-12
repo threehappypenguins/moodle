@@ -28,7 +28,6 @@ namespace local_homeschool\local;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class modedit_launch {
-
     /** @var string */
     private const MOD_PATH = '/course/mod.php';
 
@@ -149,6 +148,8 @@ class modedit_launch {
     }
 
     /**
+     * Translate add.
+     *
      * @param \moodle_url $url
      * @param string $add
      * @return \moodle_url
@@ -182,6 +183,8 @@ class modedit_launch {
     }
 
     /**
+     * Translate update.
+     *
      * @param \moodle_url $url
      * @param int $update
      * @return \moodle_url
@@ -221,6 +224,8 @@ class modedit_launch {
     }
 
     /**
+     * Is mod url.
+     *
      * @param \moodle_url $url
      * @return bool
      */
@@ -229,6 +234,8 @@ class modedit_launch {
     }
 
     /**
+     * Is modedit url.
+     *
      * @param \moodle_url $url
      * @return bool
      */

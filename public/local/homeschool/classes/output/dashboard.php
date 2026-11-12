@@ -32,7 +32,6 @@ use templatable;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class dashboard implements renderable, templatable {
-
     /** @var int */
     protected $userid;
 
@@ -43,6 +42,8 @@ class dashboard implements renderable, templatable {
     protected $showotherformats;
 
     /**
+     * Constructor.
+     *
      * @param int $userid
      * @param bool $showhidden Include courses hidden from students
      * @param bool $showotherformats Include courses that are not daysections format
@@ -54,6 +55,8 @@ class dashboard implements renderable, templatable {
     }
 
     /**
+     * Export data for the Mustache template.
+     *
      * @param renderer_base $output
      * @return \stdClass
      */
@@ -73,7 +76,7 @@ class dashboard implements renderable, templatable {
         $courses = course_repository::get_viewable_daysections_courses($this->userid, $this->showhidden);
         if ($this->showotherformats) {
             $courses += course_repository::get_viewable_other_format_courses($this->userid, $this->showhidden);
-            uasort($courses, static function($a, $b) {
+            uasort($courses, static function ($a, $b) {
                 return strcmp($a->fullname, $b->fullname);
             });
         }

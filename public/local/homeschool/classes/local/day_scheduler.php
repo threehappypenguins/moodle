@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Apply timeline reminder dates to selected activities.
  *
@@ -26,7 +24,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class day_scheduler {
-
     /**
      * Whether a timeline reminder date may be set for this activity.
      *
@@ -415,7 +412,7 @@ class day_scheduler {
             }
         }
 
-        usort($preview->items, static function($a, $b) {
+        usort($preview->items, static function ($a, $b) {
             return [$a->sectionnum, $a->coursename, $a->activityname]
                 <=> [$b->sectionnum, $b->coursename, $b->activityname];
         });
@@ -623,10 +620,12 @@ class day_scheduler {
         }
 
         try {
-            if (!$DB->record_exists('course_modules', [
-                'id' => $cmid,
-                'completionexpected' => $oldexpected,
-            ])) {
+            if (
+                !$DB->record_exists('course_modules', [
+                    'id' => $cmid,
+                    'completionexpected' => $oldexpected,
+                ])
+            ) {
                 return false;
             }
 

@@ -16,8 +16,6 @@
 
 namespace local_homeschool\admin;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Checkbox that requires hour and minute when enabling a default reminder time.
  *
@@ -26,7 +24,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class setting_enablereminderdefault extends \admin_setting_configcheckbox {
-
     /**
      * Require hour and minute selections when enabling.
      *

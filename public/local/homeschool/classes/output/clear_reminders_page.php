@@ -29,7 +29,6 @@ use templatable;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class clear_reminders_page implements renderable, templatable {
-
     /** @var \stdClass[] */
     protected $courses;
 
@@ -40,6 +39,8 @@ class clear_reminders_page implements renderable, templatable {
     protected $showhidden;
 
     /**
+     * Constructor.
+     *
      * @param \stdClass[] $courses Managed daysections courses
      * @param int $courseid Selected course id, or 0
      * @param bool $showhidden Include courses hidden from students
@@ -51,6 +52,8 @@ class clear_reminders_page implements renderable, templatable {
     }
 
     /**
+     * Export data for the Mustache template.
+     *
      * @param renderer_base $output
      * @return \stdClass
      */

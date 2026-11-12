@@ -63,12 +63,8 @@ if ($courseid < 1 && count($courses) === 1) {
     $PAGE->set_url($url);
 }
 
-/**
- * Selected day section numbers from the request.
- *
- * @return int[]
- */
-$parse_selected_days = static function(): array {
+// Selected day section numbers from the request.
+$parseselecteddays = static function (): array {
     $raw = $_POST['days'] ?? $_GET['days'] ?? null;
     if ($raw === null || $raw === '') {
         return [];
@@ -87,14 +83,8 @@ $parse_selected_days = static function(): array {
     return array_values(array_unique(array_map('intval', explode(',', $daysparam))));
 };
 
-/**
- * Days that currently have reminder dates in the selected course.
- *
- * @param \stdClass $course
- * @param int[] $requested
- * @return array{0:int[],1:int} selectable day numbers and dated activity count
- */
-$filter_clearable_days = static function(\stdClass $course, array $requested): array {
+// Days that currently have reminder dates in the selected course.
+$filterclearabledays = static function (\stdClass $course, array $requested): array {
     $allowed = array_fill_keys($requested, true);
     $days = [];
     $activitycount = 0;
@@ -124,7 +114,7 @@ if ($action === 'clear' || $action === 'confirm') {
 
     $course = $courses[$courseid];
     $listurl->param('id', $courseid);
-    [$selecteddays, $activitycount] = $filter_clearable_days($course, $parse_selected_days());
+    [$selecteddays, $activitycount] = $filterclearabledays($course, $parseselecteddays());
 
     if (empty($selecteddays)) {
         \core\notification::error(get_string('clearremindersnoneselected', 'local_homeschool'));

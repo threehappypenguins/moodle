@@ -16,8 +16,6 @@
 
 namespace local_homeschool\output;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Plugin renderer.
  *

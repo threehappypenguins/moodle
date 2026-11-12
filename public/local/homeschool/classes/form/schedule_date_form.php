@@ -28,11 +28,12 @@ require_once($GLOBALS['CFG']->libdir . '/formslib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class schedule_date_form extends \moodleform {
-
     /** @var string HTML id for bulk date form (used by activity selection checkboxes). */
     public const FORM_ID = 'local-homeschool-bulk-date-form';
 
     /**
+     * Define the form elements.
+     *
      * @return void
      */
     protected function definition() {

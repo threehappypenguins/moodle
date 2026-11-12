@@ -31,7 +31,6 @@ use local_homeschool\local\return_context;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class course_return {
-
     /**
      * Scripts where core modedit may land after "Save and return to course" or cancel.
      */
@@ -41,6 +40,8 @@ class course_return {
     ];
 
     /**
+     * Hook callback after config is loaded.
+     *
      * @param after_config $hook
      * @return void
      */
@@ -53,6 +54,8 @@ class course_return {
     }
 
     /**
+     * Hook callback before HTTP headers are sent.
+     *
      * @param before_http_headers $hook
      * @return void
      */

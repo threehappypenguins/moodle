@@ -16,8 +16,6 @@
 
 namespace local_homeschool;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_homeschool\local\activity_progress;
 use local_homeschool\local\course_repository;
 use local_homeschool\local\return_context;
@@ -32,8 +30,9 @@ use local_homeschool\local\shift_undo;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class base_testcase extends \advanced_testcase {
-
     /**
+     * Reset state before each test.
+     *
      * @return void
      */
     protected function setUp(): void {
@@ -43,6 +42,8 @@ abstract class base_testcase extends \advanced_testcase {
     }
 
     /**
+     * Clean up after each test.
+     *
      * @return void
      */
     protected function tearDown(): void {

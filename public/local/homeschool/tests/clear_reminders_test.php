@@ -34,8 +34,9 @@ require_once($CFG->libdir . '/completionlib.php');
  * @covers \local_homeschool\local\day_scheduler::clear_course_day_reminders
  */
 final class clear_reminders_test extends \local_homeschool\base_testcase {
-
     /**
+     * Create teacher course.
+     *
      * @param int $numsections
      * @return array{0:\stdClass,1:\stdClass} teacher and course
      */
@@ -87,7 +88,10 @@ final class clear_reminders_test extends \local_homeschool\base_testcase {
         $this->assertSame(1, $result->updated);
         $this->assertSame(0, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assignone->cmid]));
         $this->assertSame($daytwo, (int) $DB->get_field('course_modules', 'completionexpected', ['id' => $assigntwo->cmid]));
-        $this->assertSame(COMPLETION_TRACKING_MANUAL, (int) $DB->get_field('course_modules', 'completion', ['id' => $assignone->cmid]));
+        $this->assertSame(
+            COMPLETION_TRACKING_MANUAL,
+            (int) $DB->get_field('course_modules', 'completion', ['id' => $assignone->cmid])
+        );
     }
 
     /**

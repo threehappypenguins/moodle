@@ -27,7 +27,6 @@ namespace local_homeschool\local;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class return_context {
-
     /** @var string Session property name for the flow store. */
     public const SESSION_KEY = 'local_homeschool_returns';
 
@@ -287,6 +286,8 @@ class return_context {
     }
 
     /**
+     * Build url.
+     *
      * @param array $flow
      * @return \moodle_url
      */
@@ -312,6 +313,8 @@ class return_context {
     }
 
     /**
+     * Get valid flow.
+     *
      * @param string $token
      * @return array|null
      */
@@ -333,6 +336,8 @@ class return_context {
     }
 
     /**
+     * Is flow valid.
+     *
      * @param array $flow
      * @return bool
      */
@@ -345,6 +350,8 @@ class return_context {
     }
 
     /**
+     * Remove flow.
+     *
      * @param string $token
      * @return void
      */
@@ -354,6 +361,8 @@ class return_context {
     }
 
     /**
+     * Return the session store for return-context flows.
+     *
      * @return array
      */
     protected static function &get_store(): array {

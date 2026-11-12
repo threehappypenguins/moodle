@@ -34,7 +34,6 @@ use templatable;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class day_page implements renderable, templatable {
-
     /** @var int */
     protected $daynumber;
 
@@ -57,6 +56,8 @@ class day_page implements renderable, templatable {
     protected $expandreqcmid;
 
     /**
+     * Constructor.
+     *
      * @param int $daynumber 0 = no day selected yet
      * @param \stdClass[] $courses
      * @param string $dateformhtml Rendered bulk date form HTML
@@ -84,6 +85,8 @@ class day_page implements renderable, templatable {
     }
 
     /**
+     * Export data for the Mustache template.
+     *
      * @param renderer_base $output
      * @return \stdClass
      */
@@ -238,6 +241,8 @@ class day_page implements renderable, templatable {
     }
 
     /**
+     * Day url for.
+     *
      * @param int $daynumber
      * @return \moodle_url
      */
@@ -305,6 +310,8 @@ class day_page implements renderable, templatable {
     }
 
     /**
+     * Build add course option.
+     *
      * @param \stdClass $course
      * @return \stdClass
      */
@@ -342,6 +349,8 @@ class day_page implements renderable, templatable {
     }
 
     /**
+     * Day url.
+     *
      * @return \moodle_url
      */
     protected function day_url(): \moodle_url {
@@ -349,6 +358,8 @@ class day_page implements renderable, templatable {
     }
 
     /**
+     * Export activity row.
+     *
      * @param \stdClass $activity
      * @return \stdClass
      */
@@ -436,6 +447,8 @@ class day_page implements renderable, templatable {
     }
 
     /**
+     * Export requirements.
+     *
      * @param \stdClass $activity
      * @return \stdClass[]
      */

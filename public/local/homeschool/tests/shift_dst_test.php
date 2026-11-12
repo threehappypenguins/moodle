@@ -31,11 +31,12 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
  * @covers \local_homeschool\local\day_scheduler
  */
 final class shift_dst_test extends \local_homeschool\base_testcase {
-
     /** @var string Non-UTC timezone with US DST rules. */
     private const TIMEZONE = 'America/New_York';
 
     /**
+     * Reset state before each test.
+     *
      * @return void
      */
     protected function setUp(): void {

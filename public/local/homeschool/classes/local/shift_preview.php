@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Shift preview snapshots keyed by unpredictable tokens.
  *
@@ -29,7 +27,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class shift_preview {
-
     /** @var string Session key for preview metadata index. */
     public const SESSION_KEY = 'local_homeschool_shift_previews';
 
@@ -173,6 +170,8 @@ class shift_preview {
     }
 
     /**
+     * Build snapshot items.
+     *
      * @param \stdClass $preview
      * @return \stdClass[]
      */
@@ -191,6 +190,8 @@ class shift_preview {
     }
 
     /**
+     * Delete preview.
+     *
      * @param string $token
      * @return void
      */
@@ -201,6 +202,8 @@ class shift_preview {
     }
 
     /**
+     * Get items cache.
+     *
      * @return \cache_application
      */
     protected static function get_items_cache(): \cache_application {
@@ -208,6 +211,8 @@ class shift_preview {
     }
 
     /**
+     * Is expired.
+     *
      * @param \stdClass $data
      * @return bool
      */
@@ -216,6 +221,8 @@ class shift_preview {
     }
 
     /**
+     * Is valid metadata.
+     *
      * @param \stdClass $data
      * @param int $userid
      * @return bool
@@ -229,6 +236,8 @@ class shift_preview {
     }
 
     /**
+     * Return the session store for shift preview data.
+     *
      * @return array
      */
     protected static function &get_store(): array {

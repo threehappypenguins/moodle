@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Automatic completion condition helpers for the day page UI.
  *
@@ -26,7 +24,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class completion_conditions {
-
     /**
      * Available conditions for a course module.
      *
@@ -353,6 +350,8 @@ class completion_conditions {
     }
 
     /**
+     * Supports grade condition.
+     *
      * @param \cm_info $cm
      * @return bool
      */
@@ -600,11 +599,13 @@ class completion_conditions {
         }
 
         // Non-boolean integers / special controls (duration, score, status bitmask).
-        if (in_array($rule, [
-            'completiontimespent',
-            'completionscorerequired',
-            'completionstatusrequired',
-        ], true)) {
+        if (
+            in_array($rule, [
+                'completiontimespent',
+                'completionscorerequired',
+                'completionstatusrequired',
+            ], true)
+        ) {
             return false;
         }
 

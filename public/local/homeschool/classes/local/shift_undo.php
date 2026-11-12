@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Session-backed undo for the most recent schedule shift.
  *
@@ -29,7 +27,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class shift_undo {
-
     /** @var string Session key for undo payload. */
     public const SESSION_KEY = 'local_homeschool_shift_undo';
 

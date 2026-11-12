@@ -32,7 +32,6 @@ require_once($CFG->dirroot . '/local/homeschool/tests/base_testcase.php');
  * @covers \local_homeschool\local\return_context
  */
 final class return_context_test extends \local_homeschool\base_testcase {
-
     /**
      * Concurrent arms for the same course get distinct tokens.
      */

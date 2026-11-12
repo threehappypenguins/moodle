@@ -28,7 +28,6 @@ require_once($GLOBALS['CFG']->libdir . '/completionlib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class current_day {
-
     /**
      * Highest day number with complete/pass, submitted assignment, or finished quiz.
      *
@@ -224,6 +223,8 @@ class current_day {
     }
 
     /**
+     * Day link.
+     *
      * @param \moodle_url $daypageurl
      * @param int $daynumber
      * @return string

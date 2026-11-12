@@ -16,8 +16,6 @@
 
 namespace local_homeschool\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Homeschool courses the current user may view or manage.
  *
@@ -26,7 +24,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class course_repository {
-
     /** @var array */
     protected static $capabilitycoursescache = [];
 
@@ -174,6 +171,8 @@ class course_repository {
     }
 
     /**
+     * Get homeschool courses.
+     *
      * @param int $userid
      * @param string $homeschoolcap local/homeschool:view or local/homeschool:manage
      * @param bool $requiremanageactivities Also require moodle/course:manageactivities in the course
@@ -189,7 +188,8 @@ class course_repository {
         bool $daysectionsonly,
     ): array {
         $courses = [];
-        foreach (self::get_courses_with_homeschool_capability($userid, $homeschoolcap, $requiremanageactivities) as $courseid => $course) {
+        $managed = self::get_courses_with_homeschool_capability($userid, $homeschoolcap, $requiremanageactivities);
+        foreach ($managed as $courseid => $course) {
             $isdaysections = ($course->format === 'daysections');
             if ($daysectionsonly !== $isdaysections) {
                 continue;
@@ -258,12 +258,14 @@ class course_repository {
                 if (!requirements::user_has_active_enrolment_in_course($userid, $courseid, $homeschoolcap)) {
                     continue;
                 }
-                if ($requiremanageactivities &&
-                        !requirements::user_has_active_enrolment_in_course(
-                            $userid,
-                            $courseid,
-                            'moodle/course:manageactivities',
-                        )) {
+                if (
+                    $requiremanageactivities &&
+                    !requirements::user_has_active_enrolment_in_course(
+                        $userid,
+                        $courseid,
+                        'moodle/course:manageactivities',
+                    )
+                ) {
                     continue;
                 }
                 $filtered[$courseid] = $course;
