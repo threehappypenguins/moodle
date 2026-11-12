@@ -145,10 +145,10 @@ class restore_format_daysections_plugin extends restore_format_plugin {
             }
 
             if ($sectionnum > $numsections && $sectionnum > $this->originalnumsections) {
-                $DB->execute(
-                    'UPDATE {course_sections} SET visible = 0 WHERE course = ? AND section = ?',
-                    [$this->step->get_task()->get_courseid(), $sectionnum],
-                );
+                $DB->set_field('course_sections', 'visible', 0, [
+                    'course' => $this->step->get_task()->get_courseid(),
+                    'section' => $sectionnum,
+                ]);
             }
         }
     }
