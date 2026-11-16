@@ -231,7 +231,8 @@ class return_context {
             return false;
         }
 
-        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        // The modedit cancel button posts the form.
+        if (!data_submitted()) {
             return false;
         }
 

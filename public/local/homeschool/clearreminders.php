@@ -63,24 +63,10 @@ if ($courseid < 1 && count($courses) === 1) {
     $PAGE->set_url($url);
 }
 
-// Selected day section numbers from the request.
+// Selected day section numbers. The checkbox form and the confirm button both post days[].
 $parseselecteddays = static function (): array {
-    $raw = $_POST['days'] ?? $_GET['days'] ?? null;
-    if ($raw === null || $raw === '') {
-        return [];
-    }
-
-    if (is_array($raw)) {
-        $days = optional_param_array('days', [], PARAM_INT);
-        return array_values(array_unique(array_map('intval', $days)));
-    }
-
-    $daysparam = optional_param('days', '', PARAM_SEQUENCE);
-    if ($daysparam === '') {
-        return [];
-    }
-
-    return array_values(array_unique(array_map('intval', explode(',', $daysparam))));
+    $days = optional_param_array('days', [], PARAM_INT);
+    return array_values(array_unique(array_map('intval', $days)));
 };
 
 // Days that currently have reminder dates in the selected course.
@@ -130,7 +116,7 @@ if ($action === 'clear' || $action === 'confirm') {
     $continueurl = new moodle_url('/local/homeschool/clearreminders.php', [
         'id' => $courseid,
         'action' => 'clear',
-        'days' => implode(',', $selecteddays),
+        'days' => $selecteddays,
     ]);
     if ($showhidden) {
         $continueurl->param('showhidden', 1);
